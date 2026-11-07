@@ -11,10 +11,13 @@ type AuthFormProps = {
   mode: 'signin' | 'signup';
 };
 
+type UserRole = 'seeker' | 'recruiter' | 'admin';
+
 export default function AuthForm({ mode }: AuthFormProps) {
   const isSignUp = mode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState<UserRole>('seeker');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,7 +31,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     try {
       const result = isSignUp
-        ? await authClient.signUp.email({ email, password, name })
+        ? await authClient.signUp.email({ email, password, name, role })
         : await authClient.signIn.email({ email, password });
 
       if (result.error) {
@@ -128,6 +131,97 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {isSignUp && (
+                <fieldset>
+                  <legend className="mb-2 block text-xs font-medium text-[#c8c8d0]">
+                    Joining HireLoop as
+                  </legend>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(
+                      [
+                        [
+                          'seeker',
+                          'Seeker',
+                          <svg
+                            key="seeker"
+                            width="17"
+                            height="17"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <circle cx="12" cy="8" r="3.5" />
+                            <path d="M5.5 21v-1.5a6.5 6.5 0 0 1 13 0V21" />
+                          </svg>,
+                        ],
+                        [
+                          'recruiter',
+                          'Recruiter',
+                          <svg
+                            key="recruiter"
+                            width="17"
+                            height="17"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <rect x="3" y="7" width="18" height="13" rx="2" />
+                            <path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7M3 12h18M10 12v2h4v-2" />
+                          </svg>,
+                        ],
+                        [
+                          'admin',
+                          'Admin',
+                          <svg
+                            key="admin"
+                            width="17"
+                            height="17"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z" />
+                            <path d="m9 12 2 2 4-4" />
+                          </svg>,
+                        ],
+                      ] as const
+                    ).map(([value, label, icon]) => (
+                      <label
+                        key={value}
+                        className={`flex h-12 cursor-pointer items-center justify-center gap-2 rounded-[10px] border text-xs font-medium transition ${
+                          role === value
+                            ? 'border-[#6258ff] bg-[#6258ff]/15 text-[#a8a4ff]'
+                            : 'border-white/9 bg-[#17171d] text-[#9899a9] hover:border-white/20 hover:text-[#c8c8d0]'
+                        }`}
+                      >
+                        <input
+                          className="sr-only"
+                          type="radio"
+                          name="role"
+                          value={value}
+                          checked={role === value}
+                          onChange={() => setRole(value)}
+                        />
+                        <span className="shrink-0">{icon}</span>
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+
+              {isSignUp && (
                 <label className="block">
                   <span className="mb-2 block text-xs font-medium text-[#c8c8d0]">Full name</span>
                   <input
@@ -159,7 +253,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     Password
                     <button
                       type="button"
-                      onClick={() => toast.info('Password reset will be available soon.', { duration: 4000 })}
+                      onClick={() =>
+                        toast.info('Password reset will be available soon.', { duration: 4000 })
+                      }
                       className="font-normal text-[#777bff]"
                     >
                       Forgot password?
