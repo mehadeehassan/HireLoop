@@ -1,0 +1,77 @@
+'use client';
+
+import { useSession } from '@/lib/auth-client';
+import type { DashboardRole } from './DashboardTypes';
+import DashboardAvatar from './DashboardAvatar';
+
+function NotificationIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="size-4.75"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+    >
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+    </svg>
+  );
+}
+
+function MessageIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="size-4.75"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+    >
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+    </svg>
+  );
+}
+
+export default function HeaderActions({ role }: { role: DashboardRole }) {
+  const { data: session } = useSession();
+  const user = session?.user;
+
+  return (
+    <div className="ml-auto flex items-center gap-5 text-[#8d96ab]">
+      {role === 'seeker' && (
+        <button type="button" aria-label="Messages" className="relative transition hover:text-[#e8ebf3]">
+          <MessageIcon />
+          <span className="absolute -right-px -top-px size-1.25 rounded-full border border-[#101626] bg-[#6258ff]" />
+        </button>
+      )}
+
+      {(role === 'seeker' || role === 'admin') && (
+        <button type="button" aria-label="Notifications" className="relative transition hover:text-[#e8ebf3]">
+          <NotificationIcon />
+          <span className="absolute -right-px top-0 size-1.25 rounded-full border border-[#101626] bg-[#ec4e67]" />
+        </button>
+      )}
+
+      {role === 'admin' && (
+        <button
+          type="button"
+          aria-label="Help"
+          className="flex size-4.75 items-center justify-center rounded-full border border-current text-[12px] font-semibold transition hover:text-[#e8ebf3]"
+        >
+          ?
+        </button>
+      )}
+
+      {role === 'seeker' && (
+        <>
+          <DashboardAvatar src={user?.image} name={user?.name} size="sm" />
+          <button type="button" aria-label="Profile options" className="text-[18px] leading-none">
+            ⋮
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
