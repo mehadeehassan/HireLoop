@@ -1,0 +1,30 @@
+const backendUrl = () =>
+  (process.env.JOB_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+
+export async function fetchBackendJobs(
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  options?: { id?: string; body?: unknown },
+) {
+  const path = options?.id
+    ? `/jobs/${encodeURIComponent(options.id)}`
+    : '/jobs';
+
+  const response = await fetch(`${backendUrl()}${path}`, {
+    method,
+    headers: options?.body ? { 'Content-Type': 'application/json' } : undefined,
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+    cache: 'no-store',
+  });
+
+  const responseText = await response.text();
+  let responseData: unknown = null;
+  if (responseText) {
+    try {
+      responseData = JSON.parse(responseText);
+    } catch {
+      responseData = responseText;
+    }
+  }
+
+  return { response, data: responseData };
+}

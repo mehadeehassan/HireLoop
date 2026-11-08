@@ -8,6 +8,9 @@ const fields =
   'h-11 w-full rounded-md border border-[#252d43] bg-[#171e31] px-3 text-[12px] text-[#edf0f7] outline-none placeholder:text-[#737b91] focus:border-[#6258ff]';
 
 function deadlineToInput(deadline: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
+    return deadline;
+  }
   const value = new Date(`${deadline}, 12:00:00`);
   if (Number.isNaN(value.getTime())) return '2025-05-30';
   return [
