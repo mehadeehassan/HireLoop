@@ -11,6 +11,7 @@ export type DashboardIconName =
   | 'chart'
   | 'building'
   | 'wallet'
+  | 'add'
   | 'logout';
 
 export default function DashboardIcon({
@@ -69,6 +70,12 @@ export default function DashboardIcon({
       <>
         <rect x="2" y="5" width="20" height="15" rx="3" />
         <path d="M16 12h6M16 12a2 2 0 1 0 0 4h4v-4" />
+      </>
+    ),
+    add: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8v8M8 12h8" />
       </>
     ),
     logout: (

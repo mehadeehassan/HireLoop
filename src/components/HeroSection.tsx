@@ -65,9 +65,9 @@ export default function HeroSection() {
         />
 
         <div className="relative z-10 px-4 pt-10.5 text-center sm:px-6 md:pt-9.5 lg:pt-10">
-          <div className="mx-auto flex h-12 w-fit items-center gap-3 rounded-full border border-white/5 bg-white/[0.04] px-4 py-2">
+          <div className="mx-auto flex h-12 w-fit items-center gap-3 rounded-full border border-white/5 bg-white/4 px-4 py-2">
             <span className="flex size-7 items-center justify-center rounded-md bg-[#df7a3a] shadow-[inset_0_-3px_6px_rgba(0,0,0,0.18)]" aria-hidden="true">
-              <svg className="size-[18px] text-[#171419]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="size-4.5 text-[#171419]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7" />
                 <rect x="3" y="7" width="18" height="12" rx="2.5" />
                 <path d="M9 7v12M15 7v12M3 12h18M10 12v2h4v-2" />
@@ -137,7 +137,7 @@ export default function HeroSection() {
           {stats.map((stat, index) => (
             <div
               key={stat.label}
-              className={`min-h-35 px-5 py-5 sm:px-8 md:min-h-33 md:px-10 md:py-5 ${
+              className={`flex min-h-35 flex-col items-center justify-center px-4 py-5 text-center sm:px-8 md:min-h-33 md:px-10 md:py-5 ${
                 index % 2 !== 0 ? "border-l border-white/[0.07]" : ""
               } ${index >= 2 ? "border-t border-white/[0.07] md:border-t-0" : ""} ${
                 index > 0 ? "md:border-l md:border-white/[0.07]" : ""

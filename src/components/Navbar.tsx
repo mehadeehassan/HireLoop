@@ -59,6 +59,11 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const { data: session, isPending } = useSession();
   const user = session?.user;
+  const dashboardRole =
+    user?.role === "admin" || user?.role === "recruiter"
+      ? user.role
+      : "seeker";
+  const dashboardHref = `/dashboard/${dashboardRole}`;
 
   async function handleSignOut() {
     await authClient.signOut({
@@ -134,6 +139,13 @@ export default function Navbar() {
                       <p className="truncate text-sm font-semibold text-[#ededef]">{user.name}</p>
                       <p className="mt-1 truncate text-xs text-[#9899a9]">{user.email}</p>
                     </div>
+                    <Link
+                      href={dashboardHref}
+                      onClick={() => setProfileOpen(false)}
+                      className="flex h-10 w-full items-center rounded-lg px-3 text-sm text-[#ededef] transition hover:bg-white/5"
+                    >
+                      Dashboard
+                    </Link>
                     <button type="button" onClick={handleSignOut} className="flex h-10 w-full items-center rounded-lg px-3 text-sm text-[#ff7a7a] transition hover:bg-white/5">
                       Sign out
                     </button>
@@ -233,6 +245,13 @@ export default function Navbar() {
                     <span className="block truncate text-xs text-[#9899a9]">{user.email}</span>
                   </span>
                 </div>
+                <Link
+                  href={dashboardHref}
+                  onClick={() => setMenuOpen(false)}
+                  className="font-instrument-sans flex h-13 items-center justify-center rounded-lg border border-white/[0.07] text-lg font-medium leading-6.5 text-[#ededef]"
+                >
+                  Dashboard
+                </Link>
                 <button
                   type="button"
                   onClick={handleSignOut}

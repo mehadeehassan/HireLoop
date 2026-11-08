@@ -24,8 +24,9 @@ export const sidebarNavigation: Record<
   ],
   recruiter: [
     { label: 'Dashboard', href: '/dashboard/recruiter', icon: 'grid' },
+    { label: 'Add Job', href: '/dashboard/recruiter/add-job', icon: 'add' },
     { label: 'Manage Jobs', href: '/dashboard/recruiter/jobs', icon: 'briefcase' },
-    { label: 'Applications', href: '/dashboard/recruiter/candidates', icon: 'users' },
+    { label: 'Applications', href: '/dashboard/recruiter/applications', icon: 'users' },
     { label: 'Settings', href: '/dashboard/recruiter/settings', icon: 'settings' },
   ],
   admin: [
