@@ -71,7 +71,7 @@ export default function DashboardSidebar({
             <div className="mb-3 flex items-center gap-3 px-2">
               <DashboardAvatar src={user?.image} name={user?.name} size="sm" />
               <div className="min-w-0">
-                <p className="truncate text-xs font-medium">{user?.name || 'Alex Rivera'}</p>
+                <p className="truncate text-xs font-medium">{user?.name || 'Admin'}</p>
                 <p className="text-[10px] text-[#7e879f]">Role: Admin</p>
               </div>
             </div>

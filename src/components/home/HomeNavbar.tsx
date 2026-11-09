@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient, useSession } from "@/lib/auth-client";
 
 const NAV_LINKS = [
-  { label: "Browse Jobs", href: "#", bold: true },
-  { label: "Company", href: "#", bold: false },
-  { label: "Pricing", href: "#", bold: false },
+  { label: "Browse Jobs", href: "#open-roles", bold: true },
+  { label: "Company", href: "#features", bold: false },
+  { label: "Pricing", href: "#pricing", bold: false },
 ];
 
 function UserAvatar({
@@ -53,17 +53,44 @@ function UserAvatar({
   );
 }
 
-export default function Navbar() {
+export default function HomeNavbar() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [recruiterName, setRecruiterName] = useState<string | null>(null);
   const { data: session, isPending } = useSession();
   const user = session?.user;
+  const displayName = user?.role === "recruiter"
+    ? recruiterName || user?.name
+    : user?.name;
   const dashboardRole =
     user?.role === "admin" || user?.role === "recruiter"
       ? user.role
       : "seeker";
   const dashboardHref = `/dashboard/${dashboardRole}`;
+
+  useEffect(() => {
+    if (dashboardRole !== "recruiter") {
+      return;
+    }
+
+    let active = true;
+    async function loadRecruiterProfile() {
+      const response = await fetch("/api/recruiter/profile", { cache: "no-store" });
+      if (!response.ok) return;
+      const profile = await response.json();
+      if (active && typeof profile.recruiterName === "string") {
+        setRecruiterName(profile.recruiterName);
+      }
+    }
+
+    loadRecruiterProfile();
+    window.addEventListener("recruiter-profile-updated", loadRecruiterProfile);
+    return () => {
+      active = false;
+      window.removeEventListener("recruiter-profile-updated", loadRecruiterProfile);
+    };
+  }, [dashboardRole]);
 
   async function handleSignOut() {
     await authClient.signOut({
@@ -122,11 +149,11 @@ export default function Navbar() {
                 >
                   <UserAvatar
                     src={user.image}
-                    name={user.name}
+                    name={displayName}
                     className="size-9.5 rounded-lg"
                   />
                   <span className="max-w-28 truncate text-sm font-medium text-[#ededef]">
-                    {user.name || user.email}
+                    {displayName || user.email}
                   </span>
                   <svg className={`size-4 text-[#9899a9] transition-transform ${profileOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                     <path d="m6 9 6 6 6-6" />
@@ -136,7 +163,7 @@ export default function Navbar() {
                 {profileOpen && (
                   <div className="absolute right-0 top-full mt-3 w-64 rounded-[14px] border border-white/[0.07] bg-[#1a1a1f] p-2 shadow-[0_16px_48px_rgba(0,0,0,0.55)]">
                     <div className="mb-2 border-b border-white/[0.07] px-3 py-3">
-                      <p className="truncate text-sm font-semibold text-[#ededef]">{user.name}</p>
+                      <p className="truncate text-sm font-semibold text-[#ededef]">{displayName}</p>
                       <p className="mt-1 truncate text-xs text-[#9899a9]">{user.email}</p>
                     </div>
                     <Link
@@ -235,12 +262,12 @@ export default function Navbar() {
                 <div className="flex items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.035] p-3">
                   <UserAvatar
                     src={user.image}
-                    name={user.name}
+                    name={displayName}
                     className="size-10 rounded-lg"
                   />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-[#ededef]">
-                      {user.name || "User"}
+                      {displayName || "User"}
                     </span>
                     <span className="block truncate text-xs text-[#9899a9]">{user.email}</span>
                   </span>

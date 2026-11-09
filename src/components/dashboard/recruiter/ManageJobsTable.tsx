@@ -10,9 +10,22 @@ import type { RecruiterJob } from './recruiter-data';
 export default function ManageJobsTable() {
   const [jobs, setJobs] = useState<RecruiterJob[]>([]);
   const [editingJob, setEditingJob] = useState<RecruiterJob | null>(null);
+  const [deletingJob, setDeletingJob] = useState<RecruiterJob | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    if (!deletingJob) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !isDeleting) setDeletingJob(null);
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [deletingJob, isDeleting]);
 
   useEffect(() => {
     fetch(`/api/recruiter/jobs?page=${page}&limit=6`)
@@ -27,14 +40,50 @@ export default function ManageJobsTable() {
   }, [page]);
 
   async function removeJob(id: string) {
-    const response = await fetch(`/api/recruiter/jobs/${id}`, { method: 'DELETE' });
+    let response: Response;
+    try {
+      response = await fetch(`/api/recruiter/jobs/${id}`, { method: 'DELETE' });
+    } catch {
+      toast.error('Job could not be deleted');
+      return false;
+    }
     if (!response.ok) {
       toast.error('Job could not be deleted');
-      return;
+      return false;
     }
+
     setJobs((current) => current.filter((job) => job.id !== id));
     if (jobs.length === 1 && page > 1) setPage((current) => current - 1);
     toast.success('Job deleted successfully');
+    return true;
+  }
+
+  async function confirmRemoveJob() {
+    if (!deletingJob || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      if (await removeJob(deletingJob.id)) setDeletingJob(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  async function changeJobStatus(job: RecruiterJob) {
+    const nextStatus = job.status === 'Closed' || job.status === 'Expired' ? 'Active' : 'Closed';
+    const response = await fetch(`/api/recruiter/jobs/${job.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    if (!response.ok) {
+      toast.error(`Job could not be ${nextStatus === 'Closed' ? 'closed' : 'reopened'}`);
+      return;
+    }
+    setJobs((current) =>
+      current.map((item) => (item.id === job.id ? { ...item, status: nextStatus } : item)),
+    );
+    toast.success(nextStatus === 'Closed' ? 'Job closed successfully' : 'Job reopened successfully');
   }
 
   return (
@@ -65,7 +114,8 @@ export default function ManageJobsTable() {
                 key={job.id}
                 job={job}
                 onEdit={() => setEditingJob(job)}
-                onRemove={() => removeJob(job.id)}
+                onRemove={() => setDeletingJob(job)}
+                onChangeStatus={() => changeJobStatus(job)}
               />
             ))}
           </tbody>
@@ -91,8 +141,15 @@ export default function ManageJobsTable() {
                   <EditIcon />
                 </ActionButton>
                 <ActionButton
+                  label={`${job.status === 'Closed' || job.status === 'Expired' ? 'Reopen' : 'Close'} ${job.title}`}
+                  onClick={() => changeJobStatus(job)}
+                  danger={job.status !== 'Closed' && job.status !== 'Expired'}
+                >
+                  <CloseJobIcon closed={job.status === 'Closed' || job.status === 'Expired'} />
+                </ActionButton>
+                <ActionButton
                   label={`Delete ${job.title}`}
-                  onClick={() => removeJob(job.id)}
+                  onClick={() => setDeletingJob(job)}
                   danger
                 >
                   <DeleteIcon />
@@ -141,6 +198,43 @@ export default function ManageJobsTable() {
           </div>
         </div>
       )}
+      {deletingJob && (
+        <div
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/75 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-job-title"
+          aria-describedby="delete-job-description"
+        >
+          <div className="w-full max-w-md rounded-lg border border-[#252d43] bg-[#0d1322] p-5 shadow-[0_20px_70px_rgba(0,0,0,.65)]">
+            <h2 id="delete-job-title" className="text-[16px] font-semibold text-[#f0f2f7]">
+              Delete job permanently?
+            </h2>
+            <p id="delete-job-description" className="mt-2 text-[12px] leading-5 text-[#aab1c1]">
+              Are you sure you want to permanently delete <span className="font-semibold text-[#edf0f7]">{deletingJob.title}</span>? This action cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                autoFocus
+                disabled={isDeleting}
+                onClick={() => setDeletingJob(null)}
+                className="rounded-md border border-[#394158] px-4 py-2 text-[11px] font-medium text-[#cfd4df] transition hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmRemoveJob}
+                className="rounded-md border border-[#ff7474]/30 bg-[#ff7474]/10 px-4 py-2 text-[11px] font-semibold text-[#ff8787] transition hover:bg-[#ff7474]/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -149,10 +243,12 @@ function JobRow({
   job,
   onEdit,
   onRemove,
+  onChangeStatus,
 }: {
   job: RecruiterJob;
   onEdit: () => void;
   onRemove: () => void;
+  onChangeStatus: () => void;
 }) {
   return (
     <tr className="border-b border-[#252d43] last:border-0">
@@ -176,6 +272,13 @@ function JobRow({
           <ActionButton label={`Edit ${job.title}`} onClick={onEdit}>
             <EditIcon />
           </ActionButton>
+          <ActionButton
+            label={`${job.status === 'Closed' || job.status === 'Expired' ? 'Reopen' : 'Close'} ${job.title}`}
+            onClick={onChangeStatus}
+            danger={job.status !== 'Closed' && job.status !== 'Expired'}
+          >
+            <CloseJobIcon closed={job.status === 'Closed' || job.status === 'Expired'} />
+          </ActionButton>
           <ActionButton label={`Delete ${job.title}`} onClick={onRemove} danger>
             <DeleteIcon />
           </ActionButton>
@@ -186,9 +289,15 @@ function JobRow({
 }
 
 function Status({ status }: { status: RecruiterJob['status'] }) {
+  const style =
+    status === 'Active'
+      ? 'bg-[#123a33] text-[#4fdda0]'
+      : status === 'Closed' || status === 'Expired'
+        ? 'bg-[#4a2832] text-[#ff8797]'
+        : 'bg-[#343b50] text-[#aab1c1]';
   return (
     <span
-      className={`inline-flex rounded-full px-2 py-1 text-[9px] ${status === 'Active' ? 'bg-[#123a33] text-[#4fdda0]' : 'bg-[#343b50] text-[#aab1c1]'}`}
+      className={`inline-flex rounded-full px-2 py-1 text-[9px] ${style}`}
     >
       ● {status}
     </span>
@@ -234,6 +343,25 @@ function EditIcon() {
       aria-hidden="true"
     >
       <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function CloseJobIcon({ closed }: { closed: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="size-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      {closed ? (
+        <path d="M4 12a8 8 0 1 0 2.34-5.66L4 8M4 4v4h4" />
+      ) : (
+        <path d="M5 12h14M12 5l7 7-7 7" />
+      )}
     </svg>
   );
 }

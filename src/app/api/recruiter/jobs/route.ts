@@ -19,18 +19,22 @@ export async function GET(request: Request) {
         { status: response.status },
       );
     }
-    const payload = data as { jobs?: Record<string, unknown>[]; total?: number } | Record<string, unknown>[];
+    const payload = data as
+      | { jobs?: Record<string, unknown>[]; total?: number }
+      | Record<string, unknown>[];
     const allJobs = Array.isArray(payload) ? payload : payload.jobs || [];
     const ownedJobs = allJobs.filter(
       (job: { recruiterId?: string }) => !job.recruiterId || job.recruiterId === session.user.id,
     );
     const total = Array.isArray(payload) ? ownedJobs.length : (payload.total ?? ownedJobs.length);
     const totalPages = Math.max(1, Math.ceil(total / limit));
-    const jobs = ownedJobs.map((job: Record<string, unknown>) => ({
-      ...job,
-      id: String(job.id || job._id || ''),
-      _id: undefined,
-    })).slice((page - 1) * limit, page * limit);
+    const jobs = ownedJobs
+      .map((job: Record<string, unknown>) => ({
+        ...job,
+        id: String(job.id || job._id || ''),
+        _id: undefined,
+      }))
+      .slice((page - 1) * limit, page * limit);
 
     return NextResponse.json({
       jobs,
@@ -71,9 +75,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = typeof data === 'object' && data !== null
-      ? data as { insertedId?: string | { toString?: () => string } }
-      : null;
+    const result =
+      typeof data === 'object' && data !== null
+        ? (data as { insertedId?: string | { toString?: () => string } })
+        : null;
     return NextResponse.json(
       { id: result?.insertedId?.toString?.() || result?.insertedId || null },
       { status: 201 },

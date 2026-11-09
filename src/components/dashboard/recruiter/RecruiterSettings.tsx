@@ -56,6 +56,7 @@ export default function RecruiterSettings() {
         }),
       });
       if (!response.ok) throw new Error('Unable to save recruiter profile');
+      window.dispatchEvent(new Event('recruiter-profile-updated'));
       toast.success('Recruiter settings saved');
     } catch {
       toast.error('Recruiter settings could not be saved');

@@ -1,9 +1,23 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import DashboardPagination from '../DashboardPagination';
-import { recruiterApplications } from './recruiter-data';
+
+type Application = {
+  id: string;
+  name: string;
+  initials: string;
+  role: string;
+  email: string;
+  experience: string;
+  status: 'New' | 'Reviewed' | 'Shortlisted' | 'Rejected';
+  date: string;
+  phone: string;
+  location: string;
+  skills: string[];
+  summary: string;
+};
 
 const statusStyles: Record<string, string> = {
   New: 'bg-[#2a2d50] text-[#9fa3ff]',
@@ -14,11 +28,28 @@ const statusStyles: Record<string, string> = {
 
 export default function ApplicationsTable() {
   const [filter, setFilter] = useState('All');
-  const [applications, setApplications] = useState(recruiterApplications);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [selectedApplication, setSelectedApplication] = useState<
-    (typeof recruiterApplications)[number] | null
+    Application | null
   >(null);
+
+  useEffect(() => {
+    let active = true;
+    async function loadApplications() {
+      const response = await fetch('/api/recruiter/applications', { cache: 'no-store' });
+      const data = response.ok ? await response.json() : null;
+      if (active) {
+        setApplications(data?.applications || []);
+        setLoading(false);
+      }
+    }
+    loadApplications();
+    return () => {
+      active = false;
+    };
+  }, []);
   const pageSize = 5;
   const visibleApplications = useMemo(
     () => applications.filter((application) => filter === 'All' || application.status === filter),
@@ -27,13 +58,26 @@ export default function ApplicationsTable() {
   const totalPages = Math.max(1, Math.ceil(visibleApplications.length / pageSize));
   const pagedApplications = visibleApplications.slice((page - 1) * pageSize, page * pageSize);
 
-  function updateStatus(id: number, status: string) {
+  async function updateStatus(id: string, status: Application['status']) {
+    const response = await fetch(`/api/recruiter/applications/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      toast.error('Application status update failed');
+      return;
+    }
     setApplications((current) =>
       current.map((application) =>
         application.id === id ? { ...application, status } : application,
       ),
     );
     toast.success(`Application status updated to ${status}`);
+  }
+
+  if (loading) {
+    return <div className="flex h-44 items-center justify-center text-[11px] text-[#858da1]">Loading applications...</div>;
   }
 
   return (
@@ -67,6 +111,13 @@ export default function ApplicationsTable() {
               </tr>
             </thead>
             <tbody>
+              {pagedApplications.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="h-44 text-center text-[11px] text-[#858da1]">
+                    No applications found
+                  </td>
+                </tr>
+              )}
               {pagedApplications.map((application) => (
                 <tr key={application.id} className="border-b border-[#252d43] last:border-0">
                   <td className="px-4 py-3">
@@ -90,7 +141,9 @@ export default function ApplicationsTable() {
                       <select
                         aria-label={`Status for ${application.name}`}
                         value={application.status}
-                        onChange={(event) => updateStatus(application.id, event.target.value)}
+                        onChange={(event) =>
+                          updateStatus(application.id, event.target.value as Application['status'])
+                        }
                         className={`h-7 appearance-none rounded-full border border-white/6 px-3 pr-7 text-[9px] outline-none transition focus:border-[#6258ff] ${statusStyles[application.status]}`}
                       >
                         <option className="bg-[#171e31] text-[#edf0f7]">New</option>
@@ -129,6 +182,11 @@ export default function ApplicationsTable() {
           </table>
         </div>
         <div className="divide-y divide-[#252d43] md:hidden">
+          {pagedApplications.length === 0 && (
+            <div className="flex h-44 items-center justify-center text-[11px] text-[#858da1]">
+              No applications found
+            </div>
+          )}
           {pagedApplications.map((application) => (
             <div key={application.id} className="p-4">
               <div className="flex items-start justify-between gap-3">

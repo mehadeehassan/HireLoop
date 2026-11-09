@@ -1,5 +1,7 @@
+import RecruiterDashboard from '@/components/dashboard/recruiter/RecruiterDashboard';
+
 export const instant = false;
 
 export default function RecruiterDashboardPage() {
-  return <div>Recruiter Dashboard</div>;
+  return <RecruiterDashboard />;
 }
