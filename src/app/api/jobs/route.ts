@@ -73,9 +73,10 @@ function toPublicJob(value: unknown): PublicJob | null {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { response, data } = await fetchBackendJobs("GET");
+    const query = new URL(request.url).searchParams.toString();
+    const { response, data } = await fetchBackendJobs("GET", { query });
     if (!response.ok) {
       console.error("Public job listing backend returned an unsuccessful response", response.status);
       return NextResponse.json({ error: "Job listings are temporarily unavailable." }, { status: 502 });

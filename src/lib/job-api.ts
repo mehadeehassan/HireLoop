@@ -3,13 +3,14 @@ const backendUrl = () =>
 
 export async function fetchBackendJobs(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
-  options?: { id?: string; body?: unknown },
+  options?: { id?: string; body?: unknown; query?: string },
 ) {
   const path = options?.id
     ? `/jobs/${encodeURIComponent(options.id)}`
     : '/jobs';
+  const query = options?.query ? `?${options.query.replace(/^\?/, '')}` : '';
 
-  const response = await fetch(`${backendUrl()}${path}`, {
+  const response = await fetch(`${backendUrl()}${path}${query}`, {
     method,
     headers: options?.body ? { 'Content-Type': 'application/json' } : undefined,
     body: options?.body ? JSON.stringify(options.body) : undefined,
