@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import DashboardPagination from '../DashboardPagination';
+import DashboardPagination from '../shared/DashboardPagination';
+import { useSession } from '@/lib/auth-client';
+import RecruiterApplicationMessage from './RecruiterApplicationMessage';
 
 type Application = {
   id: string;
@@ -17,6 +19,8 @@ type Application = {
   location: string;
   skills: string[];
   summary: string;
+  candidateId?: string;
+  jobId?: string;
 };
 
 const statusStyles: Record<string, string> = {
@@ -27,6 +31,7 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function ApplicationsTable() {
+  const { data: session } = useSession();
   const [filter, setFilter] = useState('All');
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +39,7 @@ export default function ApplicationsTable() {
   const [selectedApplication, setSelectedApplication] = useState<
     Application | null
   >(null);
+  const [messageApplication, setMessageApplication] = useState<Application | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -167,7 +173,16 @@ export default function ApplicationsTable() {
                       </svg>
                     </div>
                   </td>
-                  <td className="px-4 text-right">
+                  <td className="space-x-3 px-4 text-right">
+                    {application.candidateId && application.jobId && session?.user.id && (
+                      <button
+                        type="button"
+                        onClick={() => setMessageApplication(application)}
+                        className="text-[10px] text-[#aaa2ff]"
+                      >
+                        Message
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setSelectedApplication(application)}
@@ -209,13 +224,24 @@ export default function ApplicationsTable() {
                 <span>{application.experience}</span>
                 <span>{application.date}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedApplication(application)}
-                className="mt-3 text-[10px] text-[#7779ff]"
-              >
-                View profile
-              </button>
+              <div className="mt-3 flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setSelectedApplication(application)}
+                  className="text-[10px] text-[#7779ff]"
+                >
+                  View profile
+                </button>
+                {application.candidateId && application.jobId && session?.user.id && (
+                  <button
+                    type="button"
+                    onClick={() => setMessageApplication(application)}
+                    className="text-[10px] text-[#aaa2ff]"
+                  >
+                    Message
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -275,8 +301,29 @@ export default function ApplicationsTable() {
                 ))}
               </div>
             </div>
+            {selectedApplication.candidateId && selectedApplication.jobId && (
+              <button
+                type="button"
+                onClick={() => setMessageApplication(selectedApplication)}
+                className="mt-6 rounded-md bg-[#6258ff] px-4 py-2.5 text-[10px] font-medium text-white hover:bg-[#7168ff]"
+              >
+                Message applicant
+              </button>
+            )}
           </section>
         </div>
+      )}
+      {messageApplication?.candidateId && messageApplication.jobId && session?.user.id && (
+        <RecruiterApplicationMessage
+          application={{
+            candidateId: messageApplication.candidateId,
+            jobId: messageApplication.jobId,
+            name: messageApplication.name,
+            role: messageApplication.role,
+          }}
+          recruiterId={session.user.id}
+          onClose={() => setMessageApplication(null)}
+        />
       )}
     </div>
   );

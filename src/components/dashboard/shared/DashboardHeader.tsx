@@ -2,7 +2,7 @@
 
 import type { DashboardRole } from './DashboardTypes';
 import HeaderActions from './HeaderActions';
-import SeekerTopbar from './seeker/SeekerTopbar';
+import SeekerTopbar from '../seeker/SeekerTopbar';
 
 function SearchIcon() {
   return (

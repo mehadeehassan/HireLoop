@@ -1,6 +1,6 @@
 'use client';
 
-import type { DashboardRole } from '@/components/dashboard/DashboardTypes';
+import type { DashboardRole } from './DashboardTypes';
 import { authClient, useSession } from '@/lib/auth-client';
 import Image from 'next/image';
 import Link from 'next/link';

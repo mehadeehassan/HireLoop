@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import DashboardPagination from '../DashboardPagination';
+import DashboardPagination from '../shared/DashboardPagination';
 import AddJobForm from './AddJobForm';
 import type { RecruiterJob } from './recruiter-data';
 

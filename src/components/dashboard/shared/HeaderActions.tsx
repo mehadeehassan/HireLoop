@@ -5,6 +5,7 @@ import type { DashboardRole } from './DashboardTypes';
 import DashboardAvatar from './DashboardAvatar';
 import SeekerMessagesMenu from './SeekerMessagesMenu';
 import SeekerNotificationMenu from './SeekerNotificationMenu';
+import RecruiterMessagesMenu from '../recruiter/RecruiterMessagesMenu';
 
 function NotificationIcon() {
   return (
@@ -29,6 +30,10 @@ export default function HeaderActions({ role }: { role: DashboardRole }) {
     <div className="ml-auto flex items-center gap-5 text-[#8d96ab]">
       {role === 'seeker' && (
         <SeekerMessagesMenu userId={user?.id || ''} />
+      )}
+
+      {role === 'recruiter' && user?.id && (
+        <RecruiterMessagesMenu recruiterId={user.id} />
       )}
 
       {role === 'seeker' && <SeekerNotificationMenu />}

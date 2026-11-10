@@ -1,4 +1,4 @@
-import DashboardIcon, { type DashboardIconName } from '@/components/dashboard/DashboardIcon';
+import DashboardIcon, { type DashboardIconName } from '@/components/dashboard/shared/DashboardIcon';
 
 const iconColors: Record<string, string> = {
   bookmark: 'text-white',

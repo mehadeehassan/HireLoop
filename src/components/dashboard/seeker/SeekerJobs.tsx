@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import JobSaveButton from '@/components/browse-jobs/JobSaveButton';
-import DashboardIcon from '@/components/dashboard/DashboardIcon';
+import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
 import { getJobApplyHref } from '@/lib/job-routes';
 import { useSeekerDashboardData } from './useSeekerDashboardData';
 import SeekerPageHeader from './SeekerPageHeader';

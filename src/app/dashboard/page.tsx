@@ -1,4 +1,4 @@
-import DashboardIndex from '@/components/dashboard/DashboardIndex';
+import DashboardIndex from '@/components/dashboard/shared/DashboardIndex';
 
 export const instant = false;
 

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import HeaderActions from '@/components/dashboard/HeaderActions';
+import HeaderActions from '@/components/dashboard/shared/HeaderActions';
 
 export default function SeekerTopbar() {
   const router = useRouter();

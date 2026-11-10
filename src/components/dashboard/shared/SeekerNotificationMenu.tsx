@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { SeekerApplication } from './seeker/seeker-data';
+import type { SeekerApplication } from '../seeker/seeker-data';
 
 const readStateKey = 'hireloop:seeker-notification-read';
 
@@ -47,7 +47,7 @@ export default function SeekerNotificationMenu() {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('/api/seeker/applications', { cache: 'no-store' });
+      const response = await fetch('/api/seeker/notifications', { cache: 'no-store' });
       const payload: unknown = await response.json();
       if (!response.ok) {
         throw new Error(
@@ -56,21 +56,21 @@ export default function SeekerNotificationMenu() {
             : 'Could not load notifications.',
         );
       }
-      const applications =
-        isRecord(payload) && Array.isArray(payload.applications)
-          ? payload.applications.filter(
-              (application): application is SeekerApplication =>
-                isRecord(application) &&
-                typeof application.id === 'string' &&
-                typeof application.jobTitle === 'string' &&
-                typeof application.company === 'string' &&
-                typeof application.status === 'string',
+      const notifications =
+        isRecord(payload) && Array.isArray(payload.notifications)
+          ? payload.notifications.filter(
+              (notification): notification is SeekerApplication =>
+                isRecord(notification) &&
+                typeof notification.id === 'string' &&
+                typeof notification.jobTitle === 'string' &&
+                typeof notification.company === 'string' &&
+                typeof notification.status === 'string',
             )
           : null;
-      if (!applications) throw new Error('The notification service returned an unexpected response.');
+      if (!notifications) throw new Error('The notification service returned an unexpected response.');
 
       setItems(
-        applications
+        notifications
           .filter((application) => Boolean(application.updatedAt || application.createdAt))
           .sort((first, second) => getTimestamp(second) - getTimestamp(first))
           .slice(0, 20),
@@ -90,13 +90,22 @@ export default function SeekerNotificationMenu() {
       if (event.key === 'Escape') setOpen(false);
     }
     window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [open]);
+    const refreshTimer = window.setInterval(() => void loadNotifications(), 30_000);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      window.clearInterval(refreshTimer);
+    };
+  }, [loadNotifications, open]);
 
   const unreadCount = useMemo(
     () => items.filter((item) => getTimestamp(item) > (readAt[item.id] || 0)).length,
     [items, readAt],
   );
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadNotifications(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadNotifications]);
 
   function markAllRead() {
     try {

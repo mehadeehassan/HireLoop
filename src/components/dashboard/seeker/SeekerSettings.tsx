@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import DashboardAvatar from '@/components/dashboard/DashboardAvatar';
+import DashboardAvatar from '@/components/dashboard/shared/DashboardAvatar';
 import { useSession } from '@/lib/auth-client';
 import { FieldError, useFormValidation } from '@/components/form/useFormValidation';
 import type { SeekerProfile } from './seeker-data';

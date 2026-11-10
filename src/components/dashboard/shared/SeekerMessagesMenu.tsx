@@ -77,6 +77,11 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
     }
   }, []);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadConversations(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadConversations]);
+
   const loadThread = useCallback(async (conversation: Conversation) => {
     setSelected(conversation);
     setLoading(true);
@@ -127,8 +132,50 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
       if (event.key === 'Escape') setOpen(false);
     }
     window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [open, loadConversations]);
+    const refreshTimer = selected
+      ? null
+      : window.setInterval(() => void loadConversations(), 15_000);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      if (refreshTimer) window.clearInterval(refreshTimer);
+    };
+  }, [open, selected, loadConversations]);
+
+  useEffect(() => {
+    if (!open || !selected) return;
+    let active = true;
+    const refreshThread = async () => {
+      try {
+        const response = await fetch(
+          `/api/seeker/messages/${encodeURIComponent(selected.id)}`,
+          { cache: 'no-store' },
+        );
+        const payload: unknown = await response.json();
+        if (
+          active &&
+          response.ok &&
+          isRecord(payload) &&
+          Array.isArray(payload.messages) &&
+          payload.messages.every(
+            (message) =>
+              isRecord(message) &&
+              typeof message.id === 'string' &&
+              typeof message.senderId === 'string' &&
+              typeof message.body === 'string',
+          )
+        ) {
+          setMessages(payload.messages as Message[]);
+        }
+      } catch (refreshError) {
+        console.error('Could not refresh seeker conversation', refreshError);
+      }
+    };
+    const refreshTimer = window.setInterval(() => void refreshThread(), 8_000);
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+    };
+  }, [open, selected]);
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -163,7 +210,6 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
       };
       setMessages((current) => [...current, sentMessage]);
       setDraft('');
-      await loadConversations();
     } catch (sendError) {
       console.error('Could not send seeker message', sendError);
       setError(sendError instanceof Error ? sendError.message : 'Could not send this message.');

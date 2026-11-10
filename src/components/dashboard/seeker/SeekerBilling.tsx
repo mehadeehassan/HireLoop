@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import DashboardIcon from '@/components/dashboard/DashboardIcon';
+import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
 import type { SeekerProfile } from './seeker-data';
 import SeekerPageHeader from './SeekerPageHeader';
 

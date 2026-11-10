@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import DashboardPagination from '@/components/dashboard/DashboardPagination';
-import DashboardIcon from '@/components/dashboard/DashboardIcon';
+import DashboardPagination from '@/components/dashboard/shared/DashboardPagination';
+import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
 import { useSeekerDashboardData } from './useSeekerDashboardData';
 import { getTimeAgo, type SeekerApplication } from './seeker-data';
 import SeekerMetricCard from './SeekerMetricCard';

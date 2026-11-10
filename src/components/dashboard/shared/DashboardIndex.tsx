@@ -1,6 +1,6 @@
 'use client';
 
-import { getDashboardRole } from '@/components/dashboard/DashboardTypes';
+import { getDashboardRole } from './DashboardTypes';
 import { useSession } from '@/lib/auth-client';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';

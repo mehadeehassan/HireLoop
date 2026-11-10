@@ -1,7 +1,7 @@
 'use client';
 
-import DashboardShell from '@/components/dashboard/DashboardShell';
-import { getDashboardRole } from '@/components/dashboard/DashboardTypes';
+import DashboardShell from '@/components/dashboard/shared/DashboardShell';
+import { getDashboardRole } from '@/components/dashboard/shared/DashboardTypes';
 import { useSession } from '@/lib/auth-client';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
