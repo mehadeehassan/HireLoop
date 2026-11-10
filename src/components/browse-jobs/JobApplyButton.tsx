@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useSession } from '@/lib/auth-client';
+import { FieldError, useFormValidation } from '@/components/form/useFormValidation';
 
 type SeekerProfile = {
   name: string;
@@ -76,6 +76,7 @@ function TextField({
   type = 'text',
   placeholder,
   readOnly = false,
+  error,
 }: {
   label: string;
   name: keyof SeekerProfile;
@@ -85,6 +86,7 @@ function TextField({
   type?: string;
   placeholder?: string;
   readOnly?: boolean;
+  error?: string;
 }) {
   return (
     <label className="block text-xs text-[#b8b8c2]">
@@ -94,17 +96,19 @@ function TextField({
         type={type}
         required={required}
         readOnly={readOnly}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${name}-error` : undefined}
         value={value}
         onChange={(event) => onChange(name, event.target.value)}
         placeholder={placeholder}
         className="mt-1.5 h-10 w-full rounded-md border border-white/[0.08] bg-[#1a1a1d] px-3 text-sm text-white outline-none placeholder:text-[#686870] focus:border-[#8178ff] read-only:cursor-not-allowed read-only:opacity-70"
       />
+      <FieldError id={`${name}-error`} error={error} />
     </label>
   );
 }
 
 export default function JobApplyButton({ jobId }: { jobId: string }) {
-  const router = useRouter();
   const { data: session, isPending } = useSession();
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
@@ -112,6 +116,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
   const [profile, setProfile] = useState<SeekerProfile>(emptyProfile);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const { errors, validateForm, updateFieldError } = useFormValidation();
   const startedAutoApply = useRef(false);
   const className =
     'inline-flex h-10 items-center justify-center rounded-lg bg-white px-5 text-xs font-semibold text-[#171719] transition hover:bg-[#dedee3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8178ff] disabled:cursor-not-allowed disabled:opacity-60';
@@ -159,6 +164,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       if (applying || applied) return;
+      if (!validateForm(event.currentTarget)) return;
       setApplying(true);
 
       try {
@@ -171,7 +177,13 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
         const result: unknown = await response.json();
         const payload =
           typeof result === 'object' && result !== null
-            ? (result as { error?: unknown; alreadyApplied?: unknown; warning?: unknown })
+            ? (result as {
+                error?: unknown;
+                alreadyApplied?: unknown;
+                warning?: unknown;
+                backendStatus?: unknown;
+                backendMessage?: unknown;
+              })
             : {};
 
         if (!response.ok) {
@@ -180,6 +192,18 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
             setShowForm(false);
             toast.info('You have already applied for this job.');
             return;
+          }
+          if (payload.backendStatus === 413 && typeof payload.error === 'string') {
+            throw new Error(payload.error);
+          }
+          if (typeof payload.backendStatus === 'number') {
+            const detail =
+              typeof payload.backendMessage === 'string'
+                ? payload.backendMessage
+                : 'Check the backend POST /applications logs for the rejection reason.';
+            throw new Error(
+              `Application backend returned HTTP ${payload.backendStatus}: ${detail}`,
+            );
           }
           throw new Error(
             typeof payload.error === 'string'
@@ -203,7 +227,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
         setApplying(false);
       }
     },
-    [applying, applied, jobId, profile, resumeFile],
+    [applying, applied, jobId, profile, resumeFile, validateForm],
   );
 
   useEffect(() => {
@@ -218,8 +242,10 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
 
     startedAutoApply.current = true;
     void openForm();
-    router.replace(`/browse-jobs/${encodeURIComponent(jobId)}`, { scroll: false });
-  }, [isPending, session, router, jobId, openForm]);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('apply');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [isPending, session, openForm]);
 
   function updateProfile(name: keyof SeekerProfile, value: string) {
     if (name === 'resumeUrl' && value) setResumeFile(null);
@@ -317,7 +343,12 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
             {loadingProfile ? (
               <div className="mt-6 h-48 animate-pulse rounded-lg bg-white/5" />
             ) : (
-              <form onSubmit={apply} className="mt-6 space-y-4">
+              <form
+                noValidate
+                onSubmit={apply}
+                onChangeCapture={updateFieldError}
+                className="mt-6 space-y-4"
+              >
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextField
                     label="Full name"
@@ -325,6 +356,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                     value={profile.name}
                     onChange={updateProfile}
                     required
+                    error={errors.name}
                   />
                   <TextField
                     label="Email"
@@ -334,6 +366,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                     onChange={updateProfile}
                     required
                     readOnly
+                    error={errors.email}
                   />
                   <TextField
                     label="Phone number"
@@ -342,6 +375,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                     value={profile.phone}
                     onChange={updateProfile}
                     required
+                    error={errors.phone}
                   />
                   <TextField
                     label="Location"
@@ -350,6 +384,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                     onChange={updateProfile}
                     required
                     placeholder="City, Country"
+                    error={errors.location}
                   />
                   <TextField
                     label="Experience"
@@ -358,6 +393,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                     onChange={updateProfile}
                     required
                     placeholder="e.g. 3 years"
+                    error={errors.experience}
                   />
                   <TextField
                     label="Skills (comma separated)"
@@ -366,6 +402,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                     onChange={updateProfile}
                     required
                     placeholder="React, TypeScript, Node.js"
+                    error={errors.skills}
                   />
                   <TextField
                     label="LinkedIn URL (optional)"

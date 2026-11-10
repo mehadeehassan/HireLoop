@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { recruiterJobCategories, type RecruiterJob } from './recruiter-data';
+import { FieldError, useFormValidation } from '@/components/form/useFormValidation';
 
 const fields =
   'h-11 w-full rounded-md border border-[#252d43] bg-[#171e31] px-3 text-[12px] text-[#edf0f7] outline-none placeholder:text-[#737b91] focus:border-[#6258ff]';
@@ -37,6 +38,7 @@ export default function AddJobForm({
   );
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { errors, validateForm, updateFieldError } = useFormValidation();
   const salaryValues = initialJob?.compensation?.match(/\$[\d,]+k?/gi) || [];
   const minSalary = mode === 'edit' ? salaryValues[0] || '' : '';
   const maxSalary = mode === 'edit' ? salaryValues[1] || '' : '';
@@ -72,6 +74,7 @@ export default function AddJobForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
+    if (!validateForm(event.currentTarget)) return;
 
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -132,7 +135,9 @@ export default function AddJobForm({
 
   return (
     <form
+      noValidate
       onSubmit={handleSubmit}
+      onChangeCapture={updateFieldError}
       className="rounded-lg border border-white/4 bg-[#111827]/45 p-5 sm:p-6"
     >
       {saved && (
@@ -146,10 +151,13 @@ export default function AddJobForm({
         <input
           name="title"
           required
+          aria-invalid={Boolean(errors.title)}
+          aria-describedby={errors.title ? 'job-title-error' : undefined}
           className={fields}
           defaultValue={initialJob?.title || ''}
           placeholder="Enter job title"
         />
+        <FieldError id="job-title-error" error={errors.title} />
       </label>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <label>
@@ -157,14 +165,24 @@ export default function AddJobForm({
           <input
             name="company"
             required
+            aria-invalid={Boolean(errors.company)}
+            aria-describedby={errors.company ? 'job-company-error' : undefined}
             className={fields}
             defaultValue={initialJob?.company || ''}
             placeholder="Enter company name"
           />
+          <FieldError id="job-company-error" error={errors.company} />
         </label>
         <label>
           <span className="mb-2 block text-[11px] text-[#aab1c1]">Job Category *</span>
-          <select name="category" required className={fields} defaultValue={category}>
+          <select
+            name="category"
+            required
+            aria-invalid={Boolean(errors.category)}
+            aria-describedby={errors.category ? 'job-category-error' : undefined}
+            className={fields}
+            defaultValue={category}
+          >
             <option value="" disabled>
               Select category
             </option>
@@ -174,6 +192,7 @@ export default function AddJobForm({
               </option>
             ))}
           </select>
+          <FieldError id="job-category-error" error={errors.category} />
         </label>
       </div>
       <span className="mt-4 block text-[11px] text-[#aab1c1]">Job Type *</span>
@@ -271,12 +290,15 @@ export default function AddJobForm({
           <textarea
             name="qualifications"
             required
+            aria-invalid={Boolean(errors.qualifications)}
+            aria-describedby={errors.qualifications ? 'job-qualifications-error' : undefined}
             className={`${fields} h-24 resize-none py-3`}
             defaultValue={initialJob?.qualifications || ''}
             placeholder={
               '• Relevant experience\n• Required technical skills\n• Preferred qualifications'
             }
           />
+          <FieldError id="job-qualifications-error" error={errors.qualifications} />
         </label>
       </div>
       <button

@@ -58,7 +58,7 @@ export default function DashboardSidebar({
         {role === 'seeker' && (
           <div className="px-3 pb-3">
             <Link
-              href="/dashboard/seeker/resume"
+              href="/dashboard/seeker/settings#resume"
               className="flex h-11 items-center justify-center rounded-[7px] bg-[#eef0f4] text-[13px] font-semibold text-[#171923]"
             >
               Post Resume
@@ -93,7 +93,7 @@ export default function DashboardSidebar({
 
   return (
     <>
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-65 flex-col bg-[#101626] lg:flex">
+      <aside className={`fixed inset-y-0 left-0 z-40 hidden flex-col lg:flex ${role === 'seeker' ? 'w-52 bg-[#08080a]' : 'w-65 bg-[#101626]'}`}>
         {SidebarContent({})}
       </aside>
 
@@ -124,7 +124,7 @@ export default function DashboardSidebar({
             className="absolute inset-0 bg-black/70"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-70 flex-col overflow-y-auto overscroll-contain bg-[#101626]">
+          <aside className={`absolute inset-y-0 left-0 flex w-70 flex-col overflow-y-auto overscroll-contain ${role === 'seeker' ? 'bg-[#08080a]' : 'bg-[#101626]'}`}>
             <button
               type="button"
               aria-label="Close navigation"

@@ -28,6 +28,7 @@ export async function GET() {
 
   return NextResponse.json({
     recruiterName: profile?.recruiterName || session.user.name || '',
+    plan: profile?.plan || profile?.subscriptionPlan || 'Starter',
     companyName: profile?.companyName || '',
     email: profile?.email || session.user.email || '',
     phone: profile?.phone || '',

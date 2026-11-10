@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { toast } from 'sonner';
+import { FieldError, useFormValidation } from '@/components/form/useFormValidation';
 
 type AuthFormProps = {
   mode: 'signin' | 'signup';
@@ -24,9 +25,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState<UserRole>('seeker');
+  const { errors, validateForm, updateFieldError } = useFormValidation();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!validateForm(event.currentTarget)) return;
     setLoading(true);
     const toastId = toast.loading(isSignUp ? 'Creating your account...' : 'Signing you in...');
 
@@ -135,7 +138,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
               <div className="h-px flex-1 bg-white/[0.07]" />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form
+              noValidate
+              onSubmit={handleSubmit}
+              onChangeCapture={updateFieldError}
+              className="space-y-4"
+            >
               {isSignUp && (
                 <fieldset>
                   <legend className="mb-2 block text-xs font-medium text-[#c8c8d0]">
@@ -236,8 +244,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     minLength={2}
                     autoComplete="name"
                     placeholder="Enter your name"
+                    aria-invalid={Boolean(errors.name)}
+                    aria-describedby={errors.name ? 'auth-name-error' : undefined}
                     className="h-12 w-full rounded-[10px] border border-white/9 bg-[#17171d] px-4 text-sm outline-none transition placeholder:text-[#696a77] focus:border-[#6258ff]"
                   />
+                  <FieldError id="auth-name-error" error={errors.name} />
                 </label>
               )}
 
@@ -249,8 +260,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   required
                   autoComplete="email"
                   placeholder="you@example.com"
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'auth-email-error' : undefined}
                   className="h-12 w-full rounded-[10px] border border-white/9 bg-[#17171d] px-4 text-sm outline-none transition placeholder:text-[#696a77] focus:border-[#6258ff]"
                 />
+                <FieldError id="auth-email-error" error={errors.email} />
               </label>
 
               <label className="block">
@@ -279,6 +293,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     minLength={8}
                     autoComplete={isSignUp ? 'new-password' : 'current-password'}
                     placeholder="At least 8 characters"
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby={errors.password ? 'auth-password-error' : undefined}
                     className="h-12 w-full rounded-[10px] border border-white/9 bg-[#17171d] px-4 pr-12 text-sm outline-none transition placeholder:text-[#696a77] focus:border-[#6258ff]"
                   />
                   <button
@@ -300,6 +316,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     </svg>
                   </button>
                 </span>
+                <FieldError id="auth-password-error" error={errors.password} />
               </label>
 
               <button

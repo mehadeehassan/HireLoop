@@ -15,10 +15,10 @@ export default function DashboardShell({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#080c1b] text-[#e6e8ef]">
+    <div className={`min-h-screen text-[#e6e8ef] ${role === 'seeker' ? 'bg-[#0d0d10]' : 'bg-[#080c1b]'}`}>
       <DashboardSidebar role={role} pathname={pathname} />
       <DashboardHeader role={role} />
-      <main className="min-h-screen pt-16 lg:ml-65 lg:pt-20.5">
+      <main className={`min-h-screen pt-16 ${role === 'seeker' ? 'lg:ml-52 lg:pt-14' : 'lg:ml-65 lg:pt-20.5'}`}>
         {children}
       </main>
     </div>

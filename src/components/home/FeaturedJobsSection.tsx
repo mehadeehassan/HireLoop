@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { PublicJob } from "@/lib/public-jobs";
+import { getJobApplyHref } from "@/lib/job-routes";
 
 type FeaturedJobsSectionProps = {
   jobs: PublicJob[];
@@ -70,7 +71,7 @@ function JobCard({ job }: { job: PublicJob }) {
 
       <div className="mt-auto pt-3">
         <Link
-          href={`/browse-jobs/${encodeURIComponent(job.id)}#apply`}
+          href={getJobApplyHref(job.id)}
           className="inline-flex min-h-8 items-center gap-2 text-[11px] font-medium text-white transition hover:text-[#d4cfff]"
         >
           Apply Now <span aria-hidden="true">→</span>

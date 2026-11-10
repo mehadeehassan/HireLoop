@@ -25,6 +25,7 @@ type ApplicationDetails = {
 };
 
 const maxResumeSize = 5 * 1024 * 1024;
+const maxResumeBase64Length = Math.ceil(maxResumeSize / 3) * 4;
 
 function isBackendJob(value: unknown): value is BackendJob {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -98,15 +99,27 @@ function getApplicationDetails(value: unknown):
     const name = getString(resumeFileValue.name);
     const data = resumeFileValue.data;
     const pdfHeader =
-      typeof data === 'string' ? Buffer.from(data, 'base64').subarray(0, 5).toString('ascii') : '';
+      typeof data === 'string' && data.length <= maxResumeBase64Length
+        ? Buffer.from(data.slice(0, 8), 'base64').toString('ascii')
+        : '';
+    const base64Padding = typeof data === 'string' && data.endsWith('==')
+      ? 2
+      : typeof data === 'string' && data.endsWith('=')
+        ? 1
+        : 0;
+    const decodedSize =
+      typeof data === 'string' && data.length % 4 === 0
+        ? (data.length / 4) * 3 - base64Padding
+        : Infinity;
     if (
       !name.toLowerCase().endsWith('.pdf') ||
       resumeFileValue.type !== 'application/pdf' ||
       typeof data !== 'string' ||
+      data.length > maxResumeBase64Length ||
       data.length % 4 !== 0 ||
       !/^[A-Za-z0-9+/]+={0,2}$/.test(data) ||
-      Buffer.byteLength(data, 'base64') > maxResumeSize ||
-      pdfHeader !== '%PDF-'
+      decodedSize > maxResumeSize ||
+      !pdfHeader.startsWith('%PDF-')
     ) {
       return {
         details: null,
@@ -213,69 +226,38 @@ export async function POST(
       );
     }
 
-    const db = await getDatabase();
-    const applications = db.collection('applications');
-    await applications.createIndex(
-      { candidateId: 1, jobId: 1 },
-      {
-        unique: true,
-        partialFilterExpression: {
-          candidateId: { $type: 'string' },
-          jobId: { $type: 'string' },
-        },
-      },
-    );
-    const existingApplication = await applications.findOne({
-      candidateId: session.user.id,
-      jobId,
-    });
-    if (existingApplication) {
+    const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+    if (!apiSecret && process.env.NODE_ENV === 'production') {
+      console.error('Application backend API secret is not configured');
       return NextResponse.json(
-        { error: 'You have already applied for this job.', alreadyApplied: true },
-        { status: 409 },
+        { error: 'Application service is not configured. Please contact support.' },
+        { status: 503 },
+      );
+    }
+    if (!apiSecret) {
+      console.warn(
+        'HIRELOOP_APPLICATIONS_API_SECRET is unset; forwarding application without backend authentication in development',
       );
     }
 
+    const { resumeFile, ...candidateProfile } = details;
     const candidateDetails = {
-      ...details,
+      ...candidateProfile,
       email: session.user.email,
       image: session.user.image || '',
     };
     const createdAt = new Date();
-    const profileDetails = {
-      name: details.name,
-      phone: details.phone,
-      location: details.location,
-      experience: details.experience,
-      skills: details.skills,
-      linkedinUrl: details.linkedinUrl,
-      resumeUrl: details.resumeUrl,
-      portfolioUrl: details.portfolioUrl,
-      coverLetter: details.coverLetter,
-    };
-    await db.collection('seeker_profiles').updateOne(
-      { candidateId: session.user.id },
-      {
-        $set: {
-          ...profileDetails,
-          email: session.user.email,
-          image: session.user.image || '',
-          candidateId: session.user.id,
-          updatedAt: createdAt,
-        },
-        $setOnInsert: { createdAt },
-      },
-      { upsert: true },
-    );
-
     const application = {
       recruiterId,
       candidateId: session.user.id,
       jobId,
       jobTitle: job.title,
       company: job.company,
+      type: job.type,
+      workMode: job.workMode,
       isDummy: false,
       ...candidateDetails,
+      resumeFile,
       initials: details.name
         .split(/\s+/)
         .filter(Boolean)
@@ -290,17 +272,84 @@ export async function POST(
       updatedAt: createdAt,
     };
 
-    const { response: backendResponse } = await submitBackendApplication(application);
+    const { response: backendResponse, data: backendData } =
+      await submitBackendApplication(application, apiSecret);
     if (!backendResponse.ok) {
-      console.error('Application backend rejected submission', backendResponse.status);
+      const backendRecord = isRecord(backendData) ? backendData : null;
+      const rawBackendMessage =
+        typeof backendRecord?.message === 'string'
+          ? backendRecord.message
+          : typeof backendRecord?.error === 'string'
+            ? backendRecord.error
+            : '';
+      const backendMessage = rawBackendMessage.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 240);
+      console.error('Application backend rejected submission', {
+        status: backendResponse.status,
+        ...(process.env.NODE_ENV !== 'production' && backendMessage
+          ? { message: backendMessage }
+          : {}),
+      });
+
+      if (backendResponse.status === 409) {
+        return NextResponse.json(
+          { error: 'You have already applied for this job.', alreadyApplied: true },
+          { status: 409 },
+        );
+      }
+
+      if (backendResponse.status === 413) {
+        return NextResponse.json(
+          {
+            error:
+              'The backend rejected the application because its request body limit is too low. Increase the backend JSON and proxy body limits to at least 8 MB.',
+            backendStatus: 413,
+          },
+          { status: 413 },
+        );
+      }
+
       return NextResponse.json(
-        { error: 'The application service could not accept your application. Please try again.' },
+        {
+          error: 'The application service could not accept your application. Please try again.',
+          backendStatus: backendResponse.status,
+          ...(process.env.NODE_ENV !== 'production' && backendMessage
+            ? { backendMessage }
+            : {}),
+        },
         { status: 502 },
       );
     }
 
+    let syncWarning: string | null = null;
     try {
+      const db = await getDatabase();
+      const applications = db.collection('applications');
+      await applications.createIndex(
+        { candidateId: 1, jobId: 1 },
+        {
+          unique: true,
+          partialFilterExpression: {
+            candidateId: { $type: 'string' },
+            jobId: { $type: 'string' },
+          },
+        },
+      );
       await applications.insertOne(application);
+
+      await db.collection('seeker_profiles').updateOne(
+        { candidateId: session.user.id },
+        {
+          $set: {
+            ...candidateProfile,
+            email: session.user.email,
+            image: session.user.image || '',
+            candidateId: session.user.id,
+            updatedAt: createdAt,
+          },
+          $setOnInsert: { createdAt },
+        },
+        { upsert: true },
+      );
     } catch (insertError) {
       if (
         typeof insertError === 'object' &&
@@ -308,23 +357,19 @@ export async function POST(
         'code' in insertError &&
         insertError.code === 11000
       ) {
-        return NextResponse.json(
-          { error: 'You have already applied for this job.', alreadyApplied: true },
-          { status: 409 },
-        );
+        syncWarning =
+          'Your application was submitted, but it could not be synced to the dashboard.';
+      } else {
+        console.error('Application was submitted but could not be synced locally', insertError);
+        syncWarning =
+          'Your application was submitted, but it could not be synced to the dashboard.';
       }
-      console.error('Application was submitted but could not be synced locally', insertError);
-      return NextResponse.json(
-        {
-          success: true,
-          warning:
-            'Your application was submitted, but it could not be synced to the recruiter dashboard.',
-        },
-        { status: 201 },
-      );
     }
 
-    return NextResponse.json({ success: true }, { status: 201 });
+    return NextResponse.json(
+      { success: true, ...(syncWarning ? { warning: syncWarning } : {}) },
+      { status: 201 },
+    );
   } catch (error) {
     console.error('Could not submit job application', error);
     return NextResponse.json({ error: 'Could not submit your application.' }, { status: 502 });

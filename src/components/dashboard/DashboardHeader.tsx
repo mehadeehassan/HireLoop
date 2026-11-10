@@ -2,6 +2,7 @@
 
 import type { DashboardRole } from './DashboardTypes';
 import HeaderActions from './HeaderActions';
+import SeekerTopbar from './seeker/SeekerTopbar';
 
 function SearchIcon() {
   return (
@@ -21,6 +22,8 @@ function SearchIcon() {
 }
 
 export default function DashboardHeader({ role }: { role: DashboardRole }) {
+  if (role === 'seeker') return <SeekerTopbar />;
+
   const placeholder =
     role === 'admin'
       ? 'Global search...'

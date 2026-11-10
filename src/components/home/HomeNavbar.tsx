@@ -36,6 +36,9 @@ function UserAvatar({
       <Image
         src={src}
         alt={name || 'User profile'}
+        width={38}
+        height={38}
+        unoptimized
         className={`${className} object-cover`}
         referrerPolicy="no-referrer"
         onError={() => setImageFailed(true)}

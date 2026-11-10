@@ -3,14 +3,7 @@
 import { useState } from 'react';
 
 export function getUserInitials(name?: string | null) {
-  return (
-    name
-      ?.split(' ')
-      .map((part) => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || 'U'
-  );
+  return name?.trim().slice(0, 2).toUpperCase() || 'U';
 }
 
 export default function DashboardAvatar({

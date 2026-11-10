@@ -10,6 +10,38 @@ body {
   color: #ededf3;
 }
 
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #billing-print-area,
+  #billing-print-area * {
+    visibility: visible !important;
+  }
+
+  #billing-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    padding: 24px;
+    background: white !important;
+    color: #111 !important;
+  }
+
+  #billing-print-area * {
+    color: #111 !important;
+    background: white !important;
+    border-color: #ddd !important;
+    box-shadow: none !important;
+  }
+
+  #billing-print-area .billing-no-print {
+    display: none !important;
+  }
+}
+
 .world-globe {
   overflow: hidden;
   border: 1px solid rgba(112, 122, 255, 0.22);

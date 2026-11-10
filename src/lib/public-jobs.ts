@@ -12,6 +12,7 @@ export type PublicJob = {
   department: string;
   category: string;
   createdAt: string | null;
+  deadline?: string | null;
   responsibilities: string[];
   requirements: string[];
   benefits: string[];
@@ -120,6 +121,10 @@ export function toPublicJob(value: unknown): PublicJob | null {
     department: getString(job.department),
     category: getString(job.category),
     createdAt: getJobCreatedAt(job)?.toISOString() ?? null,
+    deadline:
+      typeof job.deadline === 'string' && !Number.isNaN(new Date(job.deadline).getTime())
+        ? job.deadline
+        : null,
     responsibilities: getTextList(responsibility),
     requirements: getTextList(qualifications),
     benefits,

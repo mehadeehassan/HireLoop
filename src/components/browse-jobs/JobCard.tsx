@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import type { PublicJob } from '@/lib/public-jobs';
+import { getJobApplyHref } from '@/lib/job-routes';
 import JobSaveButton from './JobSaveButton';
 
 function getCompanyInitials(company: string) {
@@ -63,7 +64,7 @@ export default function JobCard({ job }: { job: PublicJob }) {
           <JobBadge>{job.type}</JobBadge>
           {job.workMode === 'Hybrid' && <JobBadge>{job.workMode}</JobBadge>}
           <Link
-            href={`/browse-jobs/${encodeURIComponent(job.id)}#apply`}
+            href={getJobApplyHref(job.id)}
             className="pointer-events-auto relative z-20 inline-flex items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/8 px-2 py-1 text-[10px] font-medium text-emerald-400 transition hover:bg-emerald-500/15"
           >
             <svg

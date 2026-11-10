@@ -3,6 +3,8 @@
 import { useSession } from '@/lib/auth-client';
 import type { DashboardRole } from './DashboardTypes';
 import DashboardAvatar from './DashboardAvatar';
+import SeekerMessagesMenu from './SeekerMessagesMenu';
+import SeekerNotificationMenu from './SeekerNotificationMenu';
 
 function NotificationIcon() {
   return (
@@ -19,21 +21,6 @@ function NotificationIcon() {
   );
 }
 
-function MessageIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="size-4.75"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      aria-hidden="true"
-    >
-      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
-    </svg>
-  );
-}
-
 export default function HeaderActions({ role }: { role: DashboardRole }) {
   const { data: session } = useSession();
   const user = session?.user;
@@ -41,13 +28,12 @@ export default function HeaderActions({ role }: { role: DashboardRole }) {
   return (
     <div className="ml-auto flex items-center gap-5 text-[#8d96ab]">
       {role === 'seeker' && (
-        <button type="button" aria-label="Messages" className="relative transition hover:text-[#e8ebf3]">
-          <MessageIcon />
-          <span className="absolute -right-px -top-px size-1.25 rounded-full border border-[#101626] bg-[#6258ff]" />
-        </button>
+        <SeekerMessagesMenu userId={user?.id || ''} />
       )}
 
-      {(role === 'seeker' || role === 'admin') && (
+      {role === 'seeker' && <SeekerNotificationMenu />}
+
+      {role === 'admin' && (
         <button type="button" aria-label="Notifications" className="relative transition hover:text-[#e8ebf3]">
           <NotificationIcon />
           <span className="absolute -right-px top-0 size-1.25 rounded-full border border-[#101626] bg-[#ec4e67]" />

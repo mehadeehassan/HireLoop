@@ -3,20 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { useSession } from '@/lib/auth-client';
-
-const SAVED_JOBS_KEY = 'hireloop:saved-jobs';
-const SAVED_JOBS_EVENT = 'hireloop:saved-jobs-change';
-
-function readSavedJobs() {
-  const savedJobs: unknown = JSON.parse(localStorage.getItem(SAVED_JOBS_KEY) || '[]');
-  if (
-    !Array.isArray(savedJobs) ||
-    !savedJobs.every((id: unknown): id is string => typeof id === 'string')
-  ) {
-    throw new Error('Saved jobs data is invalid.');
-  }
-  return savedJobs;
-}
+import { readSavedJobIds, saveJobIds, SAVED_JOBS_EVENT, SAVED_JOBS_KEY } from '@/lib/seeker-jobs';
 
 export default function JobSaveButton({
   jobId,
@@ -41,7 +28,7 @@ export default function JobSaveButton({
     },
     () => {
       try {
-        return readSavedJobs().includes(jobId);
+        return readSavedJobIds().includes(jobId);
       } catch (error) {
         console.error('Could not read saved jobs', error);
         return false;
@@ -54,14 +41,13 @@ export default function JobSaveButton({
 
   function toggleSaved() {
     try {
-      const savedJobs = readSavedJobs();
+      const savedJobs = readSavedJobIds();
       const nextSaved = !savedJobs.includes(jobId);
       const nextSavedJobs = nextSaved
         ? [...savedJobs, jobId]
         : savedJobs.filter((id) => id !== jobId);
 
-      localStorage.setItem(SAVED_JOBS_KEY, JSON.stringify(nextSavedJobs));
-      window.dispatchEvent(new Event(SAVED_JOBS_EVENT));
+      saveJobIds(nextSavedJobs);
     } catch (error) {
       console.error('Could not update saved jobs', error);
       toast.error('Could not save this job. Check your browser storage settings.');
