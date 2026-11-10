@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { recruiterJobCategories, type RecruiterJob } from './recruiter-data';
 
@@ -29,11 +30,13 @@ export default function AddJobForm({
   initialJob?: RecruiterJob;
   onSave?: (job: Partial<RecruiterJob>) => void;
 }) {
+  const router = useRouter();
   const [jobType, setJobType] = useState(initialJob?.type || 'Full-time');
   const [remote, setRemote] = useState(
     initialJob?.remote ?? initialJob?.location?.includes('Remote') ?? true,
   );
   const [saved, setSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const salaryValues = initialJob?.compensation?.match(/\$[\d,]+k?/gi) || [];
   const minSalary = mode === 'edit' ? salaryValues[0] || '' : '';
   const maxSalary = mode === 'edit' ? salaryValues[1] || '' : '';
@@ -68,6 +71,8 @@ export default function AddJobForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
+
     const form = event.currentTarget;
     const data = new FormData(form);
     const job: Partial<RecruiterJob> = {
@@ -97,18 +102,32 @@ export default function AddJobForm({
       mode === 'edit' && initialJob?.id
         ? `/api/recruiter/jobs/${initialJob.id}`
         : '/api/recruiter/jobs';
-    const response = await fetch(endpoint, {
-      method: mode === 'edit' ? 'PATCH' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(job),
-    });
-    if (!response.ok) {
+    setSubmitting(true);
+    try {
+      const response = await fetch(endpoint, {
+        method: mode === 'edit' ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(job),
+      });
+      if (!response.ok) {
+        toast.error(mode === 'edit' ? 'Job update failed' : 'Job publish failed');
+        return;
+      }
+
+      setSaved(true);
+      onSave?.(job);
+      toast.success(mode === 'edit' ? 'Job updated successfully' : 'Job published successfully');
+
+      if (mode === 'create') {
+        router.push('/dashboard/recruiter/jobs');
+        router.refresh();
+      }
+    } catch (error) {
+      console.error('Could not save recruiter job', error);
       toast.error(mode === 'edit' ? 'Job update failed' : 'Job publish failed');
-      return;
+    } finally {
+      setSubmitting(false);
     }
-    setSaved(true);
-    onSave?.(job);
-    toast.success(mode === 'edit' ? 'Job updated successfully' : 'Job published successfully');
   }
 
   return (
@@ -262,9 +281,17 @@ export default function AddJobForm({
       </div>
       <button
         type="submit"
-        className="mt-6 h-11 rounded-md bg-[#6258ff] px-6 text-[12px] font-semibold text-white"
+        disabled={submitting}
+        className="mt-6 h-11 rounded-md bg-[#6258ff] px-6 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {mode === 'edit' ? 'Update Job' : 'Publish Job'} <span aria-hidden="true">→</span>
+        {submitting
+          ? mode === 'edit'
+            ? 'Updating...'
+            : 'Publishing...'
+          : mode === 'edit'
+            ? 'Update Job'
+            : 'Publish Job'}{' '}
+        {!submitting && <span aria-hidden="true">→</span>}
       </button>
     </form>
   );

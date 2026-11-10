@@ -69,23 +69,12 @@ function JobCard({ job }: { job: PublicJob }) {
       </div>
 
       <div className="mt-auto pt-3">
-        {job.applyUrl ? (
-          <a
-            href={job.applyUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-8 items-center gap-2 text-[11px] font-medium text-white transition hover:text-[#d4cfff]"
-          >
-            Apply Now <span aria-hidden="true">→</span>
-          </a>
-        ) : (
-          <Link
-            href="/signin"
-            className="inline-flex min-h-8 items-center gap-2 text-[11px] font-medium text-white transition hover:text-[#d4cfff]"
-          >
-            Sign in to apply <span aria-hidden="true">→</span>
-          </Link>
-        )}
+        <Link
+          href={`/browse-jobs/${encodeURIComponent(job.id)}#apply`}
+          className="inline-flex min-h-8 items-center gap-2 text-[11px] font-medium text-white transition hover:text-[#d4cfff]"
+        >
+          Apply Now <span aria-hidden="true">→</span>
+        </Link>
       </div>
     </article>
   );

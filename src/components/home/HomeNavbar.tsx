@@ -7,9 +7,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 const NAV_LINKS = [
-  { label: 'Browse Jobs', href: 'browse-jobs', bold: true },
-  { label: 'Company', href: '#features', bold: false },
-  { label: 'Pricing', href: '#pricing', bold: false },
+  { label: 'Browse Jobs', href: '/browse-jobs', bold: true },
+  { label: 'Company', href: '/#features', bold: false },
+  { label: 'Pricing', href: '/#pricing', bold: false },
 ];
 
 function UserAvatar({
@@ -102,14 +102,16 @@ export default function HomeNavbar() {
   return (
     <header className="relative z-50">
       <div className="mx-auto flex h-17 w-full max-w-7xl items-center justify-between rounded-[14px] border border-white/[0.07] bg-[#141418] pl-4 pr-2 shadow-[0_1px_2px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.04)] sm:pl-6">
-        <Image
-          src="/images/logo.png"
-          alt="Hireloop"
-          width={154}
-          height={44}
-          priority
-          className="h-11 w-38.5"
-        />
+        <Link href="/" aria-label="Hireloop home">
+          <Image
+            src="/images/logo.png"
+            alt="Hireloop"
+            width={154}
+            height={44}
+            priority
+            className="h-11 w-38.5"
+          />
+        </Link>
 
         {/* Desktop: links + divider + buttons — Geist 16px, #ededef, gap 20/24 */}
         <div className="hidden items-center md:flex">

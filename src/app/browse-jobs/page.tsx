@@ -1,23 +1,12 @@
-import { fetchBackendJobs } from '@/lib/job-api';
+import BrowseJobs from '@/components/browse-jobs/BrowseJobs';
 
-const BrowseJobsPage = async ({
+export default async function BrowseJobsPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) => {
-  const search = await searchParams;
-  const urlSearch = new URLSearchParams(search as Record<string, string>);
-  const query = urlSearch.toString();
-  console.log('search params:', query);
+}) {
+  const params = await searchParams;
+  const initialSearch = typeof params.search === 'string' ? params.search : '';
 
-  const jobs = await fetchBackendJobs('GET', { query });
-  console.log('jobs:', jobs);
-  
-  return (
-    <div>
-      <h1>Browse Jobs</h1>
-    </div>
-  );
-};
-
-export default BrowseJobsPage;
+  return <BrowseJobs initialSearch={initialSearch} />;
+}

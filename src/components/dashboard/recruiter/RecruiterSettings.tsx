@@ -13,6 +13,11 @@ export default function RecruiterSettings() {
     companyName: '',
     email: '',
     phone: '',
+    companySize: '',
+    industry: '',
+    companyWebsite: '',
+    companyLogo: '',
+    companyDescription: '',
   });
 
   useEffect(() => {
@@ -29,6 +34,11 @@ export default function RecruiterSettings() {
           companyName: data.companyName || '',
           email: data.email || '',
           phone: data.phone || '',
+          companySize: data.companySize || '',
+          industry: data.industry || '',
+          companyWebsite: data.companyWebsite || '',
+          companyLogo: data.companyLogo || '',
+          companyDescription: data.companyDescription || '',
         });
         setEmailAlerts(data.emailNotifications ?? true);
         setApplicationAlerts(data.applicationNotifications ?? true);
@@ -69,6 +79,9 @@ export default function RecruiterSettings() {
     <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
       <section className="rounded-lg border border-[#252d43] bg-[#111827]/55 p-5 sm:p-6">
         <h2 className="text-[14px] font-semibold text-[#edf0f7]">Company Profile</h2>
+        <p className="mt-1 text-[10px] leading-5 text-[#81899d]">
+          Company details appear on job pages when the company name matches the job listing.
+        </p>
         {loading ? (
           <div className="mt-5 h-40 animate-pulse rounded-md bg-[#171e31]" />
         ) : (
@@ -97,7 +110,51 @@ export default function RecruiterSettings() {
                 value={profile.phone}
                 onChange={(value) => setProfile((current) => ({ ...current, phone: value }))}
               />
+              <Field
+                label="Company Size"
+                placeholder="e.g. 50–100 employees"
+                value={profile.companySize}
+                onChange={(value) => setProfile((current) => ({ ...current, companySize: value }))}
+              />
+              <Field
+                label="Industry"
+                placeholder="e.g. Software & Technology"
+                value={profile.industry}
+                onChange={(value) => setProfile((current) => ({ ...current, industry: value }))}
+              />
+              <Field
+                label="Company Website"
+                type="url"
+                placeholder="https://company.com"
+                value={profile.companyWebsite}
+                onChange={(value) =>
+                  setProfile((current) => ({ ...current, companyWebsite: value }))
+                }
+              />
+              <Field
+                label="Company Image URL"
+                type="url"
+                placeholder="https://company.com/image.jpg"
+                value={profile.companyLogo}
+                onChange={(value) => setProfile((current) => ({ ...current, companyLogo: value }))}
+              />
             </div>
+            <label className="mt-4 block text-[11px] text-[#aab1c1]">
+              Company Overview
+              <textarea
+                rows={4}
+                maxLength={1000}
+                placeholder="Introduce your company to job seekers"
+                className="mt-2 w-full resize-y rounded-md border border-[#252d43] bg-[#171e31] px-3 py-2.5 text-[12px] text-[#edf0f7] outline-none focus:border-[#6258ff]"
+                value={profile.companyDescription}
+                onChange={(event) =>
+                  setProfile((current) => ({
+                    ...current,
+                    companyDescription: event.target.value,
+                  }))
+                }
+              />
+            </label>
             <button
               type="submit"
               disabled={saving}
@@ -132,11 +189,13 @@ function Field({
   value,
   onChange,
   type = 'text',
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  placeholder?: string;
 }) {
   const fields =
     'mt-2 h-10.5 w-full rounded-md border border-[#252d43] bg-[#171e31] px-3 text-[12px] text-[#edf0f7] outline-none focus:border-[#6258ff]';
@@ -145,6 +204,7 @@ function Field({
       {label}
       <input
         type={type}
+        placeholder={placeholder}
         className={fields}
         value={value}
         onChange={(event) => onChange(event.target.value)}

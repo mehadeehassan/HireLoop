@@ -4,6 +4,19 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 
+function getOptionalUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return '';
+
+  const rawUrl = value.trim();
+  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,6 +31,11 @@ export async function GET() {
     companyName: profile?.companyName || '',
     email: profile?.email || session.user.email || '',
     phone: profile?.phone || '',
+    companySize: profile?.companySize || '',
+    industry: profile?.industry || '',
+    companyWebsite: profile?.companyWebsite || '',
+    companyLogo: profile?.companyLogo || '',
+    companyDescription: profile?.companyDescription || '',
     emailNotifications: profile?.emailNotifications ?? true,
     applicationNotifications: profile?.applicationNotifications ?? true,
     image: session.user.image || '',
@@ -29,12 +47,26 @@ export async function PATCH(request: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await request.json();
+  const companyWebsite = getOptionalUrl(body.companyWebsite);
+  const companyLogo = getOptionalUrl(body.companyLogo);
+  if (companyWebsite === null || companyLogo === null) {
+    return NextResponse.json(
+      { error: 'Company website and image must be valid HTTP or HTTPS URLs.' },
+      { status: 400 },
+    );
+  }
+
   const db = await getDatabase();
   const profileData = {
     recruiterName: String(body.recruiterName || '').trim(),
     companyName: String(body.companyName || '').trim(),
     email: String(body.email || session.user.email || '').trim(),
     phone: String(body.phone || '').trim(),
+    companySize: String(body.companySize || '').trim(),
+    industry: String(body.industry || '').trim(),
+    companyWebsite,
+    companyLogo,
+    companyDescription: String(body.companyDescription || '').trim().slice(0, 1000),
     emailNotifications: Boolean(body.emailNotifications),
     applicationNotifications: Boolean(body.applicationNotifications),
   };

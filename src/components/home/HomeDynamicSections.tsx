@@ -20,7 +20,20 @@ function isPublicJob(value: unknown): value is PublicJob {
     typeof job.compensation === "string" &&
     typeof job.description === "string" &&
     typeof job.remote === "boolean" &&
-    (typeof job.applyUrl === "string" || job.applyUrl === null)
+    (typeof job.applyUrl === "string" || job.applyUrl === null) &&
+    typeof job.department === "string" &&
+    typeof job.category === "string" &&
+    (typeof job.createdAt === "string" || job.createdAt === null) &&
+    Array.isArray(job.responsibilities) &&
+    Array.isArray(job.requirements) &&
+    Array.isArray(job.benefits) &&
+    typeof job.experience === "string" &&
+    typeof job.companySize === "string" &&
+    typeof job.industry === "string" &&
+    (typeof job.companyWebsite === "string" || job.companyWebsite === null) &&
+    (typeof job.companyLogo === "string" || job.companyLogo === null) &&
+    typeof job.companyDescription === "string" &&
+    typeof job.verifiedEmployer === "boolean"
   );
 }
 
