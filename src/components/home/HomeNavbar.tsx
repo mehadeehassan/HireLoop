@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { authClient, useSession } from "@/lib/auth-client";
+import { authClient, useSession } from '@/lib/auth-client';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 const NAV_LINKS = [
-  { label: "Browse Jobs", href: "#open-roles", bold: true },
-  { label: "Company", href: "#features", bold: false },
-  { label: "Pricing", href: "#pricing", bold: false },
+  { label: 'Browse Jobs', href: 'browse-jobs', bold: true },
+  { label: 'Company', href: '#features', bold: false },
+  { label: 'Pricing', href: '#pricing', bold: false },
 ];
 
 function UserAvatar({
@@ -24,19 +24,18 @@ function UserAvatar({
   const [imageFailed, setImageFailed] = useState(false);
   const initials =
     name
-      ?.split(" ")
+      ?.split(' ')
       .map((part) => part[0])
-      .join("")
+      .join('')
       .slice(0, 2)
-      .toUpperCase() || "U";
+      .toUpperCase() || 'U';
 
   if (src && !imageFailed) {
     return (
       // Google profile images are external URLs, so render them directly.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={src}
-        alt={name || "User profile"}
+        alt={name || 'User profile'}
         className={`${className} object-cover`}
         referrerPolicy="no-referrer"
         onError={() => setImageFailed(true)}
@@ -60,35 +59,30 @@ export default function HomeNavbar() {
   const [recruiterName, setRecruiterName] = useState<string | null>(null);
   const { data: session, isPending } = useSession();
   const user = session?.user;
-  const displayName = user?.role === "recruiter"
-    ? recruiterName || user?.name
-    : user?.name;
-  const dashboardRole =
-    user?.role === "admin" || user?.role === "recruiter"
-      ? user.role
-      : "seeker";
+  const displayName = user?.role === 'recruiter' ? recruiterName || user?.name : user?.name;
+  const dashboardRole = user?.role === 'admin' || user?.role === 'recruiter' ? user.role : 'seeker';
   const dashboardHref = `/dashboard/${dashboardRole}`;
 
   useEffect(() => {
-    if (dashboardRole !== "recruiter") {
+    if (dashboardRole !== 'recruiter') {
       return;
     }
 
     let active = true;
     async function loadRecruiterProfile() {
-      const response = await fetch("/api/recruiter/profile", { cache: "no-store" });
+      const response = await fetch('/api/recruiter/profile', { cache: 'no-store' });
       if (!response.ok) return;
       const profile = await response.json();
-      if (active && typeof profile.recruiterName === "string") {
+      if (active && typeof profile.recruiterName === 'string') {
         setRecruiterName(profile.recruiterName);
       }
     }
 
     loadRecruiterProfile();
-    window.addEventListener("recruiter-profile-updated", loadRecruiterProfile);
+    window.addEventListener('recruiter-profile-updated', loadRecruiterProfile);
     return () => {
       active = false;
-      window.removeEventListener("recruiter-profile-updated", loadRecruiterProfile);
+      window.removeEventListener('recruiter-profile-updated', loadRecruiterProfile);
     };
   }, [dashboardRole]);
 
@@ -98,7 +92,7 @@ export default function HomeNavbar() {
         onSuccess: () => {
           setProfileOpen(false);
           setMenuOpen(false);
-          router.replace("/");
+          router.replace('/');
           router.refresh();
         },
       },
@@ -125,7 +119,7 @@ export default function HomeNavbar() {
                 key={link.label}
                 href={link.href}
                 className={`font-sans whitespace-nowrap text-base leading-[28.8px] tracking-[-0.2px] text-[#ededef] ${
-                  link.bold ? "font-bold" : "font-normal"
+                  link.bold ? 'font-bold' : 'font-normal'
                 }`}
               >
                 {link.label}
@@ -147,15 +141,18 @@ export default function HomeNavbar() {
                   onClick={() => setProfileOpen((open) => !open)}
                   className="flex items-center gap-2 rounded-lg p-1 pr-2 transition hover:bg-white/5"
                 >
-                  <UserAvatar
-                    src={user.image}
-                    name={displayName}
-                    className="size-9.5 rounded-lg"
-                  />
+                  <UserAvatar src={user.image} name={displayName} className="size-9.5 rounded-lg" />
                   <span className="max-w-28 truncate text-sm font-medium text-[#ededef]">
                     {displayName || user.email}
                   </span>
-                  <svg className={`size-4 text-[#9899a9] transition-transform ${profileOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <svg
+                    className={`size-4 text-[#9899a9] transition-transform ${profileOpen ? 'rotate-180' : ''}`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden="true"
+                  >
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                 </button>
@@ -173,7 +170,11 @@ export default function HomeNavbar() {
                     >
                       Dashboard
                     </Link>
-                    <button type="button" onClick={handleSignOut} className="flex h-10 w-full items-center rounded-lg px-3 text-sm text-[#ff7a7a] transition hover:bg-white/5">
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="flex h-10 w-full items-center rounded-lg px-3 text-sm text-[#ff7a7a] transition hover:bg-white/5"
+                    >
                       Sign out
                     </button>
                   </div>
@@ -246,7 +247,7 @@ export default function HomeNavbar() {
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
                 className={`font-sans text-base leading-[28.8px] tracking-[-0.2px] text-[#ededef] ${
-                  link.bold ? "font-bold" : "font-normal"
+                  link.bold ? 'font-bold' : 'font-normal'
                 }`}
               >
                 {link.label}
@@ -260,14 +261,10 @@ export default function HomeNavbar() {
             {user ? (
               <>
                 <div className="flex items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.035] p-3">
-                  <UserAvatar
-                    src={user.image}
-                    name={displayName}
-                    className="size-10 rounded-lg"
-                  />
+                  <UserAvatar src={user.image} name={displayName} className="size-10 rounded-lg" />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-[#ededef]">
-                      {displayName || "User"}
+                      {displayName || 'User'}
                     </span>
                     <span className="block truncate text-xs text-[#9899a9]">{user.email}</span>
                   </span>

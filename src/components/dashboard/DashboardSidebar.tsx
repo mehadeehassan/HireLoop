@@ -124,7 +124,7 @@ export default function DashboardSidebar({
             className="absolute inset-0 bg-black/70"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-70 flex-col bg-[#101626]">
+          <aside className="absolute inset-y-0 left-0 flex w-70 flex-col overflow-y-auto overscroll-contain bg-[#101626]">
             <button
               type="button"
               aria-label="Close navigation"
