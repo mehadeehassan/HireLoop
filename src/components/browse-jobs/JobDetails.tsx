@@ -1,8 +1,8 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import type { ReactNode } from 'react';
 import HomeNavbar from '@/components/home/HomeNavbar';
 import type { PublicJob } from '@/lib/public-jobs';
+import JobApplyButton from './JobApplyButton';
 import JobSaveButton from './JobSaveButton';
 
 const companyImages = [
@@ -100,25 +100,6 @@ function CompanyVisual({ job }: { job: PublicJob }) {
   );
 }
 
-function ApplyButton({ job }: { job: PublicJob }) {
-  const className =
-    'inline-flex h-10 items-center justify-center rounded-lg bg-white px-5 text-xs font-semibold text-[#171719] transition hover:bg-[#dedee3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8178ff]';
-
-  if (job.applyUrl) {
-    return (
-      <a href={job.applyUrl} target="_blank" rel="noreferrer" className={className}>
-        Apply Now
-      </a>
-    );
-  }
-
-  return (
-    <Link href="/signin" className={className}>
-      Apply Now
-    </Link>
-  );
-}
-
 export default function JobDetails({ job }: { job: PublicJob }) {
   return (
     <main className="min-h-screen bg-[#09090b] px-4 pb-12 pt-5 text-[#ededf3] sm:px-6 sm:pt-7">
@@ -150,12 +131,12 @@ export default function JobDetails({ job }: { job: PublicJob }) {
               </p>
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div id="apply" className="ml-auto flex items-center gap-2">
             <JobSaveButton
               jobId={job.id}
               className="size-10 border border-white/[0.07] bg-[#1c1c20]"
             />
-            <ApplyButton job={job} />
+            <JobApplyButton jobId={job.id} />
           </div>
         </header>
 
@@ -215,14 +196,6 @@ export default function JobDetails({ job }: { job: PublicJob }) {
                 </ContentSection>
               )}
 
-              <div id="apply" className="border-t border-white/6 py-5">
-                <ApplyButton job={job} />
-                {!job.applyUrl && (
-                  <p className="mt-2 text-[11px] text-[#85858e]">
-                    Sign in to continue with your application.
-                  </p>
-                )}
-              </div>
             </article>
           </div>
 

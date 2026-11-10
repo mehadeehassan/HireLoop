@@ -13,6 +13,12 @@ type AuthFormProps = {
 
 type UserRole = 'seeker' | 'recruiter' | 'admin';
 
+function getCallbackUrl() {
+  const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl');
+  if (!callbackUrl || !callbackUrl.startsWith('/') || callbackUrl.startsWith('//')) return '/';
+  return callbackUrl;
+}
+
 export default function AuthForm({ mode }: AuthFormProps) {
   const isSignUp = mode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
@@ -42,7 +48,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         toast.success(isSignUp ? 'Account created successfully!' : 'Welcome back!', {
           id: toastId,
         });
-        window.location.href = '/';
+        window.location.href = getCallbackUrl();
       }
     } catch {
       toast.error('Unable to connect. Please try again.', {
@@ -59,7 +65,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
     try {
       await authClient.signIn.social({
         provider: 'google',
-        callbackURL: '/',
+        callbackURL: getCallbackUrl(),
       });
       toast.dismiss(toastId);
     } catch {
@@ -309,6 +315,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
               {isSignUp ? 'Already have an account?' : 'New to Hireloop?'}{' '}
               <Link
                 href={isSignUp ? '/signin' : '/signup'}
+                onClick={(event) => {
+                  const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl');
+                  if (callbackUrl) {
+                    event.preventDefault();
+                    window.location.href = `${isSignUp ? '/signin' : '/signup'}?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+                  }
+                }}
                 className="font-semibold text-[#777bff]"
               >
                 {isSignUp ? 'Sign in' : 'Create account'}

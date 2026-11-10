@@ -1,19 +1,11 @@
 const backendUrl = () =>
   (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000').replace(/\/$/, '');
 
-export async function fetchBackendJobs(
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
-  options?: { id?: string; body?: unknown; query?: string },
-) {
-  const path = options?.id
-    ? `/jobs/${encodeURIComponent(options.id)}`
-    : '/jobs';
-  const query = options?.query ? `?${options.query.replace(/^\?/, '')}` : '';
-
-  const response = await fetch(`${backendUrl()}${path}${query}`, {
+async function fetchBackend(path: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', body?: unknown) {
+  const response = await fetch(`${backendUrl()}${path}`, {
     method,
-    headers: options?.body ? { 'Content-Type': 'application/json' } : undefined,
-    body: options?.body ? JSON.stringify(options.body) : undefined,
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
     cache: 'no-store',
   });
 
@@ -28,4 +20,20 @@ export async function fetchBackendJobs(
   }
 
   return { response, data: responseData };
+}
+
+export async function fetchBackendJobs(
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  options?: { id?: string; body?: unknown; query?: string },
+) {
+  const path = options?.id
+    ? `/jobs/${encodeURIComponent(options.id)}`
+    : '/jobs';
+  const query = options?.query ? `?${options.query.replace(/^\?/, '')}` : '';
+
+  return fetchBackend(`${path}${query}`, method, options?.body);
+}
+
+export async function submitBackendApplication(application: Record<string, unknown>) {
+  return fetchBackend('/applications', 'POST', application);
 }
