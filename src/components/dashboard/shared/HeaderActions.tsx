@@ -1,11 +1,11 @@
 'use client';
 
 import { useSession } from '@/lib/auth-client';
-import type { DashboardRole } from './DashboardTypes';
+import RecruiterMessagesMenu from '../recruiter/RecruiterMessagesMenu';
 import DashboardAvatar from './DashboardAvatar';
+import type { DashboardRole } from './DashboardTypes';
 import SeekerMessagesMenu from './SeekerMessagesMenu';
 import SeekerNotificationMenu from './SeekerNotificationMenu';
-import RecruiterMessagesMenu from '../recruiter/RecruiterMessagesMenu';
 
 function NotificationIcon() {
   return (
@@ -28,18 +28,18 @@ export default function HeaderActions({ role }: { role: DashboardRole }) {
 
   return (
     <div className="ml-auto flex items-center gap-5 text-[#8d96ab]">
-      {role === 'seeker' && (
-        <SeekerMessagesMenu userId={user?.id || ''} />
-      )}
+      {role === 'seeker' && <SeekerMessagesMenu userId={user?.id || ''} />}
 
-      {role === 'recruiter' && user?.id && (
-        <RecruiterMessagesMenu recruiterId={user.id} />
-      )}
+      {role === 'recruiter' && user?.id && <RecruiterMessagesMenu recruiterId={user.id} />}
 
       {role === 'seeker' && <SeekerNotificationMenu />}
 
       {role === 'admin' && (
-        <button type="button" aria-label="Notifications" className="relative transition hover:text-[#e8ebf3]">
+        <button
+          type="button"
+          aria-label="Notifications"
+          className="relative transition hover:text-[#e8ebf3]"
+        >
           <NotificationIcon />
           <span className="absolute -right-px top-0 size-1.25 rounded-full border border-[#101626] bg-[#ec4e67]" />
         </button>
@@ -58,9 +58,6 @@ export default function HeaderActions({ role }: { role: DashboardRole }) {
       {role === 'seeker' && (
         <>
           <DashboardAvatar src={user?.image} name={user?.name} size="sm" />
-          <button type="button" aria-label="Profile options" className="text-[18px] leading-none">
-            ⋮
-          </button>
         </>
       )}
     </div>
