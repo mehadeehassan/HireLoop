@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
+import BillingHistory, { type BillingInvoiceRow } from '@/components/dashboard/shared/BillingHistory';
 import type { SeekerProfile } from './seeker-data';
 import SeekerPageHeader from './SeekerPageHeader';
 
@@ -16,17 +17,6 @@ type PaymentMethod = {
   isDefault: boolean;
 };
 
-type BillingInvoice = {
-  id: string;
-  number: string;
-  date: string;
-  plan: string;
-  amountMinor: number;
-  currency: string;
-  status: string;
-  invoiceUrl: string | null;
-};
-
 type BillingSummary = {
   subscription: {
     plan: string;
@@ -34,15 +24,33 @@ type BillingSummary = {
     currency: string;
     interval: string;
     nextBillingDate: string;
+    status: string;
+    startDate: string;
+    expiryDate: string;
+    monthlyLimit: number;
+    usedCount: number;
+    remainingCount: number;
+    nextResetDate: string;
+    features: string[];
   } | null;
   paymentMethods: PaymentMethod[];
-  invoices: BillingInvoice[];
+  invoices: BillingInvoiceRow[];
+  plans: {
+    planName: string;
+    price: number;
+    yearlyPrice: number;
+    currency: string;
+    monthlyApplicationLimit: number | null;
+    monthlyJobPostLimit: number | null;
+    features: string[];
+  }[];
 };
 
 const emptyBilling: BillingSummary = {
   subscription: null,
   paymentMethods: [],
   invoices: [],
+  plans: [],
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -61,7 +69,8 @@ function parseBillingSummary(value: unknown): BillingSummary {
   if (
     !isRecord(value) ||
     !Array.isArray(value.paymentMethods) ||
-    !Array.isArray(value.invoices)
+    !Array.isArray(value.invoices) ||
+    !Array.isArray(value.plans)
   ) {
     throw new Error('The billing service returned an unexpected response.');
   }
@@ -77,16 +86,19 @@ function parseBillingSummary(value: unknown): BillingSummary {
       typeof method.isDefault === 'boolean',
   );
   const invoices = value.invoices.filter(
-    (invoice): invoice is BillingInvoice =>
+    (invoice): invoice is BillingInvoiceRow =>
       isRecord(invoice) &&
       typeof invoice.id === 'string' &&
+      (typeof invoice.paymentId === 'string' || invoice.paymentId === null) &&
+      (typeof invoice.checkoutSessionId === 'string' || invoice.checkoutSessionId === null) &&
       typeof invoice.number === 'string' &&
       typeof invoice.date === 'string' &&
       typeof invoice.plan === 'string' &&
       typeof invoice.amountMinor === 'number' &&
       typeof invoice.currency === 'string' &&
       typeof invoice.status === 'string' &&
-      (typeof invoice.invoiceUrl === 'string' || invoice.invoiceUrl === null),
+      (typeof invoice.invoiceUrl === 'string' || invoice.invoiceUrl === null) &&
+      (typeof invoice.invoicePdfUrl === 'string' || invoice.invoicePdfUrl === null),
   );
 
   let subscription: BillingSummary['subscription'] = null;
@@ -97,7 +109,16 @@ function parseBillingSummary(value: unknown): BillingSummary {
       typeof value.subscription.amountMinor !== 'number' ||
       typeof value.subscription.currency !== 'string' ||
       typeof value.subscription.interval !== 'string' ||
-      typeof value.subscription.nextBillingDate !== 'string'
+      typeof value.subscription.nextBillingDate !== 'string' ||
+      typeof value.subscription.status !== 'string' ||
+      typeof value.subscription.startDate !== 'string' ||
+      typeof value.subscription.expiryDate !== 'string' ||
+      typeof value.subscription.monthlyLimit !== 'number' ||
+      typeof value.subscription.usedCount !== 'number' ||
+      typeof value.subscription.remainingCount !== 'number' ||
+      typeof value.subscription.nextResetDate !== 'string' ||
+      !Array.isArray(value.subscription.features) ||
+      !value.subscription.features.every((feature) => typeof feature === 'string')
     ) {
       throw new Error('The billing service returned invalid subscription details.');
     }
@@ -107,10 +128,54 @@ function parseBillingSummary(value: unknown): BillingSummary {
       currency: value.subscription.currency,
       interval: value.subscription.interval,
       nextBillingDate: value.subscription.nextBillingDate,
+      status: value.subscription.status,
+      startDate: value.subscription.startDate,
+      expiryDate: value.subscription.expiryDate,
+      monthlyLimit: value.subscription.monthlyLimit,
+      usedCount: value.subscription.usedCount,
+      remainingCount: value.subscription.remainingCount,
+      nextResetDate: value.subscription.nextResetDate,
+      features: value.subscription.features,
     };
   }
 
-  return { subscription, paymentMethods, invoices };
+  const plans = value.plans.filter(
+    (plan): plan is BillingSummary['plans'][number] =>
+      isRecord(plan) &&
+      typeof plan.planName === 'string' &&
+      typeof plan.price === 'number' &&
+      typeof plan.yearlyPrice === 'number' &&
+      typeof plan.currency === 'string' &&
+      (typeof plan.monthlyApplicationLimit === 'number' ||
+        plan.monthlyApplicationLimit === null) &&
+      (typeof plan.monthlyJobPostLimit === 'number' || plan.monthlyJobPostLimit === null) &&
+      Array.isArray(plan.features) &&
+      plan.features.every((feature) => typeof feature === 'string'),
+  );
+
+  return { subscription, paymentMethods, invoices, plans };
+}
+
+function parseVerifiedPaymentMethod(value: unknown): PaymentMethod | null {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== 'string' ||
+    typeof value.brand !== 'string' ||
+    typeof value.last4 !== 'string' ||
+    (typeof value.expiryMonth !== 'number' && value.expiryMonth !== null) ||
+    (typeof value.expiryYear !== 'number' && value.expiryYear !== null) ||
+    typeof value.isDefault !== 'boolean'
+  ) {
+    return null;
+  }
+  return {
+    id: value.id,
+    brand: value.brand,
+    last4: value.last4,
+    expiryMonth: value.expiryMonth,
+    expiryYear: value.expiryYear,
+    isDefault: value.isDefault,
+  };
 }
 
 function formatMoney(amountMinor: number, currency: string) {
@@ -147,10 +212,13 @@ export default function SeekerBilling() {
   const [billingError, setBillingError] = useState('');
   const [profileError, setProfileError] = useState('');
   const [action, setAction] = useState<'setup' | 'portal' | null>(null);
-  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
+    let initialLoadTimer: number | null = null;
+    const scheduleInitialLoad = () => {
+      initialLoadTimer = window.setTimeout(() => void loadBilling(), 0);
+    };
     async function loadBilling() {
       const [profileResult, billingResult] = await Promise.allSettled([
         fetch('/api/seeker/profile', { cache: 'no-store', signal: controller.signal }),
@@ -195,29 +263,71 @@ export default function SeekerBilling() {
       setLoading(false);
     }
 
-    void loadBilling();
-
-    const paymentResult = new URLSearchParams(window.location.search).get('payment');
+    const searchParams = new URLSearchParams(window.location.search);
+    const paymentResult = searchParams.get('payment');
     if (paymentResult === 'success') {
-      toast.success('Payment method setup completed. Billing details are refreshing.');
+      const sessionId = searchParams.get('session_id');
       window.history.replaceState({}, '', window.location.pathname);
+      void (async () => {
+        try {
+          const response = await fetch('/api/billing/payment-methods/verify-setup-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sessionId ? { sessionId } : {}),
+            signal: controller.signal,
+          });
+          const result: unknown = await response.json().catch(() => null);
+          const method = isRecord(result)
+            ? parseVerifiedPaymentMethod(result.paymentMethod)
+            : null;
+          if (!response.ok || !method) {
+            throw new Error(
+              isRecord(result) && typeof result.error === 'string'
+                ? result.error
+                : 'The saved card could not be verified.',
+            );
+          }
+
+          const addVerifiedMethod = () => {
+            setBilling((current) => ({
+              ...current,
+              paymentMethods: [
+                method,
+                ...current.paymentMethods.filter((item) => item.id !== method.id),
+              ],
+            }));
+          };
+          const refresh = loadBilling();
+          addVerifiedMethod();
+          void refresh.then(() => {
+            if (!controller.signal.aborted) addVerifiedMethod();
+          });
+          toast.success('Card saved and verified.');
+        } catch (verificationError) {
+          if (controller.signal.aborted) return;
+          toast.error(
+            verificationError instanceof Error
+              ? verificationError.message
+              : 'The saved card could not be verified.',
+          );
+          void loadBilling();
+        }
+      })();
     } else if (paymentResult === 'cancelled') {
+      scheduleInitialLoad();
       toast.info('Payment method setup was cancelled.');
       window.history.replaceState({}, '', window.location.pathname);
+    } else {
+      scheduleInitialLoad();
     }
 
-    return () => controller.abort();
+    return () => {
+      if (initialLoadTimer !== null) window.clearTimeout(initialLoadTimer);
+      controller.abort();
+    };
   }, []);
 
-  const currentPlan = normalizePlan(profile?.plan || billing.subscription?.plan || 'Starter');
-  const filteredInvoices = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return billing.invoices;
-    return billing.invoices.filter((invoice) =>
-      `${invoice.number} ${invoice.plan} ${invoice.status}`.toLowerCase().includes(query),
-    );
-  }, [billing.invoices, search]);
-
+  const currentPlan = normalizePlan(billing.subscription?.plan || profile?.plan || 'Starter');
   async function startBillingAction(nextAction: 'setup' | 'portal') {
     if (action) return;
     setAction(nextAction);
@@ -229,10 +339,13 @@ export default function SeekerBilling() {
       });
       const result: unknown = await response.json();
       if (!response.ok || !isRecord(result) || typeof result.url !== 'string') {
-        throw new Error(
+        const message =
           isRecord(result) && typeof result.error === 'string'
             ? result.error
-            : 'The payment service could not start this action.',
+            : 'The payment service could not start this action.';
+        const code = isRecord(result) && typeof result.code === 'string' ? result.code : null;
+        throw new Error(
+          code ? `${message} (code: ${code})` : message,
         );
       }
       window.location.assign(result.url);
@@ -243,10 +356,6 @@ export default function SeekerBilling() {
     }
   }
 
-  function exportBillingHistory() {
-    window.print();
-  }
-
   const subscription = billing.subscription;
   const planAmount =
     subscription && normalizePlan(subscription.plan) === currentPlan
@@ -254,6 +363,9 @@ export default function SeekerBilling() {
       : currentPlan === 'Starter'
         ? '$0.00'
         : 'Managed by billing';
+  const usagePercent = subscription?.monthlyLimit
+    ? Math.min(100, (subscription.usedCount / subscription.monthlyLimit) * 100)
+    : 0;
 
   return (
     <div id="billing-print-area" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-7">
@@ -276,6 +388,9 @@ export default function SeekerBilling() {
                 Current plan
               </span>
               <h2 className="mt-4 text-base font-semibold text-[#ededf2]">{currentPlan} Tier</h2>
+              <span className={`mt-2 inline-flex rounded-full border px-2 py-1 text-[8px] uppercase tracking-wide ${statusStyle(subscription?.status || 'active')}`}>
+                {subscription?.status || 'active'}
+              </span>
               <p className="mt-1 max-w-md text-[11px] leading-5 text-[#92929b]">
                 {currentPlan === 'Starter'
                   ? 'Explore opportunities, save jobs, and keep track of your applications.'
@@ -291,14 +406,15 @@ export default function SeekerBilling() {
               </p>
               {subscription?.nextBillingDate && (
                 <p className="mt-1 text-[9px] text-[#92929b]">
-                  Next billing date: {formatDate(subscription.nextBillingDate)}
+                  {currentPlan === 'Starter' ? 'Plan renews:' : 'Plan expires:'}{' '}
+                  {formatDate(subscription.nextBillingDate)}
                 </p>
               )}
             </div>
           </div>
 
           <ul className="mt-6 grid gap-3 border-t border-[#26262b] pt-5 sm:grid-cols-2">
-            {['Browse jobs', 'Save opportunities', 'Track applications', 'Manage your profile'].map((feature) => (
+            {(subscription?.features || []).map((feature) => (
               <li key={feature} className="flex items-center gap-2 text-[10px] text-[#c5c5cc]">
                 <span className="flex size-4 items-center justify-center rounded-full bg-emerald-500/15 text-[9px] text-emerald-400" aria-hidden="true">✓</span>
                 {feature}
@@ -306,8 +422,33 @@ export default function SeekerBilling() {
             ))}
           </ul>
 
+          <div className="mt-5 rounded-lg border border-[#26262b] bg-[#101013] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[10px] font-medium text-[#d9d9df]">Monthly applications</h3>
+                <p className="mt-1 text-[9px] text-[#85858e]">
+                  {subscription?.usedCount ?? 0} used · {subscription?.remainingCount ?? 0} remaining
+                </p>
+              </div>
+              <p className="text-xs font-semibold text-white">
+                {subscription?.monthlyLimit ?? 0} <span className="text-[9px] font-normal text-[#85858e]">total</span>
+              </p>
+            </div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-[#8178ff] transition-[width]"
+                style={{ width: `${usagePercent}%` }}
+              />
+            </div>
+            {subscription?.nextResetDate && (
+              <p className="mt-2 text-[9px] text-[#85858e]">
+                Usage resets {formatDate(subscription.nextResetDate)}
+              </p>
+            )}
+          </div>
+
           <div className="mt-6 flex flex-wrap gap-2">
-            <Link href="/#pricing" className="inline-flex rounded-md bg-white px-4 py-2.5 text-[10px] font-semibold text-[#171719] hover:bg-[#dedee3]">
+            <Link href="/dashboard/seeker/upgrade" className="inline-flex rounded-md bg-white px-4 py-2.5 text-[10px] font-semibold text-[#171719] hover:bg-[#dedee3]">
               Compare Plans
             </Link>
             <button
@@ -382,71 +523,7 @@ export default function SeekerBilling() {
         </section>
       </div>
 
-      <section className="mt-5 overflow-hidden rounded-xl border border-[#26262b] bg-[#131316]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#26262b] px-5 py-4">
-          <div>
-            <h2 className="text-sm font-semibold text-[#ededf2]">Billing History</h2>
-            <p className="mt-1 text-[9px] text-[#777780]">Invoices and payment status from your billing provider.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <label>
-              <span className="sr-only">Search invoices</span>
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search invoices..."
-                className="h-9 w-40 rounded-md border border-[#303036] bg-[#101013] px-3 text-[10px] text-white outline-none placeholder:text-[#777780] focus:border-[#8178ff]"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={exportBillingHistory}
-              disabled={!filteredInvoices.length}
-              className="billing-no-print rounded-md border border-[#303036] px-3 py-2 text-[10px] text-[#dedee3] hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ↓ Export PDF
-            </button>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="space-y-px">{[0, 1, 2, 3].map((row) => <div key={row} className="h-14 animate-pulse bg-white/[0.025]" />)}</div>
-        ) : filteredInvoices.length ? (
-          <div className="overflow-x-auto">
-            <div className="grid min-w-[680px] grid-cols-[1fr_1.2fr_.8fr_1fr_.7fr] gap-3 bg-[#19191e] px-5 py-3 text-[9px] uppercase tracking-wide text-[#85858e]">
-              <span>Date</span><span>Plan</span><span>Amount</span><span>Invoice</span><span>Status</span>
-            </div>
-            <ul className="min-w-[680px] divide-y divide-[#242428]">
-              {filteredInvoices.map((invoice) => (
-                <li key={invoice.id} className="grid grid-cols-[1fr_1.2fr_.8fr_1fr_.7fr] items-center gap-3 px-5 py-4 text-[10px]">
-                  <time className="text-[#c7c7ce]">{formatDate(invoice.date)}</time>
-                  <span className="truncate text-[#e1e1e7]">{invoice.plan || 'Subscription'}</span>
-                  <span className="text-[#c7c7ce]">{formatMoney(invoice.amountMinor, invoice.currency)}</span>
-                  {invoice.invoiceUrl ? (
-                    <a href={invoice.invoiceUrl} target="_blank" rel="noreferrer" className="truncate text-[#aaa2ff] hover:text-white">
-                      {invoice.number}
-                    </a>
-                  ) : (
-                    <span className="truncate text-[#85858e]">{invoice.number}</span>
-                  )}
-                  <span className={`w-fit rounded-full border px-2.5 py-1 text-[9px] capitalize ${statusStyle(invoice.status)}`}>
-                    {invoice.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <div className="px-5 py-12 text-center">
-            <p className="text-xs font-medium text-[#d9d9df]">
-              {search ? 'No matching invoices' : 'No billing transactions yet'}
-            </p>
-            <p className="mt-1 text-[10px] text-[#85858e]">
-              {billingError || 'Your invoices will appear here when the billing service provides them.'}
-            </p>
-          </div>
-        )}
-      </section>
+      <BillingHistory invoices={billing.invoices} loading={loading} error={billingError} />
 
       <section className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#26262b] bg-[#131316] px-5 py-4">
         <div>

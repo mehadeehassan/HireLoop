@@ -27,6 +27,7 @@ export const sidebarNavigation: Record<
     { label: 'Add Job', href: '/dashboard/recruiter/add-job', icon: 'add' },
     { label: 'Manage Jobs', href: '/dashboard/recruiter/jobs', icon: 'briefcase' },
     { label: 'Applications', href: '/dashboard/recruiter/applications', icon: 'users' },
+    { label: 'Billing', href: '/dashboard/recruiter/billing', icon: 'wallet' },
     { label: 'Settings', href: '/dashboard/recruiter/settings', icon: 'settings' },
   ],
   admin: [

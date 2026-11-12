@@ -12,7 +12,11 @@ export type DashboardIconName =
   | 'building'
   | 'wallet'
   | 'add'
-  | 'logout';
+  | 'logout'
+  | 'download'
+  | 'eye'
+  | 'close'
+  | 'play';
 
 export default function DashboardIcon({
   name,
@@ -81,6 +85,20 @@ export default function DashboardIcon({
     logout: (
       <path d="M10 17l5-5-5-5M15 12H3M14 3h4a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-4" />
     ),
+    download: (
+      <>
+        <path d="M12 3v12m0 0 4-4m-4 4-4-4" />
+        <path d="M5 17v3h14v-3" />
+      </>
+    ),
+    eye: (
+      <>
+        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+        <circle cx="12" cy="12" r="2.5" />
+      </>
+    ),
+    close: <path d="m6 6 12 12M18 6 6 18" />,
+    play: <path d="m8 5 11 7-11 7V5Z" />,
   };
 
   return (

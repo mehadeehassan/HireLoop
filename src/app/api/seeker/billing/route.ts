@@ -73,6 +73,23 @@ function sanitizeBillingSummary(value: Record<string, unknown>) {
             typeof subscriptionValue.nextBillingDate === 'string'
               ? subscriptionValue.nextBillingDate
               : '',
+          status: typeof subscriptionValue.status === 'string' ? subscriptionValue.status : 'active',
+          startDate: typeof subscriptionValue.startDate === 'string' ? subscriptionValue.startDate : '',
+          expiryDate: typeof subscriptionValue.expiryDate === 'string' ? subscriptionValue.expiryDate : '',
+          monthlyLimit: Number.isInteger(subscriptionValue.monthlyLimit)
+            ? subscriptionValue.monthlyLimit
+            : 0,
+          usedCount: Number.isInteger(subscriptionValue.usedCount) ? subscriptionValue.usedCount : 0,
+          remainingCount: Number.isInteger(subscriptionValue.remainingCount)
+            ? subscriptionValue.remainingCount
+            : 0,
+          nextResetDate:
+            typeof subscriptionValue.nextResetDate === 'string'
+              ? subscriptionValue.nextResetDate
+              : '',
+          features: Array.isArray(subscriptionValue.features)
+            ? subscriptionValue.features.filter((feature): feature is string => typeof feature === 'string')
+            : [],
         }
       : null;
 
@@ -106,6 +123,12 @@ function sanitizeBillingSummary(value: Record<string, unknown>) {
         )
         .map((invoice) => ({
           id: invoice.id,
+          paymentId:
+            typeof invoice.paymentId === 'string' && /^[a-f\d]{24}$/i.test(invoice.paymentId)
+              ? invoice.paymentId
+              : null,
+          checkoutSessionId:
+            typeof invoice.checkoutSessionId === 'string' ? invoice.checkoutSessionId : null,
           number: typeof invoice.number === 'string' ? invoice.number : invoice.id,
           date: typeof invoice.date === 'string' ? invoice.date : '',
           plan: typeof invoice.plan === 'string' ? invoice.plan : '',
@@ -114,6 +137,7 @@ function sanitizeBillingSummary(value: Record<string, unknown>) {
             typeof invoice.currency === 'string' ? invoice.currency.toUpperCase() : 'USD',
           status: typeof invoice.status === 'string' ? invoice.status : 'unknown',
           invoiceUrl: safeInvoiceUrl(invoice.invoiceUrl),
+          invoicePdfUrl: safeInvoiceUrl(invoice.invoicePdfUrl),
         }))
     : [];
 
@@ -126,7 +150,7 @@ function safeInvoiceUrl(value: unknown) {
     const url = new URL(value);
     if (
       url.protocol !== 'https:' ||
-      !['invoice.stripe.com', 'pay.stripe.com'].includes(url.hostname)
+      !['invoice.stripe.com', 'pay.stripe.com', 'files.stripe.com'].includes(url.hostname)
     ) {
       return null;
     }
@@ -141,27 +165,36 @@ export async function GET() {
   if (isResponse(context)) return context;
 
   try {
-    const query = new URLSearchParams({ candidateId: context.candidateId }).toString();
-    const { response, data } = await fetchBackendWithSecret(
-      `/billing?${query}`,
-      'GET',
-      undefined,
-      context.apiSecret,
-    );
-    if (!response.ok) {
-      console.error('Billing backend summary request failed', response.status);
+    const query = new URLSearchParams({
+      userId: context.candidateId,
+      role: 'seeker',
+    }).toString();
+    const [overviewResult, paymentResult, plansResult] = await Promise.all([
+      fetchBackendWithSecret(`/billing/me?${query}`, 'GET', undefined, context.apiSecret),
+      fetchBackendWithSecret(`/billing/payments?${query}&page=1&limit=10`, 'GET', undefined, context.apiSecret),
+      fetchBackendWithSecret(`/billing/plans?${query}`, 'GET', undefined, context.apiSecret),
+    ]);
+    if (!overviewResult.response.ok || !paymentResult.response.ok || !plansResult.response.ok) {
+      console.error('Billing backend summary request failed', {
+        overviewStatus: overviewResult.response.status,
+        paymentStatus: paymentResult.response.status,
+        plansStatus: plansResult.response.status,
+      });
       return NextResponse.json(
         {
-          error:
-            response.status === 404
-              ? 'The backend does not have GET /billing yet. Add the billing API routes to load payment details.'
-              : 'Billing details are not available from the payment service yet.',
-          backendStatus: response.status,
+          error: 'Billing details are not available from the payment service yet.',
         },
-        { status: response.status === 404 ? 503 : 502 },
+        { status: 502 },
       );
     }
-    if (!isRecord(data)) {
+    if (
+      !isRecord(overviewResult.data) ||
+      typeof overviewResult.data.currentPlan !== 'string' ||
+      !isRecord(paymentResult.data) ||
+      !Array.isArray(paymentResult.data.invoices) ||
+      !isRecord(plansResult.data) ||
+      !Array.isArray(plansResult.data.plans)
+    ) {
       console.error('Billing backend returned an unexpected summary response');
       return NextResponse.json(
         { error: 'The billing service returned an unexpected response.' },
@@ -169,7 +202,31 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(sanitizeBillingSummary(data));
+    const overview = overviewResult.data;
+    const summary = sanitizeBillingSummary({
+      subscription: {
+        plan: overview.currentPlan,
+        amountMinor: Math.round(Number(overview.price) * 100),
+        currency: overview.currency,
+        interval: overview.billingInterval,
+        nextBillingDate: overview.expiryDate || '',
+        status: overview.status,
+        startDate: overview.startDate,
+        expiryDate: overview.expiryDate,
+        monthlyLimit: overview.monthlyLimit,
+        usedCount: overview.usedCount,
+        remainingCount: overview.remainingCount,
+        nextResetDate: overview.nextResetDate,
+        features: overview.features,
+      },
+      paymentMethods: overview.paymentMethods,
+      invoices: paymentResult.data.invoices,
+    });
+    return NextResponse.json({
+      ...summary,
+      plans: plansResult.data.plans,
+      pagination: paymentResult.data.pagination || null,
+    });
   } catch (error) {
     console.error('Could not load billing summary from backend', error);
     return NextResponse.json(
@@ -189,7 +246,61 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Billing request must be valid JSON.' }, { status: 400 });
   }
-  if (!isRecord(payload) || !['setup', 'portal'].includes(String(payload.action))) {
+  if (!isRecord(payload)) {
+    return NextResponse.json({ error: 'Unsupported billing action.' }, { status: 400 });
+  }
+
+  if (payload.action === 'resume-checkout' || payload.action === 'cancel-checkout') {
+    const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId : '';
+    if (!/^cs_(test|live)_[A-Za-z0-9_-]+$/.test(sessionId)) {
+      return NextResponse.json({ error: 'A valid pending Checkout session is required.' }, { status: 400 });
+    }
+
+    try {
+      const isResume = payload.action === 'resume-checkout';
+      const path = `/billing/checkout-sessions/${encodeURIComponent(sessionId)}/${isResume ? 'resume' : 'cancel'}`;
+      const { response, data } = await fetchBackendWithSecret(
+        path,
+        'POST',
+        { candidateId: context.candidateId, role: 'seeker' },
+        context.apiSecret,
+      );
+      if (!response.ok) {
+        const error =
+          isRecord(data) && typeof data.message === 'string'
+            ? data.message
+            : 'Could not update this pending payment.';
+        const code = isRecord(data) && typeof data.code === 'string' ? data.code : null;
+        return NextResponse.json(
+          { error, ...(code ? { code } : {}) },
+          { status: [400, 404, 409, 410].includes(response.status) ? response.status : 502 },
+        );
+      }
+
+      if (isResume) {
+        if (isRecord(data) && data.status === 'succeeded') {
+          return NextResponse.json({ status: 'succeeded' });
+        }
+        const url = isRecord(data) ? safeStripeUrl(data.url) : null;
+        if (!url) {
+          console.error('Billing backend returned an invalid pending Checkout URL');
+          return NextResponse.json({ error: 'The payment service returned an invalid redirect.' }, { status: 502 });
+        }
+        return NextResponse.json({ url });
+      }
+
+      if (!isRecord(data) || !['cancelled', 'succeeded'].includes(String(data.status))) {
+        console.error('Billing backend returned an invalid cancellation response');
+        return NextResponse.json({ error: 'The payment service returned an invalid cancellation result.' }, { status: 502 });
+      }
+      return NextResponse.json({ status: 'cancelled' });
+    } catch (error) {
+      console.error('Could not update pending Checkout session', error);
+      return NextResponse.json({ error: 'Could not connect to the billing service.' }, { status: 502 });
+    }
+  }
+
+  if (payload.action !== 'setup' && payload.action !== 'portal') {
     return NextResponse.json({ error: 'Unsupported billing action.' }, { status: 400 });
   }
 
@@ -226,6 +337,13 @@ export async function POST(request: Request) {
         action: payload.action,
         status: response.status,
       });
+      const backendMessage = isRecord(data) && typeof data.message === 'string'
+        ? data.message
+        : null;
+      const backendCode = isRecord(data) && typeof data.code === 'string'
+        ? data.code
+        : null;
+      console.error('Billing backend session failure code', backendCode);
       const requiredRoute = isSetup
         ? 'POST /billing/payment-methods/setup-session'
         : 'POST /billing/portal-session';
@@ -236,7 +354,8 @@ export async function POST(request: Request) {
               ? `The backend is missing ${requiredRoute}. Add this Stripe billing endpoint, then restart the backend.`
               : response.status === 401 || response.status === 403
                 ? 'The backend rejected the billing API credentials. Check that the shared server-only secret matches.'
-                : 'The payment service could not start this billing action.',
+                : backendMessage || 'The payment service could not start this billing action.',
+          ...(backendCode ? { code: backendCode } : {}),
           backendStatus: response.status,
         },
         { status: response.status === 404 ? 503 : 502 },

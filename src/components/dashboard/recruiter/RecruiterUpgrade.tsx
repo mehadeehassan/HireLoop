@@ -2,54 +2,176 @@
 
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import RecruiterPageHeader from './RecruiterPageHeader';
 
-const plans = [
-  {
-    name: 'Starter',
-    monthlyPrice: 0,
-    description: 'Core tools to get started with hiring.',
-    features: [
-      'Up to 5 job posts each month',
-      'Review applicants',
-      'Manage your hiring workflow',
-    ],
-  },
-  {
-    name: 'Growth',
-    monthlyPrice: 17,
-    description: 'Advanced tools to help your team hire more efficiently.',
-    features: [
-      'Higher monthly job posting limit',
-      'Advanced applicant management tools',
-      'Detailed hiring analytics',
-      'Priority support for your hiring team',
-    ],
-    popular: true,
-  },
-  {
-    name: 'Premium',
-    monthlyPrice: 99,
-    description: 'A complete hiring toolkit for teams scaling their recruiting.',
-    features: [
-      'Everything in Growth',
-      'Highest monthly job posting limit',
-      'Multi-role hiring workflows',
-      'Advanced team collaboration',
-      'Priority support for your hiring team',
-    ],
-  },
-];
+type UpgradePlan = {
+  planName: string;
+  price: number;
+  yearlyPrice: number;
+  currency: string;
+  monthlyJobPostLimit: number | null;
+  features: string[];
+};
 
 type BillingPeriod = 'monthly' | 'yearly';
 
-function formatPrice(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+function formatPrice(value: number, currency: string) {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${value.toFixed(2)} ${currency.toUpperCase()}`;
+  }
 }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function fetchAvailablePlans(signal?: AbortSignal) {
+  const response = await fetch('/api/billing/plans', { cache: 'no-store', signal });
+  const result: unknown = await response.json();
+  if (!response.ok || !isRecord(result) || !Array.isArray(result.plans)) {
+    throw new Error(
+      isRecord(result) && typeof result.error === 'string'
+        ? result.error
+        : 'Subscription plans could not be loaded.',
+    );
+  }
+  const availablePlans = result.plans.filter(
+    (plan): plan is UpgradePlan =>
+      isRecord(plan) &&
+      typeof plan.planName === 'string' &&
+      typeof plan.price === 'number' &&
+      typeof plan.yearlyPrice === 'number' &&
+      typeof plan.currency === 'string' &&
+      /^[a-z]{3}$/i.test(plan.currency) &&
+      Number.isFinite(plan.price) &&
+      Number.isFinite(plan.yearlyPrice) &&
+      (typeof plan.monthlyJobPostLimit === 'number' || plan.monthlyJobPostLimit === null) &&
+      Array.isArray(plan.features) &&
+      plan.features.every((feature) => typeof feature === 'string'),
+  );
+  if (availablePlans.length === 0) throw new Error('No subscription plans are available.');
+  return {
+    plans: availablePlans,
+    currentPlan: typeof result.currentPlan === 'string' ? result.currentPlan : 'Starter',
+  };
+}
+
+const planRank: Record<string, number> = { Starter: 0, Growth: 1, Premium: 2 };
 
 export default function RecruiterUpgrade() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+  const [plans, setPlans] = useState<UpgradePlan[]>([]);
+  const [currentPlan, setCurrentPlan] = useState('Starter');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [checkoutPending, setCheckoutPending] = useState(false);
+  const [portalPending, setPortalPending] = useState(false);
+
+  function retryPlans() {
+    setLoading(true);
+    setError('');
+    void fetchAvailablePlans()
+      .then((result) => {
+        setPlans(result.plans);
+        setCurrentPlan(result.currentPlan);
+      })
+      .catch((loadError: unknown) => {
+        setError(loadError instanceof Error ? loadError.message : 'Subscription plans could not be loaded.');
+      })
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    if (new URLSearchParams(window.location.search).get('checkout') === 'cancelled') {
+      toast.info('Checkout was cancelled. Your current plan has not changed.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    fetchAvailablePlans(controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        setPlans(result.plans);
+        setCurrentPlan(result.currentPlan);
+      })
+      .catch((loadError: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(loadError instanceof Error ? loadError.message : 'Subscription plans could not be loaded.');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
+
+  async function startCheckout(planName: string) {
+    if (checkoutPending || (planRank[planName] ?? -1) <= (planRank[currentPlan] ?? 0)) return;
+    setCheckoutPending(true);
+    try {
+      const response = await fetch('/api/checkout_sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planName,
+          billingInterval: billingPeriod === 'yearly' ? 'year' : 'month',
+        }),
+      });
+      const result: unknown = await response.json();
+      if (!response.ok || !isRecord(result)) {
+        throw new Error(
+          isRecord(result) && typeof result.error === 'string'
+            ? result.error
+            : 'Checkout could not be started.',
+        );
+      }
+      if (result.upgraded === true && result.planName === planName) {
+        setCurrentPlan(planName);
+        toast.success(`${planName} is now your active plan.`);
+        setCheckoutPending(false);
+        return;
+      }
+      if (typeof result.url !== 'string') {
+        throw new Error('Checkout could not be started.');
+      }
+      window.location.assign(result.url);
+    } catch (checkoutError) {
+      toast.error(checkoutError instanceof Error ? checkoutError.message : 'Checkout could not be started.');
+      setCheckoutPending(false);
+    }
+  }
+
+  async function openBillingPortal() {
+    if (portalPending) return;
+    setPortalPending(true);
+    try {
+      const response = await fetch('/api/billing/portal-session', { method: 'POST' });
+      const result: unknown = await response.json();
+      if (!response.ok || !isRecord(result) || typeof result.url !== 'string') {
+        throw new Error(
+          isRecord(result) && typeof result.error === 'string'
+            ? result.error
+            : 'Billing management could not be opened.',
+        );
+      }
+      window.location.assign(result.url);
+    } catch (portalError) {
+      toast.error(portalError instanceof Error ? portalError.message : 'Billing management could not be opened.');
+      setPortalPending(false);
+    }
+  }
+
+  const orderedPlans = [...plans].sort(
+    (first, second) =>
+      ['Starter', 'Growth', 'Premium'].indexOf(first.planName) -
+      ['Starter', 'Growth', 'Premium'].indexOf(second.planName),
+  );
 
   return (
     <div className="px-4 py-6 sm:px-6 lg:px-8">
@@ -80,12 +202,31 @@ export default function RecruiterUpgrade() {
         </span>
       </div>
 
+      {error && (
+        <div role="alert" className="mx-auto mb-5 flex max-w-6xl flex-wrap items-center justify-between gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">
+          <span>{error}</span>
+          <button type="button" onClick={retryPlans} className="rounded border border-red-300/20 px-3 py-1.5 hover:bg-white/5">
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-3">
-        {plans.map((plan) => (
+        {loading
+          ? [0, 1, 2].map((item) => (
+              <div key={item} className="h-[440px] animate-pulse rounded-xl border border-[#252d43] bg-[#111827]/70" />
+            ))
+          : orderedPlans.map((plan) => {
+          const isCurrentPlan = currentPlan.toLowerCase() === plan.planName.toLowerCase();
+          const isPaidPlan = plan.planName !== 'Starter';
+          const canSelectPlan = isPaidPlan && (planRank[plan.planName] ?? -1) > (planRank[currentPlan] ?? 0);
+          const monthlyPrice = billingPeriod === 'yearly' ? plan.yearlyPrice / 12 : plan.price;
+          const planLimit = plan.monthlyJobPostLimit;
+          return (
           <section
-            key={plan.name}
+            key={plan.planName}
             className={`flex flex-col rounded-xl border bg-[#111827]/70 p-6 sm:p-8 ${
-              plan.popular
+              plan.planName === 'Growth'
                 ? 'border-[#6258ff]/40 shadow-[0_20px_70px_rgba(27,25,82,.2)]'
                 : 'border-[#252d43]'
             }`}
@@ -95,30 +236,32 @@ export default function RecruiterUpgrade() {
                 <span className="rounded-full bg-[#6258ff]/15 px-3 py-1 text-[10px] font-medium text-[#b8b2ff]">
                   Recruiter plan
                 </span>
-                <h2 className="mt-4 text-2xl font-semibold text-white">{plan.name}</h2>
+                <h2 className="mt-4 text-2xl font-semibold text-white">{plan.planName}</h2>
               </div>
-              {plan.popular && (
+              {plan.planName === 'Growth' && (
                 <span className="rounded-full border border-[#6258ff]/30 px-3 py-1.5 text-[10px] text-[#b8b2ff]">
                   Popular
                 </span>
               )}
             </div>
             <p className="mt-4 text-2xl font-semibold text-white">
-              {plan.monthlyPrice === 0
+              {!isPaidPlan
                 ? 'Free'
-                : `$${formatPrice(
-                    billingPeriod === 'yearly' ? plan.monthlyPrice * 0.75 : plan.monthlyPrice,
-                  )}`}
-              {plan.monthlyPrice > 0 && (
+                : formatPrice(monthlyPrice, plan.currency)}
+              {isPaidPlan && (
                 <span className="ml-1 text-[10px] font-normal text-[#9ba4b7]">/month</span>
               )}
             </p>
-            {billingPeriod === 'yearly' && plan.monthlyPrice > 0 && (
+            {billingPeriod === 'yearly' && isPaidPlan && (
               <p className="mt-1 text-[10px] text-[#9ba4b7]">
-                ${formatPrice(plan.monthlyPrice * 0.75 * 12)} billed yearly
+                {formatPrice(plan.yearlyPrice, plan.currency)} billed yearly
               </p>
             )}
-            <p className="mt-2 min-h-10 text-xs leading-5 text-[#9ba4b7]">{plan.description}</p>
+            <p className="mt-2 min-h-10 text-xs leading-5 text-[#9ba4b7]">
+              {planLimit === null
+                ? 'Plan features and limits for your hiring team.'
+                : `Up to ${planLimit} job posts each month.`}
+            </p>
 
             <ul className="mt-6 flex-1 space-y-3 border-t border-[#252d43] pt-6">
               {plan.features.map((feature) => (
@@ -136,34 +279,47 @@ export default function RecruiterUpgrade() {
 
             <button
               type="button"
-              onClick={() =>
-                toast.info(
-                  plan.monthlyPrice === 0
-                    ? 'Starter plan selected. Plan changes are not connected yet.'
-                    : `${plan.name} ${billingPeriod} plan selected at $${
-                        billingPeriod === 'yearly'
-                          ? formatPrice(plan.monthlyPrice * 0.75 * 12)
-                          : formatPrice(plan.monthlyPrice)
-                      }${billingPeriod === 'yearly' ? '/year' : '/month'}. Checkout is not connected; no payment has been made.`,
-                )
-              }
+              onClick={() => {
+                if (!canSelectPlan) return;
+                void startCheckout(plan.planName);
+              }}
+              disabled={!canSelectPlan || checkoutPending}
               className={`mt-7 h-10 rounded-md px-5 text-[11px] font-semibold transition ${
-                plan.popular
+                plan.planName === 'Growth'
                   ? 'bg-[#6258ff] text-white hover:bg-[#7168ff]'
                   : 'border border-[#303a55] text-[#c5ccda] hover:bg-white/5'
-              }`}
+              } disabled:cursor-not-allowed disabled:opacity-50`}
             >
-              {plan.monthlyPrice === 0 ? 'Choose Starter' : `Purchase ${plan.name}`}
+              {isCurrentPlan
+                ? 'Current plan'
+                : !isPaidPlan
+                  ? 'Included'
+                  : checkoutPending
+                    ? 'Connecting to Stripe…'
+                    : canSelectPlan
+                      ? currentPlan === 'Starter'
+                        ? `Purchase ${plan.planName}`
+                        : `Upgrade to ${plan.planName}`
+                      : 'Unavailable'}
             </button>
           </section>
-        ))}
+          );
+        })}
       </div>
 
-      <p className="mx-auto mt-5 max-w-5xl rounded-lg border border-amber-400/15 bg-amber-400/[0.04] p-3 text-[10px] leading-5 text-amber-200/80">
-        Plan checkout is not connected. Paid plans are activated only after trusted backend
-        provisioning; monthly limits are configurable. No plan will be changed and no payment will
-        be taken here.
-      </p>
+      {currentPlan !== 'Starter' && (
+        <div className="mx-auto mt-5 flex max-w-5xl flex-wrap items-center justify-between gap-3 rounded-lg border border-[#6258ff]/20 bg-[#6258ff]/5 p-3 text-[10px] leading-5 text-[#d3d0ff]">
+          <p>Your current paid plan is active. Manage billing securely through Stripe.</p>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/recruiter/billing" className="rounded border border-[#6258ff]/30 px-3 py-1.5 hover:bg-white/5">
+              Billing details
+            </Link>
+            <button type="button" onClick={() => void openBillingPortal()} disabled={portalPending} className="rounded border border-[#6258ff]/30 px-3 py-1.5 hover:bg-white/5 disabled:opacity-50">
+              {portalPending ? 'Opening…' : 'Manage billing'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <Link
         href="/dashboard/recruiter"
