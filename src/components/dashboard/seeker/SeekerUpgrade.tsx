@@ -11,10 +11,10 @@ const plans = [
     monthlyPrice: 0,
     description: 'Get started with the essentials for your job search.',
     features: [
+      'Up to 5 job applications each month',
       'Daily AI match brief (top 5)',
       'Verified salary bands',
       'Company insight dashboards',
-      '1-click apply, unlimited',
     ],
   },
   {
@@ -22,10 +22,10 @@ const plans = [
     monthlyPrice: 17,
     description: 'Build your insights hub and find the right opportunities.',
     features: [
+      'Higher monthly application limit',
       'Daily AI match brief (top 5)',
       'Verified salary bands',
       'Company insight dashboards',
-      '1-click apply, unlimited',
     ],
     popular: true,
   },
@@ -35,6 +35,7 @@ const plans = [
     description: 'Get more ways to showcase your career and connect with teams.',
     features: [
       'Everything in Growth',
+      'Highest monthly application limit',
       'Multi-profile career portfolios',
       'Shared talent rooms',
       'Recruiter view (read-only)',
@@ -159,8 +160,9 @@ export default function SeekerUpgrade() {
       </div>
 
       <p className="mt-5 rounded-lg border border-amber-400/15 bg-amber-400/[0.04] p-3 text-[10px] leading-5 text-amber-200/80">
-        Static preview: checkout and plan activation are not connected. Yearly amounts are billed
-        upfront and include a 25% discount. No plan will be changed and no payment will be taken.
+        Plan checkout is not connected. Paid plans are activated only after trusted backend
+        provisioning; monthly limits are configurable. No plan will be changed and no payment will
+        be taken here.
       </p>
 
       <Link

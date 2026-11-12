@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth';
+import { fetchBackendUsage } from '@/lib/job-api';
 import { getDatabase } from '@/lib/mongodb';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -23,28 +24,47 @@ export async function GET() {
     return NextResponse.json({ error: 'Only job seekers can access this profile.' }, { status: 403 });
   }
 
-  const profile = await (await getDatabase())
-    .collection('seeker_profiles')
-    .findOne({ candidateId: session.user.id });
+  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  if (!apiSecret && process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Subscription service is not configured.' }, { status: 503 });
+  }
 
-  return NextResponse.json({
-    name: profile?.name || session.user.name || '',
-    email: session.user.email,
-    plan: profile?.plan || profile?.subscriptionPlan || 'Starter',
-    headline: profile?.headline || '',
-    bio: profile?.bio || '',
-    hasResume: Boolean(profile?.resumeFile?.data || profile?.resumeUrl),
-    resumeFileName: profile?.resumeFile?.name || '',
-    phone: profile?.phone || '',
-    location: profile?.location || '',
-    experience: profile?.experience || '',
-    skills: Array.isArray(profile?.skills) ? profile.skills.join(', ') : '',
-    linkedinUrl: profile?.linkedinUrl || '',
-    resumeUrl: profile?.resumeUrl || '',
-    portfolioUrl: profile?.portfolioUrl || '',
-    coverLetter: profile?.coverLetter || '',
-    image: profile?.image || session.user.image || '',
-  });
+  try {
+    const { response, data } = await fetchBackendUsage('seeker', session.user.id, apiSecret);
+    if (!response.ok || !isRecord(data) || typeof data.plan !== 'string') {
+      console.error('Seeker subscription summary request failed', response.status);
+      return NextResponse.json(
+        { error: 'Could not load seeker subscription information.' },
+        { status: 502 },
+      );
+    }
+
+    const profile = await (await getDatabase())
+      .collection('seeker_profiles')
+      .findOne({ candidateId: session.user.id });
+
+    return NextResponse.json({
+      name: profile?.name || session.user.name || '',
+      email: session.user.email,
+      plan: data.plan,
+      headline: profile?.headline || '',
+      bio: profile?.bio || '',
+      hasResume: Boolean(profile?.resumeFile?.data || profile?.resumeUrl),
+      resumeFileName: profile?.resumeFile?.name || '',
+      phone: profile?.phone || '',
+      location: profile?.location || '',
+      experience: profile?.experience || '',
+      skills: Array.isArray(profile?.skills) ? profile.skills.join(', ') : '',
+      linkedinUrl: profile?.linkedinUrl || '',
+      resumeUrl: profile?.resumeUrl || '',
+      portfolioUrl: profile?.portfolioUrl || '',
+      coverLetter: profile?.coverLetter || '',
+      image: profile?.image || session.user.image || '',
+    });
+  } catch (error) {
+    console.error('Could not load seeker profile and subscription', error);
+    return NextResponse.json({ error: 'Could not load seeker profile.' }, { status: 502 });
+  }
 }
 
 export async function PATCH(request: Request) {

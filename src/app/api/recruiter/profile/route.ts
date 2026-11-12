@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth';
+import { fetchBackendUsage } from '@/lib/job-api';
 import { getDatabase } from '@/lib/mongodb';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -30,26 +31,45 @@ export async function GET() {
     return NextResponse.json({ error: 'Only recruiters can access this profile.' }, { status: 403 });
   }
 
-  const db = await getDatabase();
-  const profile = await db
-    .collection('recruiter_profiles')
-    .findOne({ recruiterId: session.user.id });
+  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  if (!apiSecret && process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Subscription service is not configured.' }, { status: 503 });
+  }
 
-  return NextResponse.json({
-    recruiterName: profile?.recruiterName || session.user.name || '',
-    plan: profile?.plan || profile?.subscriptionPlan || 'Starter',
-    companyName: profile?.companyName || '',
-    email: profile?.email || session.user.email || '',
-    phone: profile?.phone || '',
-    companySize: profile?.companySize || '',
-    industry: profile?.industry || '',
-    companyWebsite: profile?.companyWebsite || '',
-    companyLogo: profile?.companyLogo || '',
-    companyDescription: profile?.companyDescription || '',
-    emailNotifications: profile?.emailNotifications ?? true,
-    applicationNotifications: profile?.applicationNotifications ?? true,
-    image: profile?.image || session.user.image || '',
-  });
+  try {
+    const { response, data } = await fetchBackendUsage('recruiter', session.user.id, apiSecret);
+    if (!response.ok || !isRecord(data) || typeof data.plan !== 'string') {
+      console.error('Recruiter subscription summary request failed', response.status);
+      return NextResponse.json(
+        { error: 'Could not load recruiter subscription information.' },
+        { status: 502 },
+      );
+    }
+
+    const db = await getDatabase();
+    const profile = await db
+      .collection('recruiter_profiles')
+      .findOne({ recruiterId: session.user.id });
+
+    return NextResponse.json({
+      recruiterName: profile?.recruiterName || session.user.name || '',
+      plan: data.plan,
+      companyName: profile?.companyName || '',
+      email: profile?.email || session.user.email || '',
+      phone: profile?.phone || '',
+      companySize: profile?.companySize || '',
+      industry: profile?.industry || '',
+      companyWebsite: profile?.companyWebsite || '',
+      companyLogo: profile?.companyLogo || '',
+      companyDescription: profile?.companyDescription || '',
+      emailNotifications: profile?.emailNotifications ?? true,
+      applicationNotifications: profile?.applicationNotifications ?? true,
+      image: profile?.image || session.user.image || '',
+    });
+  } catch (error) {
+    console.error('Could not load recruiter profile and subscription', error);
+    return NextResponse.json({ error: 'Could not load recruiter profile.' }, { status: 502 });
+  }
 }
 
 export async function PATCH(request: Request) {

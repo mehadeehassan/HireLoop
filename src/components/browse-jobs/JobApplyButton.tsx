@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useSession } from '@/lib/auth-client';
@@ -109,6 +110,7 @@ function TextField({
 }
 
 export default function JobApplyButton({ jobId }: { jobId: string }) {
+  const router = useRouter();
   const { data: session, isPending } = useSession();
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
@@ -179,6 +181,8 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
           typeof result === 'object' && result !== null
             ? (result as {
                 error?: unknown;
+                message?: unknown;
+                upgradeRequired?: unknown;
                 alreadyApplied?: unknown;
                 warning?: unknown;
                 backendStatus?: unknown;
@@ -187,6 +191,16 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
             : {};
 
         if (!response.ok) {
+          if (payload.error === 'MONTHLY_LIMIT_REACHED' && payload.upgradeRequired === true) {
+            setShowForm(false);
+            toast.info(
+              typeof payload.message === 'string'
+                ? payload.message
+                : 'You have reached your monthly application limit.',
+            );
+            router.push('/dashboard/seeker/upgrade?reason=monthly_limit_reached');
+            return;
+          }
           if (payload.alreadyApplied === true) {
             setApplied(true);
             setShowForm(false);
@@ -227,7 +241,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
         setApplying(false);
       }
     },
-    [applying, applied, jobId, profile, resumeFile, validateForm],
+    [applying, applied, jobId, profile, resumeFile, router, validateForm],
   );
 
   useEffect(() => {

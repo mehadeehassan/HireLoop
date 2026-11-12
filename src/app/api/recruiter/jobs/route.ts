@@ -7,6 +7,9 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.user.role !== 'recruiter') {
+    return NextResponse.json({ error: 'Only recruiters can view recruiter jobs.' }, { status: 403 });
+  }
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
@@ -76,11 +79,35 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.user.role !== 'recruiter') {
+    return NextResponse.json({ error: 'Only recruiters can publish jobs.' }, { status: 403 });
+  }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    const value: unknown = await request.json();
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return NextResponse.json({ error: 'Job details must be a JSON object.' }, { status: 400 });
+    }
+    body = value as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: 'Job details must be valid JSON.' }, { status: 400 });
+  }
+
+  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  if (!apiSecret && process.env.NODE_ENV === 'production') {
+    console.error('Job backend API secret is not configured');
+    return NextResponse.json({ error: 'Job service is not configured.' }, { status: 503 });
+  }
+  if (!apiSecret) {
+    console.warn(
+      'HIRELOOP_APPLICATIONS_API_SECRET is unset; forwarding recruiter job creation without backend authentication in development',
+    );
+  }
 
   try {
     const { response, data } = await fetchBackendJobs('POST', {
+      apiSecret,
       body: {
         ...body,
         recruiterId: session.user.id,
@@ -93,6 +120,7 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
+      if (response.status === 429) return NextResponse.json(data, { status: 429 });
       return NextResponse.json(
         { error: 'Backend job creation failed', details: data },
         { status: response.status },

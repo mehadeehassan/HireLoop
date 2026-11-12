@@ -112,6 +112,22 @@ export default function AddJobForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(job),
       });
+      if (mode === 'create' && response.status === 429) {
+        const result: unknown = await response.json();
+        const error =
+          typeof result === 'object' && result !== null
+            ? (result as { error?: unknown; message?: unknown; upgradeRequired?: unknown })
+            : {};
+        if (error.error === 'MONTHLY_LIMIT_REACHED' && error.upgradeRequired === true) {
+          toast.info(
+            typeof error.message === 'string'
+              ? error.message
+              : 'You have reached your monthly job posting limit.',
+          );
+          router.push('/dashboard/recruiter/upgrade?reason=monthly_limit_reached');
+          return;
+        }
+      }
       if (!response.ok) {
         toast.error(mode === 'edit' ? 'Job update failed' : 'Job publish failed');
         return;

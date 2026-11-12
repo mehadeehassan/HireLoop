@@ -10,14 +10,18 @@ const plans = [
     name: 'Starter',
     monthlyPrice: 0,
     description: 'Core tools to get started with hiring.',
-    features: ['Post jobs', 'Review applicants', 'Manage your hiring workflow'],
+    features: [
+      'Up to 5 job posts each month',
+      'Review applicants',
+      'Manage your hiring workflow',
+    ],
   },
   {
     name: 'Growth',
     monthlyPrice: 17,
     description: 'Advanced tools to help your team hire more efficiently.',
     features: [
-      'Unlimited active job listings',
+      'Higher monthly job posting limit',
       'Advanced applicant management tools',
       'Detailed hiring analytics',
       'Priority support for your hiring team',
@@ -30,6 +34,7 @@ const plans = [
     description: 'A complete hiring toolkit for teams scaling their recruiting.',
     features: [
       'Everything in Growth',
+      'Highest monthly job posting limit',
       'Multi-role hiring workflows',
       'Advanced team collaboration',
       'Priority support for your hiring team',
@@ -155,8 +160,9 @@ export default function RecruiterUpgrade() {
       </div>
 
       <p className="mx-auto mt-5 max-w-5xl rounded-lg border border-amber-400/15 bg-amber-400/[0.04] p-3 text-[10px] leading-5 text-amber-200/80">
-        Static preview: checkout and plan activation are not connected. Yearly amounts are billed
-        upfront and include a 25% discount. No plan will be changed and no payment will be taken.
+        Plan checkout is not connected. Paid plans are activated only after trusted backend
+        provisioning; monthly limits are configurable. No plan will be changed and no payment will
+        be taken here.
       </p>
 
       <Link

@@ -240,31 +240,6 @@ export async function POST(
       );
     }
 
-    if (!apiSecret) {
-      const applications = (await getDatabase()).collection('applications');
-      await applications.createIndex(
-        { candidateId: 1, jobId: 1 },
-        {
-          unique: true,
-          partialFilterExpression: {
-            candidateId: { $type: 'string' },
-            jobId: { $type: 'string' },
-          },
-        },
-      );
-      const existingApplication = await applications.findOne({
-        candidateId: session.user.id,
-        jobId,
-        isDummy: { $ne: true },
-      });
-      if (existingApplication) {
-        return NextResponse.json(
-          { error: 'You have already applied for this job.', alreadyApplied: true },
-          { status: 409 },
-        );
-      }
-    }
-
     const { resumeFile, ...candidateProfile } = details;
     const candidateDetails = {
       ...candidateProfile,
@@ -322,6 +297,26 @@ export async function POST(
         );
       }
 
+      if (backendResponse.status === 429 && backendRecord?.error === 'MONTHLY_LIMIT_REACHED') {
+        return NextResponse.json(
+          {
+            error: 'MONTHLY_LIMIT_REACHED',
+            message:
+              typeof backendRecord.message === 'string'
+                ? backendRecord.message
+                : 'You have reached your monthly application limit.',
+            upgradeRequired: true,
+            upgradeUrl: '/dashboard/seeker/upgrade?reason=monthly_limit_reached',
+            plan: backendRecord.plan,
+            used: backendRecord.used,
+            limit: backendRecord.limit,
+            remaining: 0,
+            resetDate: backendRecord.resetDate,
+          },
+          { status: 429 },
+        );
+      }
+
       if (backendResponse.status === 413) {
         return NextResponse.json(
           {
@@ -349,16 +344,6 @@ export async function POST(
       try {
         const db = await getDatabase();
         const applications = db.collection('applications');
-        await applications.createIndex(
-          { candidateId: 1, jobId: 1 },
-          {
-            unique: true,
-            partialFilterExpression: {
-              candidateId: { $type: 'string' },
-              jobId: { $type: 'string' },
-            },
-          },
-        );
         await applications.updateOne(
           { candidateId: session.user.id, jobId },
           { $setOnInsert: application },
