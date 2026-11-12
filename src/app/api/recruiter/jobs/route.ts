@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { fetchBackendJobs } from '@/lib/job-api';
+import { getDatabase } from '@/lib/mongodb';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
@@ -35,9 +36,32 @@ export async function GET(request: Request) {
         _id: undefined,
       }))
       .slice((page - 1) * limit, page * limit);
+    const jobIds = jobs.map((job) => job.id).filter(Boolean);
+    const applications = jobIds.length
+      ? await (await getDatabase())
+          .collection('applications')
+          .find(
+            {
+              recruiterId: session.user.id,
+              isDummy: { $ne: true },
+              jobId: { $in: jobIds },
+            },
+            { projection: { jobId: 1 } },
+          )
+          .toArray()
+      : [];
+    const applicantCounts = new Map<string, number>();
+    for (const application of applications) {
+      const jobId = String(application.jobId);
+      applicantCounts.set(jobId, (applicantCounts.get(jobId) || 0) + 1);
+    }
+    const jobsWithApplicantCounts = jobs.map((job) => ({
+      ...job,
+      applicants: applicantCounts.get(job.id) || 0,
+    }));
 
     return NextResponse.json({
-      jobs,
+      jobs: jobsWithApplicantCounts,
       pagination: { page, limit, total, totalPages },
     });
   } catch (error) {

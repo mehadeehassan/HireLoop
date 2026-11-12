@@ -4,6 +4,7 @@ import { getDatabase } from '@/lib/mongodb';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
+import { applicationStatuses } from '@/lib/application-status';
 
 export async function PATCH(
   request: Request,
@@ -30,7 +31,7 @@ export async function PATCH(
       : undefined;
   if (
     typeof status !== 'string' ||
-    !['New', 'Reviewed', 'Shortlisted', 'Rejected'].includes(status)
+    !applicationStatuses.some((applicationStatus) => applicationStatus === status)
   ) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
   }

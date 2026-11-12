@@ -20,6 +20,10 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Database configuration
+
+Set `BETTER_AUTH_DB_URL` in `.env` to the current MongoDB connection string for an active cluster. If authentication fails with a MongoDB server-selection or DNS error, verify the cluster hostname in Atlas, that the cluster is running, and that your network can resolve and reach it.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

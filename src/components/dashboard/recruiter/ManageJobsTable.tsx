@@ -28,7 +28,7 @@ export default function ManageJobsTable() {
   }, [deletingJob, isDeleting]);
 
   useEffect(() => {
-    fetch(`/api/recruiter/jobs?page=${page}&limit=6`)
+    fetch(`/api/recruiter/jobs?page=${page}&limit=6`, { cache: 'no-store' })
       .then((response) =>
         response.ok ? response.json() : { jobs: [], pagination: { totalPages: 1 } },
       )

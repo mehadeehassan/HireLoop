@@ -1,7 +1,8 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { toast } from 'sonner';
+import DashboardAvatar from '@/components/dashboard/shared/DashboardAvatar';
 
 export default function RecruiterSettings() {
   const [emailAlerts, setEmailAlerts] = useState(true);
@@ -10,6 +11,7 @@ export default function RecruiterSettings() {
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState({
     recruiterName: '',
+    image: '',
     companyName: '',
     email: '',
     phone: '',
@@ -31,6 +33,7 @@ export default function RecruiterSettings() {
         if (!active) return;
         setProfile({
           recruiterName: data.recruiterName || '',
+          image: data.image || '',
           companyName: data.companyName || '',
           email: data.email || '',
           phone: data.phone || '',
@@ -51,6 +54,35 @@ export default function RecruiterSettings() {
       active = false;
     };
   }, []);
+
+  async function selectAvatar(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+      toast.error('Profile image must be a JPG, PNG, or GIF image.');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Profile image must be 5 MB or smaller.');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const image = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === 'string'
+          ? resolve(reader.result)
+          : reject(new Error('Could not read the selected image.'));
+        reader.onerror = () => reject(new Error('Could not read the selected image.'));
+        reader.readAsDataURL(file);
+      });
+      setProfile((current) => ({ ...current, image }));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not load profile image.');
+    }
+  }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,6 +107,8 @@ export default function RecruiterSettings() {
     }
   }
 
+  const avatarInput = useRef<HTMLInputElement>(null);
+
   return (
     <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
       <section className="rounded-lg border border-[#252d43] bg-[#111827]/55 p-5 sm:p-6">
@@ -86,6 +120,32 @@ export default function RecruiterSettings() {
           <div className="mt-5 h-40 animate-pulse rounded-md bg-[#171e31]" />
         ) : (
           <form onSubmit={saveProfile}>
+            <div className="mt-5 flex flex-wrap items-center gap-4">
+              <DashboardAvatar
+                key={profile.image}
+                src={profile.image}
+                name={profile.recruiterName}
+                size="lg"
+              />
+              <div>
+                <p className="text-[11px] text-[#aab1c1]">Profile Photo</p>
+                <button
+                  type="button"
+                  onClick={() => avatarInput.current?.click()}
+                  className="mt-2 rounded-md border border-[#303a55] px-3 py-2 text-[10px] text-[#dedee3] hover:bg-white/5"
+                >
+                  Upload Photo
+                </button>
+                <input
+                  ref={avatarInput}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif"
+                  onChange={selectAvatar}
+                  className="sr-only"
+                />
+                <p className="mt-1.5 text-[9px] text-[#858da1]">JPG, GIF, or PNG. Max size 5 MB.</p>
+              </div>
+            </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <Field
                 label="Recruiter Name"

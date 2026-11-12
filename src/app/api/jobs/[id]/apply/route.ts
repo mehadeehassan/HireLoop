@@ -3,7 +3,7 @@ import { fetchBackendJobs, submitBackendApplication } from '@/lib/job-api';
 import { getDatabase } from '@/lib/mongodb';
 import { toPublicJob } from '@/lib/public-jobs';
 import { headers } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 
 type BackendJob = {
   _id?: string;
@@ -240,6 +240,31 @@ export async function POST(
       );
     }
 
+    if (!apiSecret) {
+      const applications = (await getDatabase()).collection('applications');
+      await applications.createIndex(
+        { candidateId: 1, jobId: 1 },
+        {
+          unique: true,
+          partialFilterExpression: {
+            candidateId: { $type: 'string' },
+            jobId: { $type: 'string' },
+          },
+        },
+      );
+      const existingApplication = await applications.findOne({
+        candidateId: session.user.id,
+        jobId,
+        isDummy: { $ne: true },
+      });
+      if (existingApplication) {
+        return NextResponse.json(
+          { error: 'You have already applied for this job.', alreadyApplied: true },
+          { status: 409 },
+        );
+      }
+    }
+
     const { resumeFile, ...candidateProfile } = details;
     const candidateDetails = {
       ...candidateProfile,
@@ -320,56 +345,46 @@ export async function POST(
       );
     }
 
-    let syncWarning: string | null = null;
-    try {
-      const db = await getDatabase();
-      const applications = db.collection('applications');
-      await applications.createIndex(
-        { candidateId: 1, jobId: 1 },
-        {
-          unique: true,
-          partialFilterExpression: {
-            candidateId: { $type: 'string' },
-            jobId: { $type: 'string' },
+    after(async () => {
+      try {
+        const db = await getDatabase();
+        const applications = db.collection('applications');
+        await applications.createIndex(
+          { candidateId: 1, jobId: 1 },
+          {
+            unique: true,
+            partialFilterExpression: {
+              candidateId: { $type: 'string' },
+              jobId: { $type: 'string' },
+            },
           },
-        },
-      );
-      await applications.insertOne(application);
+        );
+        await applications.updateOne(
+          { candidateId: session.user.id, jobId },
+          { $setOnInsert: application },
+          { upsert: true },
+        );
 
-      await db.collection('seeker_profiles').updateOne(
-        { candidateId: session.user.id },
-        {
-          $set: {
-            ...candidateProfile,
-            email: session.user.email,
-            image: session.user.image || '',
-            candidateId: session.user.id,
-            updatedAt: createdAt,
+        await db.collection('seeker_profiles').updateOne(
+          { candidateId: session.user.id },
+          {
+            $set: {
+              ...candidateProfile,
+              email: session.user.email,
+              image: session.user.image || '',
+              candidateId: session.user.id,
+              updatedAt: createdAt,
+            },
+            $setOnInsert: { createdAt },
           },
-          $setOnInsert: { createdAt },
-        },
-        { upsert: true },
-      );
-    } catch (insertError) {
-      if (
-        typeof insertError === 'object' &&
-        insertError !== null &&
-        'code' in insertError &&
-        insertError.code === 11000
-      ) {
-        syncWarning =
-          'Your application was submitted, but it could not be synced to the dashboard.';
-      } else {
-        console.error('Application was submitted but could not be synced locally', insertError);
-        syncWarning =
-          'Your application was submitted, but it could not be synced to the dashboard.';
+          { upsert: true },
+        );
+      } catch (syncError) {
+        console.error('Application was submitted but local dashboard sync failed', syncError);
       }
-    }
+    });
 
-    return NextResponse.json(
-      { success: true, ...(syncWarning ? { warning: syncWarning } : {}) },
-      { status: 201 },
-    );
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     console.error('Could not submit job application', error);
     return NextResponse.json({ error: 'Could not submit your application.' }, { status: 502 });

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import DashboardPagination from '../shared/DashboardPagination';
 import { useSession } from '@/lib/auth-client';
+import { applicationStatuses, type ApplicationStatus } from '@/lib/application-status';
 import RecruiterApplicationMessage from './RecruiterApplicationMessage';
 
 type Application = {
@@ -13,7 +14,7 @@ type Application = {
   role: string;
   email: string;
   experience: string;
-  status: 'New' | 'Reviewed' | 'Shortlisted' | 'Rejected';
+  status: ApplicationStatus;
   date: string;
   phone: string;
   location: string;
@@ -27,6 +28,7 @@ const statusStyles: Record<string, string> = {
   New: 'bg-[#2a2d50] text-[#9fa3ff]',
   Reviewed: 'bg-[#263a58] text-[#8ab8ff]',
   Shortlisted: 'bg-[#123a33] text-[#4fdda0]',
+  Interview: 'bg-[#433518] text-[#ffd36a]',
   Rejected: 'bg-[#4a2832] text-[#ff8797]',
 };
 
@@ -89,7 +91,7 @@ export default function ApplicationsTable() {
   return (
     <div>
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-        {['All', 'New', 'Reviewed', 'Shortlisted', 'Rejected'].map((item) => (
+        {['All', ...applicationStatuses].map((item) => (
           <button
             key={item}
             type="button"
@@ -148,14 +150,15 @@ export default function ApplicationsTable() {
                         aria-label={`Status for ${application.name}`}
                         value={application.status}
                         onChange={(event) =>
-                          updateStatus(application.id, event.target.value as Application['status'])
+                          updateStatus(application.id, event.target.value as ApplicationStatus)
                         }
                         className={`h-7 appearance-none rounded-full border border-white/6 px-3 pr-7 text-[9px] outline-none transition focus:border-[#6258ff] ${statusStyles[application.status]}`}
                       >
-                        <option className="bg-[#171e31] text-[#edf0f7]">New</option>
-                        <option className="bg-[#171e31] text-[#edf0f7]">Reviewed</option>
-                        <option className="bg-[#171e31] text-[#edf0f7]">Shortlisted</option>
-                        <option className="bg-[#171e31] text-[#edf0f7]">Rejected</option>
+                        {applicationStatuses.map((status) => (
+                          <option key={status} className="bg-[#171e31] text-[#edf0f7]">
+                            {status}
+                          </option>
+                        ))}
                       </select>
                       <svg
                         aria-hidden="true"
@@ -214,11 +217,20 @@ export default function ApplicationsTable() {
                     <p className="mt-1 text-[10px] text-[#858da1]">{application.role}</p>
                   </div>
                 </div>
-                <span
-                  className={`rounded-full px-2 py-1 text-[9px] ${statusStyles[application.status]}`}
+                <select
+                  aria-label={`Status for ${application.name}`}
+                  value={application.status}
+                  onChange={(event) =>
+                    updateStatus(application.id, event.target.value as ApplicationStatus)
+                  }
+                  className={`h-7 max-w-32 rounded-full border border-white/6 px-2 text-[9px] outline-none focus:border-[#6258ff] ${statusStyles[application.status]}`}
                 >
-                  {application.status}
-                </span>
+                  {applicationStatuses.map((status) => (
+                    <option key={status} className="bg-[#171e31] text-[#edf0f7]">
+                      {status}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="mt-3 flex justify-between text-[10px] text-[#858da1]">
                 <span>{application.experience}</span>

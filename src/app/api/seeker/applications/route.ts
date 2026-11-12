@@ -75,6 +75,12 @@ export async function GET() {
             : application.createdAt instanceof Date
               ? application.createdAt.toISOString()
               : '';
+        const updatedAt =
+          typeof application.updatedAt === 'string'
+            ? application.updatedAt
+            : application.updatedAt instanceof Date
+              ? application.updatedAt.toISOString()
+              : '';
 
         return {
           id: getId(application.id) || getId(application._id),
@@ -101,6 +107,7 @@ export async function GET() {
           type: typeof application.type === 'string' ? application.type : '',
           workMode: typeof application.workMode === 'string' ? application.workMode : '',
           createdAt,
+          updatedAt,
           date: createdAt
             ? new Date(createdAt).toLocaleDateString('en-US', {
                 month: 'short',

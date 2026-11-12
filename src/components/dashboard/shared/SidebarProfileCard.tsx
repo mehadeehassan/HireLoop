@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { DashboardRole } from './DashboardTypes';
 import DashboardAvatar from './DashboardAvatar';
 import { useEffect, useState } from 'react';
@@ -12,6 +13,7 @@ type UserLike = {
 type RecruiterProfile = {
   recruiterName: string;
   plan: string;
+  image: string;
 };
 
 type SeekerProfile = {
@@ -75,6 +77,7 @@ export default function SidebarProfileCard({
         setRecruiterProfile({
           recruiterName: typeof profile.recruiterName === 'string' ? profile.recruiterName : '',
           plan: typeof profile.plan === 'string' ? profile.plan : 'Starter',
+          image: typeof profile.image === 'string' ? profile.image : '',
         });
       } else {
         setSeekerProfile({
@@ -95,6 +98,8 @@ export default function SidebarProfileCard({
   }, [role]);
 
   if (role === 'seeker') {
+    const seekerPlan = getSeekerPlanLabel(seekerProfile?.plan || 'Starter');
+
     return (
       <div className="mx-4 mt-5 flex h-14.5 items-center gap-3 rounded-lg border border-[#242a3b] bg-[#171d30] px-3">
         <DashboardAvatar src={seekerProfile?.image || user?.image} name={seekerProfile?.name || user?.name} size="lg" />
@@ -102,19 +107,26 @@ export default function SidebarProfileCard({
           <p className="truncate text-[14px] font-medium text-[#eef0f5]">
             {seekerProfile?.name || user?.name || 'Seeker'}
           </p>
-          <p className="text-[12px] text-[#8f96aa]">
-            {getSeekerPlanLabel(seekerProfile?.plan || 'Starter')} Tier
-          </p>
+          <Link
+            href="/dashboard/seeker/upgrade"
+            className="mt-0.5 inline-flex rounded-sm bg-[#194f3b] px-2 py-0.5 text-[10px] text-[#59d89b] transition hover:bg-[#21684e] hover:text-white"
+            aria-label={`${seekerPlan} Tier. View all plans`}
+          >
+            {seekerPlan} Tier
+          </Link>
         </div>
       </div>
     );
   }
 
   if (role === 'recruiter') {
+    const recruiterPlan = recruiterProfile?.plan || 'Starter';
+
     return (
       <div className="mx-4 mt-6 flex items-center gap-3 border-b border-[#252a3c] pb-4">
         <DashboardAvatar
-          src={user?.image}
+          key={recruiterProfile?.image || user?.image}
+          src={recruiterProfile?.image || user?.image}
           name={recruiterProfile?.recruiterName || user?.name}
           size="lg"
         />
@@ -123,9 +135,13 @@ export default function SidebarProfileCard({
             {recruiterProfile?.recruiterName || user?.name || 'Recruiter'}
           </p>
           <p className="text-[11px] text-[#aab0c1]">Recruiter</p>
-          <span className="mt-1 inline-flex rounded-sm bg-[#194f3b] px-2 py-0.5 text-[10px] text-[#59d89b]">
-            {getRecruiterPlanLabel(recruiterProfile?.plan || 'Starter')}
-          </span>
+          <Link
+            href="/dashboard/recruiter/upgrade"
+            className="mt-1 inline-flex rounded-sm bg-[#194f3b] px-2 py-0.5 text-[10px] text-[#59d89b] transition hover:bg-[#21684e] hover:text-white"
+            aria-label={`${getRecruiterPlanLabel(recruiterPlan)} plan. View all plans`}
+          >
+            {getRecruiterPlanLabel(recruiterPlan)}
+          </Link>
         </div>
       </div>
     );

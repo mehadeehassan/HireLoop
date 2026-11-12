@@ -11,16 +11,29 @@ export function useSeekerDashboardData({ includeJobs = true }: { includeJobs?: b
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
 
-  const refresh = useCallback(() => {
-    setLoading(true);
+  const refresh = useCallback((options?: { background?: boolean }) => {
+    if (!options?.background) setLoading(true);
     setError('');
     setReloadKey((key) => key + 1);
   }, []);
 
   useEffect(() => {
-    window.addEventListener('focus', refresh);
-    return () => window.removeEventListener('focus', refresh);
+    function handleFocus() {
+      refresh();
+    }
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [refresh]);
+
+  useEffect(() => {
+    if (includeJobs) return;
+
+    const refreshTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') refresh({ background: true });
+    }, 15_000);
+    return () => window.clearInterval(refreshTimer);
+  }, [includeJobs, refresh]);
 
   useEffect(() => {
     const controller = new AbortController();

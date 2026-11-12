@@ -153,6 +153,7 @@ function recentApplicationStatusStyle(status: string) {
     New: 'bg-[#6258ff]/15 text-[#9fa3ff]',
     Reviewed: 'bg-[#263a58] text-[#8ab8ff]',
     Shortlisted: 'bg-[#123a33] text-[#4fdda0]',
+    Interview: 'bg-[#433518] text-[#ffd36a]',
     Rejected: 'bg-[#4a2832] text-[#ff8797]',
   };
   return styles[status] || 'bg-[#6258ff]/15 text-[#9fa3ff]';
