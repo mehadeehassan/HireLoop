@@ -23,7 +23,7 @@ export default function CallToActionSection() {
             Create a free account
           </Link>
           <Link
-            href="#pricing"
+            href="/upgrade"
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/15 bg-[#101014]/80 px-5 text-sm font-medium text-white transition hover:bg-white/8"
           >
             View pricing

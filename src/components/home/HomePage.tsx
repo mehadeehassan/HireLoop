@@ -14,7 +14,7 @@ export default function HomePage() {
       <main>
         <HomeDynamicSections />
         <FeaturesSection />
-        <PricingSection />
+        <PricingSection planCtaHref="/upgrade" />
         <CallToActionSection />
       </main>
       <HomeFooter />

@@ -59,17 +59,24 @@ function PlanIcon({ name }: { name: PricingPlan["icon"] }) {
   );
 }
 
-export default function PricingSection() {
+type PricingSectionProps = {
+  planCtaHref?: string;
+};
+
+export default function PricingSection({ planCtaHref: planCtaHrefOverride }: PricingSectionProps = {}) {
   const { data: session, isPending } = useSession();
-  const planHref = isPending
-    ? "#pricing"
-    : session?.user
-      ? session.user.role === "seeker"
-        ? "/dashboard/seeker/upgrade"
-        : session.user.role === "recruiter"
-          ? "/dashboard/recruiter/upgrade"
-          : "/dashboard"
-      : "/signup";
+  const planHref = planCtaHrefOverride ?? (
+    isPending
+      ? "#pricing"
+      : session?.user
+        ? session.user.role === "seeker"
+          ? "/dashboard/seeker/upgrade"
+          : session.user.role === "recruiter"
+            ? "/dashboard/recruiter/upgrade"
+            : "/dashboard"
+        : "/signup"
+  );
+  const isPlanLinkDisabled = !planCtaHrefOverride && isPending;
   const [yearly, setYearly] = useState(false);
 
   return (
@@ -150,13 +157,13 @@ export default function PricingSection() {
 
                 <Link
                   href={planHref}
-                  aria-disabled={isPending}
-                  onClick={isPending ? (event) => event.preventDefault() : undefined}
+                  aria-disabled={isPlanLinkDisabled}
+                  onClick={isPlanLinkDisabled ? (event) => event.preventDefault() : undefined}
                   className={`mt-auto flex min-h-10 items-center justify-between rounded-lg px-3.5 text-xs font-medium transition ${
                     plan.popular
                       ? "mt-7 bg-white text-[#111113] hover:bg-[#e8e8ed]"
                       : "mt-7 bg-[#29292c] text-white hover:bg-[#353538]"
-                  }${isPending ? " cursor-wait opacity-60" : ""}`}
+                  }${isPlanLinkDisabled ? " cursor-wait opacity-60" : ""}`}
                 >
                   Choose This Plan
                   <span aria-hidden="true">→</span>

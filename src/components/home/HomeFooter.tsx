@@ -7,7 +7,7 @@ const footerGroups = [
     links: [
       { label: 'Browse jobs', href: '/#open-roles' },
       { label: 'Platform features', href: '/#features' },
-      { label: 'Pricing plans', href: '/#pricing' },
+      { label: 'Pricing plans', href: '/upgrade' },
     ],
   },
   {

@@ -61,13 +61,7 @@ export default function HomeNavbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [recruiterName, setRecruiterName] = useState<string | null>(null);
   const { data: session, isPending } = useSession();
-  const pricingHref = isPending || !session
-    ? '/#pricing'
-    : session.user.role === 'seeker'
-      ? '/dashboard/seeker/upgrade'
-      : session.user.role === 'recruiter'
-        ? '/dashboard/recruiter/upgrade'
-        : '/dashboard';
+  const pricingHref = '/upgrade';
   const user = session?.user;
   const displayName = user?.role === 'recruiter' ? recruiterName || user?.name : user?.name;
   const dashboardRole = user?.role === 'admin' || user?.role === 'recruiter' ? user.role : 'seeker';
