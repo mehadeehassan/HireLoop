@@ -24,9 +24,9 @@ async function getBillingContext(): Promise<BillingContext | NextResponse> {
     );
   }
 
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
-    console.error('Billing backend API secret is not configured');
+    console.error('Billing backend JWT signing secret is not configured');
     return NextResponse.json(
       { error: 'Billing is not configured yet.' },
       { status: 503 },
@@ -353,7 +353,7 @@ export async function POST(request: Request) {
             response.status === 404
               ? `The backend is missing ${requiredRoute}. Add this Stripe billing endpoint, then restart the backend.`
               : response.status === 401 || response.status === 403
-                ? 'The backend rejected the billing API credentials. Check that the shared server-only secret matches.'
+              ? 'The backend rejected the billing service token. Check that the server-only JWT signing secret matches in both apps.'
                 : backendMessage || 'The payment service could not start this billing action.',
           ...(backendCode ? { code: backendCode } : {}),
           backendStatus: response.status,

@@ -31,8 +31,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Only recruiters can access this profile.' }, { status: 403 });
   }
 
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
-  if (!apiSecret && process.env.NODE_ENV === 'production') {
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
+  if (!apiSecret) {
     return NextResponse.json({ error: 'Subscription service is not configured.' }, { status: 503 });
   }
 

@@ -22,9 +22,9 @@ export async function requireBillingContext(): Promise<BillingContext | NextResp
     return NextResponse.json({ error: 'Billing is not available for this account.' }, { status: 403 });
   }
 
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
-    console.error('Billing backend API secret is not configured');
+    console.error('Billing backend JWT signing secret is not configured');
     return NextResponse.json({ error: 'Billing is not configured yet.' }, { status: 503 });
   }
 

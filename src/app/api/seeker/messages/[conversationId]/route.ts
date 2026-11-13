@@ -16,7 +16,7 @@ export async function GET(
   if (session.user.role !== 'seeker') {
     return NextResponse.json({ error: 'Only job seekers can access messages.' }, { status: 403 });
   }
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
     return NextResponse.json({ error: 'Messaging is not configured yet.' }, { status: 503 });
   }
@@ -89,7 +89,7 @@ export async function PATCH(
   if (session.user.role !== 'seeker') {
     return NextResponse.json({ error: 'Only job seekers can update messages.' }, { status: 403 });
   }
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
     return NextResponse.json({ error: 'Messaging is not configured yet.' }, { status: 503 });
   }

@@ -23,9 +23,9 @@ export async function GET() {
     );
   }
 
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
-    console.error('Application backend API secret is not configured');
+    console.error('Application backend JWT signing secret is not configured');
     return NextResponse.json(
       { error: 'Application service is not configured. Please contact support.' },
       { status: 503 },

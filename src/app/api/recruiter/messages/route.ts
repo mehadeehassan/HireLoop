@@ -20,7 +20,7 @@ async function getRecruiterContext() {
       ),
     };
   }
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
     return {
       error: NextResponse.json({ error: 'Messaging is not configured.' }, { status: 503 }),

@@ -14,7 +14,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Only job seekers can view notifications.' }, { status: 403 });
   }
 
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
     return NextResponse.json({ error: 'Notifications are not configured yet.' }, { status: 503 });
   }

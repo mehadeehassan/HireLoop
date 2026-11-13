@@ -24,8 +24,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (response) return response;
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
-  if (!apiSecret && process.env.NODE_ENV === 'production') {
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
+  if (!apiSecret) {
+    console.error('Job backend JWT signing secret is not configured');
     return NextResponse.json({ error: 'Job service is not configured.' }, { status: 503 });
   }
   let body: Record<string, unknown>;
@@ -64,8 +65,9 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (response) return response;
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
-  if (!apiSecret && process.env.NODE_ENV === 'production') {
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
+  if (!apiSecret) {
+    console.error('Job backend JWT signing secret is not configured');
     return NextResponse.json({ error: 'Job service is not configured.' }, { status: 503 });
   }
   try {

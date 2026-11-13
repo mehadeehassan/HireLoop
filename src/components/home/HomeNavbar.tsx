@@ -61,6 +61,13 @@ export default function HomeNavbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [recruiterName, setRecruiterName] = useState<string | null>(null);
   const { data: session, isPending } = useSession();
+  const pricingHref = isPending || !session
+    ? '/#pricing'
+    : session.user.role === 'seeker'
+      ? '/dashboard/seeker/upgrade'
+      : session.user.role === 'recruiter'
+        ? '/dashboard/recruiter/upgrade'
+        : '/dashboard';
   const user = session?.user;
   const displayName = user?.role === 'recruiter' ? recruiterName || user?.name : user?.name;
   const dashboardRole = user?.role === 'admin' || user?.role === 'recruiter' ? user.role : 'seeker';
@@ -122,7 +129,7 @@ export default function HomeNavbar() {
             {NAV_LINKS.map((link) => (
               <a
                 key={link.label}
-                href={link.href}
+                href={link.label === 'Pricing' ? pricingHref : link.href}
                 className={`font-sans whitespace-nowrap text-base leading-[28.8px] tracking-[-0.2px] text-[#ededef] ${
                   link.bold ? 'font-bold' : 'font-normal'
                 }`}
@@ -249,7 +256,7 @@ export default function HomeNavbar() {
             {NAV_LINKS.map((link) => (
               <a
                 key={link.label}
-                href={link.href}
+                href={link.label === 'Pricing' ? pricingHref : link.href}
                 onClick={() => setMenuOpen(false)}
                 className={`font-sans text-base leading-[28.8px] tracking-[-0.2px] text-[#ededef] ${
                   link.bold ? 'font-bold' : 'font-normal'

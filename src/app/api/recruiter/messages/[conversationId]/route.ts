@@ -13,7 +13,7 @@ async function getRecruiterContext() {
   if (session.user.role !== 'recruiter') {
     return { error: NextResponse.json({ error: 'Only recruiters can access messages.' }, { status: 403 }) };
   }
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) return { error: NextResponse.json({ error: 'Messaging is not configured.' }, { status: 503 }) };
   return { recruiterId: session.user.id, apiSecret };
 }

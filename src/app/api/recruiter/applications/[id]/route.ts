@@ -47,9 +47,9 @@ export async function PATCH(
   }
 
   if (!application.isDummy) {
-    const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+    const apiSecret = process.env.HIRELOOP_JWT_SECRET;
     if (!apiSecret) {
-      console.error('Application backend API secret is not configured');
+      console.error('Application backend JWT signing secret is not configured');
       return NextResponse.json(
         { error: 'Application updates are not configured.' },
         { status: 503 },

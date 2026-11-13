@@ -94,15 +94,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Job details must be valid JSON.' }, { status: 400 });
   }
 
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
-  if (!apiSecret && process.env.NODE_ENV === 'production') {
-    console.error('Job backend API secret is not configured');
-    return NextResponse.json({ error: 'Job service is not configured.' }, { status: 503 });
-  }
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
-    console.warn(
-      'HIRELOOP_APPLICATIONS_API_SECRET is unset; forwarding recruiter job creation without backend authentication in development',
-    );
+    console.error('Job backend JWT signing secret is not configured');
+    return NextResponse.json({ error: 'Job service is not configured.' }, { status: 503 });
   }
 
   try {

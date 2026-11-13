@@ -21,9 +21,9 @@ async function getMessageContext(): Promise<MessageContext | NextResponse> {
     return NextResponse.json({ error: 'Only job seekers can access messages.' }, { status: 403 });
   }
 
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
-    console.error('Messaging backend API secret is not configured');
+    console.error('Messaging backend JWT signing secret is not configured');
     return NextResponse.json(
       { error: 'Messaging is not configured yet.' },
       { status: 503 },
@@ -42,7 +42,7 @@ function getBackendError(status: number) {
     return 'The backend is missing the seeker messages API. Add GET and POST /messages routes.';
   }
   if (status === 401 || status === 403) {
-    return 'The backend rejected the messaging API credentials.';
+    return 'The backend rejected the messaging service token. Check that the server-only JWT signing secret matches in both apps.';
   }
   return 'The messaging service could not complete this request.';
 }

@@ -81,6 +81,7 @@ function parseBillingSummary(value: unknown): BillingSummary {
       typeof method.id === 'string' &&
       typeof method.brand === 'string' &&
       typeof method.last4 === 'string' &&
+      /^\d{4}$/.test(method.last4) &&
       (typeof method.expiryMonth === 'number' || method.expiryMonth === null) &&
       (typeof method.expiryYear === 'number' || method.expiryYear === null) &&
       typeof method.isDefault === 'boolean',
@@ -162,6 +163,8 @@ function parseVerifiedPaymentMethod(value: unknown): PaymentMethod | null {
     typeof value.id !== 'string' ||
     typeof value.brand !== 'string' ||
     typeof value.last4 !== 'string' ||
+    !value.brand.trim() ||
+    !/^\d{4}$/.test(value.last4) ||
     (typeof value.expiryMonth !== 'number' && value.expiryMonth !== null) ||
     (typeof value.expiryYear !== 'number' && value.expiryYear !== null) ||
     typeof value.isDefault !== 'boolean'
@@ -212,10 +215,12 @@ export default function SeekerBilling() {
   const [billingError, setBillingError] = useState('');
   const [profileError, setProfileError] = useState('');
   const [action, setAction] = useState<'setup' | 'portal' | null>(null);
+  const [verifyingPaymentMethod, setVerifyingPaymentMethod] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     let initialLoadTimer: number | null = null;
+    let verificationStatusTimer: number | null = null;
     const scheduleInitialLoad = () => {
       initialLoadTimer = window.setTimeout(() => void loadBilling(), 0);
     };
@@ -267,26 +272,48 @@ export default function SeekerBilling() {
     const paymentResult = searchParams.get('payment');
     if (paymentResult === 'success') {
       const sessionId = searchParams.get('session_id');
-      window.history.replaceState({}, '', window.location.pathname);
+      verificationStatusTimer = window.setTimeout(() => setVerifyingPaymentMethod(true), 0);
       void (async () => {
+        let clearInvalidCheckoutReturn = false;
         try {
-          const response = await fetch('/api/billing/payment-methods/verify-setup-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(sessionId ? { sessionId } : {}),
-            signal: controller.signal,
-          });
-          const result: unknown = await response.json().catch(() => null);
-          const method = isRecord(result)
-            ? parseVerifiedPaymentMethod(result.paymentMethod)
-            : null;
-          if (!response.ok || !method) {
-            throw new Error(
-              isRecord(result) && typeof result.error === 'string'
-                ? result.error
-                : 'The saved card could not be verified.',
-            );
+          let method: PaymentMethod | null = null;
+          for (let attempt = 0; attempt < 4; attempt += 1) {
+            const response = await fetch('/api/billing/payment-methods/verify-setup-session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(sessionId ? { sessionId } : {}),
+              signal: controller.signal,
+            });
+            const result: unknown = await response.json().catch(() => null);
+            method =
+              response.ok && isRecord(result)
+                ? parseVerifiedPaymentMethod(result.paymentMethod)
+                : null;
+
+            if (method) break;
+            if (response.ok) {
+              throw new Error('The saved card could not be verified.');
+            }
+            if (![409, 502, 503].includes(response.status) || attempt === 3) {
+              clearInvalidCheckoutReturn = response.status === 422;
+              throw new Error(
+                isRecord(result) && typeof result.error === 'string'
+                  ? result.error
+                  : 'The saved card could not be verified.',
+              );
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 750 * (attempt + 1)));
           }
+          if (!method) throw new Error('The saved card could not be verified.');
+
+          const returnUrl = new URL(window.location.href);
+          returnUrl.searchParams.delete('payment');
+          returnUrl.searchParams.delete('session_id');
+          window.history.replaceState(
+            {},
+            '',
+            `${returnUrl.pathname}${returnUrl.search}${returnUrl.hash}`,
+          );
 
           const addVerifiedMethod = () => {
             setBilling((current) => ({
@@ -305,12 +332,24 @@ export default function SeekerBilling() {
           toast.success('Card saved and verified.');
         } catch (verificationError) {
           if (controller.signal.aborted) return;
+          if (clearInvalidCheckoutReturn) {
+            const returnUrl = new URL(window.location.href);
+            returnUrl.searchParams.delete('payment');
+            returnUrl.searchParams.delete('session_id');
+            window.history.replaceState(
+              {},
+              '',
+              `${returnUrl.pathname}${returnUrl.search}${returnUrl.hash}`,
+            );
+          }
           toast.error(
             verificationError instanceof Error
               ? verificationError.message
               : 'The saved card could not be verified.',
           );
           void loadBilling();
+        } finally {
+          if (!controller.signal.aborted) setVerifyingPaymentMethod(false);
         }
       })();
     } else if (paymentResult === 'cancelled') {
@@ -323,6 +362,7 @@ export default function SeekerBilling() {
 
     return () => {
       if (initialLoadTimer !== null) window.clearTimeout(initialLoadTimer);
+      if (verificationStatusTimer !== null) window.clearTimeout(verificationStatusTimer);
       controller.abort();
     };
   }, []);
@@ -501,9 +541,13 @@ export default function SeekerBilling() {
           ) : (
             <div className="mt-5 flex min-h-32 flex-col items-center justify-center rounded-lg border border-dashed border-[#35353b] bg-[#101013] px-4 text-center">
               <DashboardIcon name="wallet" className="size-5 text-[#85858e]" />
-              <p className="mt-3 text-xs font-medium text-[#d9d9df]">No payment method on file</p>
+              <p className="mt-3 text-xs font-medium text-[#d9d9df]">
+                {verifyingPaymentMethod ? 'Verifying your saved card with Stripe…' : 'No card on file'}
+              </p>
               <p className="mt-1 max-w-xs text-[10px] leading-5 text-[#85858e]">
-                Add a card securely through Stripe. HireLoop never receives or stores your card number.
+                {verifyingPaymentMethod
+                  ? 'Your card will appear here as soon as Stripe confirms it.'
+                  : 'Add a card directly through Stripe Checkout. Stripe Link wallets are not displayed as cards.'}
               </p>
             </div>
           )}

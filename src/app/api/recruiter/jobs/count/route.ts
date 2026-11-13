@@ -10,9 +10,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Only recruiters can view job usage.' }, { status: 403 });
   }
 
-  const apiSecret = process.env.HIRELOOP_APPLICATIONS_API_SECRET;
-  if (!apiSecret && process.env.NODE_ENV === 'production') {
-    console.error('Job backend API secret is not configured');
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
+  if (!apiSecret) {
+    console.error('Job backend JWT signing secret is not configured');
     return NextResponse.json({ error: 'Job service is not configured.' }, { status: 503 });
   }
 

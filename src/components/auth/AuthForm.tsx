@@ -4,7 +4,7 @@
 import { authClient } from '@/lib/auth-client';
 import Image from 'next/image';
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { FieldError, useFormValidation } from '@/components/form/useFormValidation';
 
@@ -25,11 +25,24 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState<UserRole>('seeker');
+  const [credentialError, setCredentialError] = useState('');
   const { errors, validateForm, updateFieldError } = useFormValidation();
+
+  function handleFormChange(event: ChangeEvent<HTMLFormElement>) {
+    updateFieldError(event);
+    const field = event.target;
+    if (
+      field instanceof HTMLInputElement &&
+      (field.name === 'email' || field.name === 'password')
+    ) {
+      setCredentialError('');
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validateForm(event.currentTarget)) return;
+    setCredentialError('');
     setLoading(true);
     const toastId = toast.loading(isSignUp ? 'Creating your account...' : 'Signing you in...');
 
@@ -44,9 +57,15 @@ export default function AuthForm({ mode }: AuthFormProps) {
         : await authClient.signIn.email({ email, password });
 
       if (result.error) {
-        toast.error(result.error.message || 'Something went wrong. Please try again.', {
-          id: toastId,
-        });
+        const invalidCredentials =
+          !isSignUp &&
+          (result.error.status === 401 || result.error.code === 'INVALID_EMAIL_OR_PASSWORD');
+        const message = invalidCredentials
+          ? 'Email or password is incorrect.'
+          : result.error.message || 'Something went wrong. Please try again.';
+        if (invalidCredentials) setCredentialError(message);
+        toast.dismiss(toastId);
+        toast.error(message);
       } else {
         toast.success(isSignUp ? 'Account created successfully!' : 'Welcome back!', {
           id: toastId,
@@ -54,9 +73,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
         window.location.href = getCallbackUrl();
       }
     } catch {
-      toast.error('Unable to connect. Please try again.', {
-        id: toastId,
-      });
+      toast.dismiss(toastId);
+      toast.error('Unable to connect. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -77,6 +95,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
       });
     }
   }
+
+  const passwordError = credentialError || errors.password;
 
   return (
     <main className="min-h-screen bg-[#08080a] px-4 py-4 text-[#ededf3] sm:px-6 sm:py-6 lg:px-10">
@@ -141,7 +161,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             <form
               noValidate
               onSubmit={handleSubmit}
-              onChangeCapture={updateFieldError}
+              onChangeCapture={handleFormChange}
               className="space-y-4"
             >
               {isSignUp && (
@@ -293,8 +313,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     minLength={8}
                     autoComplete={isSignUp ? 'new-password' : 'current-password'}
                     placeholder="At least 8 characters"
-                    aria-invalid={Boolean(errors.password)}
-                    aria-describedby={errors.password ? 'auth-password-error' : undefined}
+                    aria-invalid={Boolean(passwordError)}
+                    aria-describedby={passwordError ? 'auth-password-error' : undefined}
                     className="h-12 w-full rounded-[10px] border border-white/9 bg-[#17171d] px-4 pr-12 text-sm outline-none transition placeholder:text-[#696a77] focus:border-[#6258ff]"
                   />
                   <button
@@ -316,7 +336,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     </svg>
                   </button>
                 </span>
-                <FieldError id="auth-password-error" error={errors.password} />
+                <FieldError id="auth-password-error" error={passwordError} />
               </label>
 
               <button

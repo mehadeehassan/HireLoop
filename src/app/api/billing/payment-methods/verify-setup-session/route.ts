@@ -49,7 +49,9 @@ export async function POST(request: Request) {
       !isRecord(paymentMethod) ||
       typeof paymentMethod.id !== 'string' ||
       typeof paymentMethod.brand !== 'string' ||
-      typeof paymentMethod.last4 !== 'string'
+      !paymentMethod.brand.trim() ||
+      typeof paymentMethod.last4 !== 'string' ||
+      !/^\d{4}$/.test(paymentMethod.last4)
     ) {
       console.error('Billing backend returned invalid payment method verification data');
       return NextResponse.json(
@@ -63,7 +65,7 @@ export async function POST(request: Request) {
       paymentMethod: {
         id: paymentMethod.id,
         brand: paymentMethod.brand,
-        last4: paymentMethod.last4.slice(-4),
+        last4: paymentMethod.last4,
         expiryMonth:
           typeof paymentMethod.expiryMonth === 'number' ? paymentMethod.expiryMonth : null,
         expiryYear:
