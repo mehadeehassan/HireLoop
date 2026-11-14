@@ -1,9 +1,7 @@
 import { auth } from '@/lib/auth';
 import { fetchBackendWithSecret } from '@/lib/job-api';
-import { getDatabase } from '@/lib/mongodb';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { ObjectId } from 'mongodb';
 import { applicationStatuses } from '@/lib/application-status';
 
 export async function PATCH(
@@ -17,7 +15,9 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  if (!ObjectId.isValid(id)) return NextResponse.json({ error: 'Invalid application id' }, { status: 400 });
+  if (!/^[\da-f]{24}$/i.test(id)) {
+    return NextResponse.json({ error: 'Invalid application id' }, { status: 400 });
+  }
 
   let payload: unknown;
   try {
@@ -36,63 +36,42 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
   }
 
-  const db = await getDatabase();
-  const collection = db.collection('applications');
-  const application = await collection.findOne({
-    _id: new ObjectId(id),
-    recruiterId: session.user.id,
-  });
-  if (!application) {
-    return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
+  if (!apiSecret) {
+    console.error('Application backend JWT signing secret is not configured');
+    return NextResponse.json(
+      { error: 'Application updates are not configured.' },
+      { status: 503 },
+    );
   }
 
-  if (!application.isDummy) {
-    const apiSecret = process.env.HIRELOOP_JWT_SECRET;
-    if (!apiSecret) {
-      console.error('Application backend JWT signing secret is not configured');
-      return NextResponse.json(
-        { error: 'Application updates are not configured.' },
-        { status: 503 },
-      );
-    }
-
-    try {
-      const { response, data } = await fetchBackendWithSecret(
-        '/applications/status',
-        'PATCH',
-        {
-          candidateId: application.candidateId,
-          recruiterId: session.user.id,
-          jobId: application.jobId,
-          status,
-        },
-        apiSecret,
-      );
-      if (!response.ok) {
-        console.error('Application backend status update failed', response.status);
-        const backendError =
-          typeof data === 'object' && data !== null && 'message' in data &&
-          typeof data.message === 'string'
-            ? data.message
-            : 'Could not sync this status to the application service.';
-        return NextResponse.json({ error: backendError }, { status: 502 });
+  try {
+    const { response, data } = await fetchBackendWithSecret(
+      `/recruiter/applications/${encodeURIComponent(id)}`,
+      'PATCH',
+      { recruiterId: session.user.id, status },
+      apiSecret,
+    );
+    if (!response.ok) {
+      if (response.status === 404) {
+        return NextResponse.json({ error: 'Application not found' }, { status: 404 });
       }
-    } catch (error) {
-      console.error('Could not sync application status to backend', error);
-      return NextResponse.json(
-        { error: 'Could not connect to the application service.' },
-        { status: 502 },
-      );
+      console.error('Application backend status update failed', response.status);
+      const backendError =
+        typeof data === 'object' &&
+        data !== null &&
+        'message' in data &&
+        typeof data.message === 'string'
+          ? data.message
+          : 'Could not sync this status to the application service.';
+      return NextResponse.json({ error: backendError }, { status: 502 });
     }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Could not sync application status to backend', error);
+    return NextResponse.json(
+      { error: 'Could not connect to the application service.' },
+      { status: 502 },
+    );
   }
-
-  const result = await collection.updateOne(
-    { _id: new ObjectId(id), recruiterId: session.user.id },
-    { $set: { status, updatedAt: new Date() } },
-  );
-
-  if (!result.matchedCount) {
-    return NextResponse.json({ error: 'Application not found' }, { status: 404 });
-  }
-  return NextResponse.json({ success: true });
 }

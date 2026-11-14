@@ -1,6 +1,5 @@
 import { fetchBackendJobs } from "@/lib/job-api";
 import { getJobCreatedAt, toPublicJob, type PublicJob } from "@/lib/public-jobs";
-import { addRecruiterCompanyProfile, getRecruiterCompanyProfiles } from "@/lib/recruiter-company";
 import { NextResponse } from "next/server";
 
 type BackendJob = Record<string, unknown>;
@@ -32,12 +31,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Job listings are temporarily unavailable." }, { status: 502 });
     }
 
-    const companyProfiles = await getRecruiterCompanyProfiles(jobs);
     const publicJobs = jobs
-      .map((value) => {
-        const job = toPublicJob(value);
-        return job ? addRecruiterCompanyProfile(job, value, companyProfiles) : null;
-      })
+      .map((value) => toPublicJob(value))
       .filter((job): job is PublicJob => job !== null);
     const now = new Date();
     const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);

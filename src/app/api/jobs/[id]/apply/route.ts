@@ -1,174 +1,10 @@
 import { auth } from '@/lib/auth';
-import { fetchBackendJobs, submitBackendApplication } from '@/lib/job-api';
-import { getDatabase } from '@/lib/mongodb';
-import { toPublicJob } from '@/lib/public-jobs';
+import { submitBackendApplication } from '@/lib/job-api';
 import { headers } from 'next/headers';
-import { after, NextResponse } from 'next/server';
-
-type BackendJob = {
-  _id?: string;
-  id?: string;
-  recruiterId?: string;
-};
-
-type ApplicationDetails = {
-  name: string;
-  phone: string;
-  location: string;
-  experience: string;
-  skills: string[];
-  linkedinUrl: string | null;
-  resumeUrl: string | null;
-  resumeFile: { name: string; type: 'application/pdf'; data: string } | null;
-  portfolioUrl: string | null;
-  coverLetter: string;
-};
-
-const maxResumeSize = 5 * 1024 * 1024;
-const maxResumeBase64Length = Math.ceil(maxResumeSize / 3) * 4;
-
-function isBackendJob(value: unknown): value is BackendJob {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { NextResponse } from 'next/server';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function getString(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function getOptionalUrl(value: unknown) {
-  const rawUrl = getString(value);
-  if (!rawUrl) return null;
-
-  try {
-    const url = new URL(rawUrl);
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
-function getLinkedInUrl(value: unknown) {
-  const url = getOptionalUrl(value);
-  if (!url) return value ? undefined : null;
-
-  const hostname = new URL(url).hostname.toLowerCase();
-  return hostname === 'linkedin.com' || hostname.endsWith('.linkedin.com') ? url : undefined;
-}
-
-function getApplicationDetails(value: unknown):
-  | { details: ApplicationDetails; error: null }
-  | { details: null; error: string } {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return { details: null, error: 'Please provide your application details.' };
-  }
-
-  const body = value as Record<string, unknown>;
-  const name = getString(body.name);
-  const phone = getString(body.phone);
-  const location = getString(body.location);
-  const experience = getString(body.experience);
-  const skills = Array.isArray(body.skills)
-    ? body.skills
-        .filter((skill): skill is string => typeof skill === 'string')
-        .map((skill) => skill.trim())
-        .filter(Boolean)
-        .slice(0, 30)
-    : typeof body.skills === 'string'
-      ? body.skills
-          .split(',')
-          .map((skill) => skill.trim())
-          .filter(Boolean)
-          .slice(0, 30)
-      : [];
-  const linkedinUrl = getLinkedInUrl(body.linkedinUrl);
-  const resumeUrl = getOptionalUrl(body.resumeUrl);
-  const resumeFileValue = body.resumeFile;
-  const portfolioUrl = getOptionalUrl(body.portfolioUrl);
-  const coverLetter = getString(body.coverLetter);
-  let resumeFile: ApplicationDetails['resumeFile'] = null;
-
-  if (resumeFileValue !== null && resumeFileValue !== undefined) {
-    if (!isRecord(resumeFileValue)) {
-      return { details: null, error: 'Please upload a valid PDF resume.' };
-    }
-
-    const name = getString(resumeFileValue.name);
-    const data = resumeFileValue.data;
-    const pdfHeader =
-      typeof data === 'string' && data.length <= maxResumeBase64Length
-        ? Buffer.from(data.slice(0, 8), 'base64').toString('ascii')
-        : '';
-    const base64Padding = typeof data === 'string' && data.endsWith('==')
-      ? 2
-      : typeof data === 'string' && data.endsWith('=')
-        ? 1
-        : 0;
-    const decodedSize =
-      typeof data === 'string' && data.length % 4 === 0
-        ? (data.length / 4) * 3 - base64Padding
-        : Infinity;
-    if (
-      !name.toLowerCase().endsWith('.pdf') ||
-      resumeFileValue.type !== 'application/pdf' ||
-      typeof data !== 'string' ||
-      data.length > maxResumeBase64Length ||
-      data.length % 4 !== 0 ||
-      !/^[A-Za-z0-9+/]+={0,2}$/.test(data) ||
-      decodedSize > maxResumeSize ||
-      !pdfHeader.startsWith('%PDF-')
-    ) {
-      return {
-        details: null,
-        error: 'Resume must be a PDF file no larger than 5 MB.',
-      };
-    }
-    resumeFile = { name: name.replace(/[\\/]/g, '_').slice(0, 180), type: 'application/pdf', data };
-  }
-
-  if (!name || !phone || !location || !experience || skills.length === 0) {
-    return {
-      details: null,
-      error: 'Name, phone, location, experience, and at least one skill are required.',
-    };
-  }
-  if (name.length > 120 || phone.length > 40 || location.length > 160 || experience.length > 160) {
-    return { details: null, error: 'One or more profile fields are too long.' };
-  }
-  if (body.resumeUrl && !resumeUrl) {
-    return { details: null, error: 'Resume URL must be a valid HTTP or HTTPS URL.' };
-  }
-  if (linkedinUrl === undefined) {
-    return { details: null, error: 'LinkedIn URL must be a valid linkedin.com URL.' };
-  }
-  if (resumeUrl && resumeFile) {
-    return { details: null, error: 'Use either a resume URL or upload a PDF, not both.' };
-  }
-  if (body.portfolioUrl && !portfolioUrl) {
-    return { details: null, error: 'Portfolio URL must be a valid HTTP or HTTPS URL.' };
-  }
-  if (coverLetter.length > 5000) {
-    return { details: null, error: 'Cover letter must be 5,000 characters or fewer.' };
-  }
-
-  return {
-    details: {
-      name,
-      phone,
-      location,
-      experience,
-      skills,
-      linkedinUrl,
-      resumeUrl,
-      resumeFile,
-      portfolioUrl,
-      coverLetter,
-    },
-    error: null,
-  };
 }
 
 export async function POST(
@@ -186,7 +22,7 @@ export async function POST(
     );
   }
 
-  const { id } = await params;
+  const { id: jobId } = await params;
   let submittedDetails: unknown;
   try {
     submittedDetails = await request.json();
@@ -194,105 +30,49 @@ export async function POST(
     return NextResponse.json({ error: 'Application details must be valid JSON.' }, { status: 400 });
   }
 
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
+  if (!apiSecret) {
+    console.error('Application backend JWT signing secret is not configured');
+    return NextResponse.json(
+      { error: 'Application service is not configured. Please contact support.' },
+      { status: 503 },
+    );
+  }
+
   try {
-    const { details, error } = getApplicationDetails(submittedDetails);
-    if (!details) {
-      return NextResponse.json({ error }, { status: 400 });
-    }
-
-    const { response, data } = await fetchBackendJobs('GET', { id });
-    if (response.status === 404) {
-      return NextResponse.json({ error: 'This job is no longer available.' }, { status: 404 });
-    }
-    if (!response.ok) {
-      console.error('Job application lookup failed', response.status);
-      return NextResponse.json({ error: 'Could not load this job.' }, { status: 502 });
-    }
-    if (!isBackendJob(data)) {
-      return NextResponse.json({ error: 'This job is no longer available.' }, { status: 404 });
-    }
-    const job = toPublicJob(data);
-    if (!job) {
-      return NextResponse.json({ error: 'This job is no longer available.' }, { status: 404 });
-    }
-
-    const recruiterId = data.recruiterId?.trim();
-    const jobId = String(data.id || data._id || id);
-    if (!recruiterId) {
-      console.error('Cannot accept an application for a job without a recruiter', jobId);
-      return NextResponse.json(
-        { error: 'Applications are unavailable for this job.' },
-        { status: 409 },
-      );
-    }
-
-    const apiSecret = process.env.HIRELOOP_JWT_SECRET;
-    if (!apiSecret) {
-      console.error('Application backend JWT signing secret is not configured');
-      return NextResponse.json(
-        { error: 'Application service is not configured. Please contact support.' },
-        { status: 503 },
-      );
-    }
-
-    const { resumeFile, ...candidateProfile } = details;
-    const candidateDetails = {
-      ...candidateProfile,
-      email: session.user.email,
-      image: session.user.image || '',
-    };
-    const createdAt = new Date();
     const application = {
-      recruiterId,
+      ...(isRecord(submittedDetails) ? submittedDetails : {}),
       candidateId: session.user.id,
       jobId,
-      jobTitle: job.title,
-      company: job.company,
-      type: job.type,
-      workMode: job.workMode,
-      isDummy: false,
-      ...candidateDetails,
-      resumeFile,
-      initials: details.name
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0].toUpperCase())
-        .join(''),
-      role: job.title,
-      status: 'New',
-      summary: details.coverLetter || `${details.name} applied for ${job.title}.`,
-      candidateDetails,
-      createdAt,
-      updatedAt: createdAt,
     };
+    const { response, data } = await submitBackendApplication(application, apiSecret);
+    const backendRecord = isRecord(data) ? data : null;
+    const rawBackendMessage =
+      typeof backendRecord?.message === 'string'
+        ? backendRecord.message
+        : typeof backendRecord?.error === 'string'
+          ? backendRecord.error
+          : '';
+    const backendMessage = rawBackendMessage.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 240);
 
-    const { response: backendResponse, data: backendData } =
-      await submitBackendApplication(application, apiSecret);
-    if (!backendResponse.ok) {
-      const backendRecord = isRecord(backendData) ? backendData : null;
-      const rawBackendMessage =
-        typeof backendRecord?.message === 'string'
-          ? backendRecord.message
-          : typeof backendRecord?.error === 'string'
-            ? backendRecord.error
-            : '';
-      const backendMessage = rawBackendMessage.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 240);
+    if (!response.ok) {
       console.error('Application backend rejected submission', {
-        status: backendResponse.status,
+        status: response.status,
         ...(process.env.NODE_ENV !== 'production' && backendMessage
           ? { message: backendMessage }
           : {}),
       });
 
-      if (backendResponse.status === 409) {
+      if (response.status === 404) {
+        return NextResponse.json({ error: 'This job is no longer available.' }, { status: 404 });
+      }
+      if (response.status === 409) {
         return NextResponse.json(
           { error: 'You have already applied for this job.', alreadyApplied: true },
           { status: 409 },
         );
       }
-
-      if (backendResponse.status === 429 && backendRecord?.error === 'MONTHLY_LIMIT_REACHED') {
+      if (response.status === 429 && backendRecord?.error === 'MONTHLY_LIMIT_REACHED') {
         return NextResponse.json(
           {
             error: 'MONTHLY_LIMIT_REACHED',
@@ -311,8 +91,7 @@ export async function POST(
           { status: 429 },
         );
       }
-
-      if (backendResponse.status === 413) {
+      if (response.status === 413) {
         return NextResponse.json(
           {
             error:
@@ -322,11 +101,17 @@ export async function POST(
           { status: 413 },
         );
       }
+      if (response.status === 400) {
+        return NextResponse.json(
+          { error: backendMessage || 'Please review your application details.' },
+          { status: 400 },
+        );
+      }
 
       return NextResponse.json(
         {
           error: 'The application service could not accept your application. Please try again.',
-          backendStatus: backendResponse.status,
+          backendStatus: response.status,
           ...(process.env.NODE_ENV !== 'production' && backendMessage
             ? { backendMessage }
             : {}),
@@ -335,35 +120,13 @@ export async function POST(
       );
     }
 
-    after(async () => {
-      try {
-        const db = await getDatabase();
-        const applications = db.collection('applications');
-        await applications.updateOne(
-          { candidateId: session.user.id, jobId },
-          { $setOnInsert: application },
-          { upsert: true },
-        );
-
-        await db.collection('seeker_profiles').updateOne(
-          { candidateId: session.user.id },
-          {
-            $set: {
-              ...candidateProfile,
-              email: session.user.email,
-              image: session.user.image || '',
-              candidateId: session.user.id,
-              updatedAt: createdAt,
-            },
-            $setOnInsert: { createdAt },
-          },
-          { upsert: true },
-        );
-      } catch (syncError) {
-        console.error('Application was submitted but local dashboard sync failed', syncError);
-      }
-    });
-
+    if (!backendRecord || typeof backendRecord.applicationId !== 'string') {
+      console.error('Application backend returned an invalid success response');
+      return NextResponse.json(
+        { error: 'The application service returned an invalid response.' },
+        { status: 502 },
+      );
+    }
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     console.error('Could not submit job application', error);

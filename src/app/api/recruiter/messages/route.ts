@@ -67,16 +67,36 @@ export async function GET(request: Request) {
         { status: 502 },
       );
     }
-    const conversations = items.filter(
-      (item): item is Record<string, unknown> =>
-        isRecord(item) &&
-        item.recruiterId === context.recruiterId &&
-        typeof item.id === 'string' &&
-        typeof item.candidateId === 'string' &&
-        typeof item.participantName === 'string' &&
-        typeof item.jobTitle === 'string' &&
-        typeof item.unreadCount === 'number',
-    );
+    const conversations = items
+      .filter(
+        (item): item is Record<string, unknown> =>
+          isRecord(item) &&
+          item.recruiterId === context.recruiterId &&
+          typeof item.id === 'string' &&
+          typeof item.candidateId === 'string' &&
+          typeof item.participantName === 'string' &&
+          typeof item.jobTitle === 'string' &&
+          typeof item.unreadCount === 'number',
+      )
+      .map((item) => {
+        const jobId =
+          typeof item.jobId === 'string' && item.jobId.trim().length > 0 ? item.jobId.trim() : 'direct';
+        const lastMessage = isRecord(item.lastMessage) ? item.lastMessage : { body: '', senderId: '', createdAt: '' };
+        return {
+          id: item.id,
+          candidateId: item.candidateId,
+          recruiterId: item.recruiterId,
+          jobId,
+          participantName: item.participantName,
+          jobTitle: item.jobTitle,
+          unreadCount: Number(item.unreadCount),
+          lastMessage: {
+            body: typeof lastMessage.body === 'string' ? lastMessage.body : '',
+            senderId: typeof lastMessage.senderId === 'string' ? lastMessage.senderId : '',
+            createdAt: typeof lastMessage.createdAt === 'string' ? lastMessage.createdAt : '',
+          },
+        };
+      });
     return NextResponse.json({ conversations });
   } catch (error) {
     console.error('Could not load recruiter conversations', error);

@@ -1,86 +1,132 @@
 import { auth } from '@/lib/auth';
-import { getDatabase } from '@/lib/mongodb';
+import { fetchBackendWithSecret } from '@/lib/job-api';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getId(value: unknown) {
+  if (typeof value === 'string') return value;
+  if (isRecord(value) && typeof value.$oid === 'string') return value.$oid;
+  return '';
+}
 
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const db = await getDatabase();
-  const collection = db.collection('applications');
-  let applications = await collection
-    .find({ recruiterId: session.user.id })
-    .sort({ createdAt: -1 })
-    .toArray();
-
-  if (applications.length === 0) {
-    const ownedJobs = await db
-      .collection('jobs')
-      .find({ $or: [{ recruiterId: session.user.id }, { recruiterId: { $exists: false } }] })
-      .limit(5)
-      .toArray();
-
-    const candidates = [
-      ['Olivia Martin', '4 years', 'New'],
-      ['Ethan Williams', '7 years', 'Reviewed'],
-      ['Sophia Brown', '5 years', 'Shortlisted'],
-      ['Noah Davis', '3 years', 'Rejected'],
-      ['Maya Rahman', '6 years', 'New'],
-    ] as const;
-
-    const seedApplications = candidates.map(([name, experience, status], index) => {
-      const firstName = name.split(' ')[0].toLowerCase();
-      const job = ownedJobs[index];
-      const role = String(job?.title || [
-        'Frontend Developer',
-        'Senior Product Designer',
-        'DevOps Specialist',
-        'QA Automation Engineer',
-        'Product Manager',
-      ][index]);
-
-      return {
-        recruiterId: session.user.id,
-        jobId: job?._id?.toString() || null,
-        isDummy: true,
-        name,
-        initials: name.split(' ').map((part) => part[0]).join(''),
-        role,
-        email: `${firstName}@example.com`,
-        experience,
-        status,
-        phone: `+880 1700 000${index + 1}`,
-        location: index % 2 === 0 ? 'Dhaka, Bangladesh' : 'Chattogram, Bangladesh',
-        skills: role.toLowerCase().includes('design')
-          ? ['Figma', 'Design Systems', 'Prototyping', 'User Research']
-          : role.toLowerCase().includes('developer') || role.toLowerCase().includes('engineer')
-            ? ['JavaScript', 'React', 'TypeScript', 'MongoDB']
-            : ['Communication', 'Strategy', 'Planning', 'Leadership'],
-        summary: `${name} is a candidate with ${experience} of relevant professional experience.`,
-        createdAt: new Date(Date.now() - index * 24 * 60 * 60 * 1000),
-      };
-    });
-
-    await collection.insertMany(seedApplications);
-    applications = await collection
-      .find({ recruiterId: session.user.id })
-      .sort({ createdAt: -1 })
-      .toArray();
+  if (session.user.role !== 'recruiter') {
+    return NextResponse.json(
+      { error: 'Only recruiters can view recruiter applications.' },
+      { status: 403 },
+    );
   }
 
-  return NextResponse.json({
-    applications: applications.map((application) => ({
-      ...application,
-      id: application._id.toString(),
-      _id: undefined,
-      date: application.createdAt
-        ? new Date(application.createdAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: '2-digit',
-            year: 'numeric',
-          })
-        : '',
-    })),
-  });
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
+  if (!apiSecret) {
+    console.error('Application backend JWT signing secret is not configured');
+    return NextResponse.json(
+      { error: 'Application service is not configured.' },
+      { status: 503 },
+    );
+  }
+
+  try {
+    const query = new URLSearchParams({ recruiterId: session.user.id }).toString();
+    const { response, data } = await fetchBackendWithSecret(
+      `/recruiter/applications?${query}`,
+      'GET',
+      undefined,
+      apiSecret,
+    );
+    if (!response.ok) {
+      console.error('Recruiter application backend list request failed', response.status);
+      return NextResponse.json(
+        { error: 'Could not load applications from the application service.' },
+        { status: 502 },
+      );
+    }
+
+    const records = Array.isArray(data)
+      ? data
+      : isRecord(data) && Array.isArray(data.applications)
+        ? data.applications
+        : null;
+    if (!records) {
+      console.error('Recruiter application backend returned an unexpected list response');
+      return NextResponse.json(
+        { error: 'The application service returned an unexpected response.' },
+        { status: 502 },
+      );
+    }
+
+    const applications = records
+      .filter(
+        (application): application is Record<string, unknown> =>
+          isRecord(application) &&
+          application.recruiterId === session.user.id &&
+          application.isDummy !== true &&
+          typeof application.candidateId === 'string' &&
+          typeof application.jobId === 'string',
+      )
+      .map((application) => {
+        const createdAt =
+          typeof application.createdAt === 'string'
+            ? application.createdAt
+            : application.createdAt instanceof Date
+              ? application.createdAt.toISOString()
+              : '';
+        const name = typeof application.name === 'string' ? application.name : '';
+        const role =
+          typeof application.jobTitle === 'string'
+            ? application.jobTitle
+            : typeof application.role === 'string'
+              ? application.role
+              : 'Job application';
+
+        return {
+          id: getId(application.id) || getId(application._id),
+          candidateId: application.candidateId,
+          recruiterId: application.recruiterId,
+          jobId: application.jobId,
+          name,
+          initials:
+            typeof application.initials === 'string'
+              ? application.initials
+              : name
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((part) => part[0].toUpperCase())
+                  .join(''),
+          role,
+          email: typeof application.email === 'string' ? application.email : '',
+          experience: typeof application.experience === 'string' ? application.experience : '',
+          status: typeof application.status === 'string' ? application.status : 'New',
+          date: createdAt
+            ? new Date(createdAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: '2-digit',
+                year: 'numeric',
+              })
+            : '',
+          phone: typeof application.phone === 'string' ? application.phone : '',
+          location: typeof application.location === 'string' ? application.location : '',
+          skills: Array.isArray(application.skills)
+            ? application.skills.filter((skill): skill is string => typeof skill === 'string')
+            : [],
+          summary: typeof application.summary === 'string' ? application.summary : '',
+        };
+      })
+      .filter((application) => application.id);
+
+    return NextResponse.json({ applications });
+  } catch (error) {
+    console.error('Could not load recruiter applications from backend', error);
+    return NextResponse.json(
+      { error: 'Could not connect to the application service.' },
+      { status: 502 },
+    );
+  }
 }

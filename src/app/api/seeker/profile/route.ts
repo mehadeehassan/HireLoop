@@ -1,23 +1,18 @@
 import { auth } from '@/lib/auth';
-import { fetchBackendUsage } from '@/lib/job-api';
-import { getDatabase } from '@/lib/mongodb';
+import { fetchBackendUsage, fetchBackendWithSecret } from '@/lib/job-api';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { ObjectId } from 'mongodb';
 
-const maxResumeSize = 5 * 1024 * 1024;
-const maxAvatarSize = 5 * 1024 * 1024;
+type SeekerProfileContext = {
+  candidateId: string;
+  apiSecret: string;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function decodeBase64(value: string) {
-  if (!value || value.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value)) return null;
-  return Buffer.from(value, 'base64');
-}
-
-export async function GET() {
+async function getSeekerContext(): Promise<SeekerProfileContext | NextResponse> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (session.user.role !== 'seeker') {
@@ -26,53 +21,82 @@ export async function GET() {
 
   const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
-    return NextResponse.json({ error: 'Subscription service is not configured.' }, { status: 503 });
+    console.error('Seeker profile backend JWT signing secret is not configured');
+    return NextResponse.json({ error: 'Profile service is not configured.' }, { status: 503 });
   }
 
+  return { candidateId: session.user.id, apiSecret };
+}
+
+function isResponse(value: SeekerProfileContext | NextResponse): value is NextResponse {
+  return value instanceof Response;
+}
+
+function getBackendError(data: unknown, fallback: string) {
+  return isRecord(data) && typeof data.message === 'string' ? data.message : fallback;
+}
+
+export async function GET() {
+  const context = await getSeekerContext();
+  if (isResponse(context)) return context;
+
+  const query = new URLSearchParams({ candidateId: context.candidateId }).toString();
   try {
-    const { response, data } = await fetchBackendUsage('seeker', session.user.id, apiSecret);
-    if (!response.ok || !isRecord(data) || typeof data.plan !== 'string') {
-      console.error('Seeker subscription summary request failed', response.status);
-      return NextResponse.json(
-        { error: 'Could not load seeker subscription information.' },
-        { status: 502 },
-      );
+    const [profileResult, usageResult] = await Promise.all([
+      fetchBackendWithSecret(
+        `/seeker/profile?${query}`,
+        'GET',
+        undefined,
+        context.apiSecret,
+      ),
+      fetchBackendUsage('seeker', context.candidateId, context.apiSecret),
+    ]);
+
+    const profilePayload = isRecord(profileResult.data) ? profileResult.data : null;
+    const profile = profilePayload && isRecord(profilePayload.profile) ? profilePayload.profile : null;
+    if (
+      !profileResult.response.ok ||
+      !usageResult.response.ok ||
+      !profile ||
+      typeof usageResult.data !== 'object' ||
+      usageResult.data === null ||
+      !('plan' in usageResult.data) ||
+      typeof usageResult.data.plan !== 'string'
+    ) {
+      console.error('Seeker profile backend returned an unsuccessful or invalid response', {
+        profileStatus: profileResult.response.status,
+        usageStatus: usageResult.response.status,
+      });
+      return NextResponse.json({ error: 'Could not load seeker profile.' }, { status: 502 });
     }
 
-    const profile = await (await getDatabase())
-      .collection('seeker_profiles')
-      .findOne({ candidateId: session.user.id });
-
     return NextResponse.json({
-      name: profile?.name || session.user.name || '',
-      email: session.user.email,
-      plan: data.plan,
-      headline: profile?.headline || '',
-      bio: profile?.bio || '',
-      hasResume: Boolean(profile?.resumeFile?.data || profile?.resumeUrl),
-      resumeFileName: profile?.resumeFile?.name || '',
-      phone: profile?.phone || '',
-      location: profile?.location || '',
-      experience: profile?.experience || '',
-      skills: Array.isArray(profile?.skills) ? profile.skills.join(', ') : '',
-      linkedinUrl: profile?.linkedinUrl || '',
-      resumeUrl: profile?.resumeUrl || '',
-      portfolioUrl: profile?.portfolioUrl || '',
-      coverLetter: profile?.coverLetter || '',
-      image: profile?.image || session.user.image || '',
+      name: typeof profile.name === 'string' ? profile.name : '',
+      email: typeof profile.email === 'string' ? profile.email : '',
+      plan: usageResult.data.plan,
+      headline: typeof profile.headline === 'string' ? profile.headline : '',
+      bio: typeof profile.bio === 'string' ? profile.bio : '',
+      hasResume: profile.hasResume === true,
+      resumeFileName: typeof profile.resumeFileName === 'string' ? profile.resumeFileName : '',
+      phone: typeof profile.phone === 'string' ? profile.phone : '',
+      location: typeof profile.location === 'string' ? profile.location : '',
+      experience: typeof profile.experience === 'string' ? profile.experience : '',
+      skills: typeof profile.skills === 'string' ? profile.skills : '',
+      linkedinUrl: typeof profile.linkedinUrl === 'string' ? profile.linkedinUrl : '',
+      resumeUrl: typeof profile.resumeUrl === 'string' ? profile.resumeUrl : '',
+      portfolioUrl: typeof profile.portfolioUrl === 'string' ? profile.portfolioUrl : '',
+      coverLetter: typeof profile.coverLetter === 'string' ? profile.coverLetter : '',
+      image: typeof profile.image === 'string' ? profile.image : '',
     });
   } catch (error) {
-    console.error('Could not load seeker profile and subscription', error);
+    console.error('Could not load seeker profile from backend', error);
     return NextResponse.json({ error: 'Could not load seeker profile.' }, { status: 502 });
   }
 }
 
 export async function PATCH(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'seeker') {
-    return NextResponse.json({ error: 'Only job seekers can update this profile.' }, { status: 403 });
-  }
+  const context = await getSeekerContext();
+  if (isResponse(context)) return context;
 
   let value: unknown;
   try {
@@ -84,122 +108,26 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Please provide valid profile details.' }, { status: 400 });
   }
 
-  const name = typeof value.name === 'string' ? value.name.trim() : '';
-  const phone = typeof value.phone === 'string' ? value.phone.trim() : '';
-  const location = typeof value.location === 'string' ? value.location.trim() : '';
-  const experience = typeof value.experience === 'string' ? value.experience.trim() : '';
-  const headline = typeof value.headline === 'string' ? value.headline.trim().slice(0, 160) : '';
-  const bio = typeof value.bio === 'string' ? value.bio.trim().slice(0, 2000) : '';
-  const linkedinUrl = typeof value.linkedinUrl === 'string' ? value.linkedinUrl.trim() : '';
-  const portfolioUrl = typeof value.portfolioUrl === 'string' ? value.portfolioUrl.trim() : '';
-  const skills = typeof value.skills === 'string'
-    ? value.skills.split(',').map((skill) => skill.trim()).filter(Boolean).slice(0, 30)
-    : [];
-  const image = typeof value.image === 'string' ? value.image : '';
-  const resumeFile = value.resumeFile;
-
-  if (!name || name.length > 120 || phone.length > 40 || location.length > 160 || experience.length > 160) {
-    return NextResponse.json({ error: 'Please enter a valid name and profile details.' }, { status: 400 });
-  }
-  if (linkedinUrl && !isSafeUrl(linkedinUrl, ['linkedin.com'])) {
-    return NextResponse.json({ error: 'Enter a valid LinkedIn URL.' }, { status: 400 });
-  }
-  if (portfolioUrl && !isSafeUrl(portfolioUrl)) {
-    return NextResponse.json({ error: 'Portfolio must be a valid HTTP or HTTPS URL.' }, { status: 400 });
-  }
-
-  let imageValue: string | undefined;
-  if (image) {
-    const match = /^data:(image\/(?:png|jpeg|gif));base64,([A-Za-z0-9+/]+={0,2})$/.exec(image);
-    if (!match) {
-      return NextResponse.json({ error: 'Avatar must be a JPG, PNG, or GIF image.' }, { status: 400 });
-    }
-    const imageBytes = decodeBase64(match[2]);
-    if (!imageBytes || imageBytes.length > maxAvatarSize) {
-      return NextResponse.json({ error: 'Avatar image must be 5 MB or smaller.' }, { status: 400 });
-    }
-    imageValue = image;
-  }
-
-  let resumeValue: { name: string; type: 'application/pdf'; data: string } | undefined;
-  if (resumeFile !== undefined && resumeFile !== null) {
-    if (
-      !isRecord(resumeFile) ||
-      typeof resumeFile.name !== 'string' ||
-      typeof resumeFile.type !== 'string' ||
-      typeof resumeFile.data !== 'string'
-    ) {
-      return NextResponse.json({ error: 'Please upload a valid PDF resume.' }, { status: 400 });
-    }
-    const bytes = decodeBase64(resumeFile.data);
-    const fileName = resumeFile.name.trim().replace(/[\\/]/g, '_').slice(0, 180);
-    if (
-      !fileName.toLowerCase().endsWith('.pdf') ||
-      resumeFile.type !== 'application/pdf' ||
-      !bytes ||
-      bytes.length > maxResumeSize ||
-      bytes.subarray(0, 5).toString('ascii') !== '%PDF-'
-    ) {
-      return NextResponse.json({ error: 'Resume must be a PDF file no larger than 5 MB.' }, { status: 400 });
-    }
-    resumeValue = { name: fileName, type: 'application/pdf', data: resumeFile.data };
-  }
-
-  const updatedAt = new Date();
-  const profileUpdate: Record<string, unknown> = {
-    name,
-    phone,
-    location,
-    experience,
-    headline,
-    bio,
-    skills,
-    linkedinUrl,
-    portfolioUrl,
-    candidateId: session.user.id,
-    updatedAt,
-  };
-  if (imageValue !== undefined) profileUpdate.image = imageValue;
-  if (resumeValue) profileUpdate.resumeFile = resumeValue;
-  if (value.removeResume === true) {
-    profileUpdate.resumeFile = null;
-    profileUpdate.resumeUrl = '';
-  }
-
-  const db = await getDatabase();
-  await db.collection('seeker_profiles').updateOne(
-    { candidateId: session.user.id },
-    { $set: profileUpdate, $setOnInsert: { createdAt: updatedAt } },
-    { upsert: true },
-  );
-  await db.collection('user').updateOne(
-    {
-      $or: [
-        ...(ObjectId.isValid(session.user.id) ? [{ _id: new ObjectId(session.user.id) }] : []),
-        { id: session.user.id },
-      ],
-    },
-    {
-      $set: {
-        name,
-        ...(imageValue !== undefined ? { image: imageValue } : {}),
-        updatedAt,
-      },
-    },
-  );
-
-  return NextResponse.json({ success: true });
-}
-
-function isSafeUrl(value: string, allowedDomains?: string[]) {
   try {
-    const url = new URL(value);
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
-    if (!allowedDomains) return true;
-    return allowedDomains.some(
-      (domain) => url.hostname.toLowerCase() === domain || url.hostname.toLowerCase().endsWith(`.${domain}`),
+    const { response, data } = await fetchBackendWithSecret(
+      '/seeker/profile',
+      'PATCH',
+      { ...value, candidateId: context.candidateId },
+      context.apiSecret,
     );
-  } catch {
-    return false;
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: getBackendError(data, 'Could not save your profile.') },
+        { status: response.status >= 400 && response.status < 500 ? response.status : 502 },
+      );
+    }
+    if (!isRecord(data) || data.success !== true) {
+      console.error('Seeker profile backend returned an invalid update response');
+      return NextResponse.json({ error: 'Could not save your profile.' }, { status: 502 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Could not update seeker profile through backend', error);
+    return NextResponse.json({ error: 'Could not save your profile.' }, { status: 502 });
   }
 }

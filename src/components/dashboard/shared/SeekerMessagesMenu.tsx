@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 
 type Conversation = {
   id: string;
+  candidateId: string;
+  recruiterId: string;
+  jobId: string;
   participantName: string;
   jobTitle: string;
   unreadCount: number;
@@ -60,7 +63,11 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
           (conversation) =>
             isRecord(conversation) &&
             typeof conversation.id === 'string' &&
+            typeof conversation.candidateId === 'string' &&
+            typeof conversation.recruiterId === 'string' &&
+            typeof conversation.jobId === 'string' &&
             typeof conversation.participantName === 'string' &&
+            typeof conversation.jobTitle === 'string' &&
             typeof conversation.unreadCount === 'number' &&
             isRecord(conversation.lastMessage) &&
             typeof conversation.lastMessage.body === 'string',

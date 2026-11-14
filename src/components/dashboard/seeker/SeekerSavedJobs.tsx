@@ -22,7 +22,7 @@ function getDaysUntilDeadline(deadline?: string | null) {
 }
 
 export default function SeekerSavedJobs() {
-  const { jobs, loading, error } = useSeekerDashboardData();
+  const { jobs, loading, error } = useSeekerDashboardData({ includeApplications: false });
   const { jobIds, savedAt } = useSavedJobIds();
   const [category, setCategory] = useState('All Saved');
   const [sort, setSort] = useState('Recently Saved');

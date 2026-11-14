@@ -1,30 +1,18 @@
 import { auth } from '@/lib/auth';
-import { fetchBackendUsage } from '@/lib/job-api';
-import { getDatabase } from '@/lib/mongodb';
+import { fetchBackendUsage, fetchBackendWithSecret } from '@/lib/job-api';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { ObjectId } from 'mongodb';
 
-const maxAvatarSize = 5 * 1024 * 1024;
+type RecruiterProfileContext = {
+  recruiterId: string;
+  apiSecret: string;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function getOptionalUrl(value: unknown): string | null {
-  if (typeof value !== 'string' || !value.trim()) return '';
-
-  const rawUrl = value.trim();
-  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
-  try {
-    const url = new URL(candidate);
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function GET() {
+async function getRecruiterContext(): Promise<RecruiterProfileContext | NextResponse> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (session.user.role !== 'recruiter') {
@@ -33,136 +21,113 @@ export async function GET() {
 
   const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) {
-    return NextResponse.json({ error: 'Subscription service is not configured.' }, { status: 503 });
+    console.error('Recruiter profile backend JWT signing secret is not configured');
+    return NextResponse.json({ error: 'Profile service is not configured.' }, { status: 503 });
   }
 
+  return { recruiterId: session.user.id, apiSecret };
+}
+
+function isResponse(value: RecruiterProfileContext | NextResponse): value is NextResponse {
+  return value instanceof Response;
+}
+
+function getBackendError(data: unknown, fallback: string) {
+  return isRecord(data) && typeof data.message === 'string' ? data.message : fallback;
+}
+
+export async function GET() {
+  const context = await getRecruiterContext();
+  if (isResponse(context)) return context;
+
+  const query = new URLSearchParams({ recruiterId: context.recruiterId }).toString();
   try {
-    const { response, data } = await fetchBackendUsage('recruiter', session.user.id, apiSecret);
-    if (!response.ok || !isRecord(data) || typeof data.plan !== 'string') {
-      console.error('Recruiter subscription summary request failed', response.status);
-      return NextResponse.json(
-        { error: 'Could not load recruiter subscription information.' },
-        { status: 502 },
-      );
+    const [profileResult, usageResult] = await Promise.all([
+      fetchBackendWithSecret(
+        `/recruiter/profile?${query}`,
+        'GET',
+        undefined,
+        context.apiSecret,
+      ),
+      fetchBackendUsage('recruiter', context.recruiterId, context.apiSecret),
+    ]);
+
+    const profilePayload = isRecord(profileResult.data) ? profileResult.data : null;
+    const profile = profilePayload && isRecord(profilePayload.profile) ? profilePayload.profile : null;
+    const usage = isRecord(usageResult.data) ? usageResult.data : null;
+    if (
+      !profileResult.response.ok ||
+      !usageResult.response.ok ||
+      !profile ||
+      typeof usage?.plan !== 'string'
+    ) {
+      console.error('Recruiter profile backend returned an unsuccessful or invalid response', {
+        profileStatus: profileResult.response.status,
+        usageStatus: usageResult.response.status,
+      });
+      return NextResponse.json({ error: 'Could not load recruiter profile.' }, { status: 502 });
     }
 
-    const db = await getDatabase();
-    const profile = await db
-      .collection('recruiter_profiles')
-      .findOne({ recruiterId: session.user.id });
-
     return NextResponse.json({
-      recruiterName: profile?.recruiterName || session.user.name || '',
-      plan: data.plan,
-      companyName: profile?.companyName || '',
-      email: profile?.email || session.user.email || '',
-      phone: profile?.phone || '',
-      companySize: profile?.companySize || '',
-      industry: profile?.industry || '',
-      companyWebsite: profile?.companyWebsite || '',
-      companyLogo: profile?.companyLogo || '',
-      companyDescription: profile?.companyDescription || '',
-      emailNotifications: profile?.emailNotifications ?? true,
-      applicationNotifications: profile?.applicationNotifications ?? true,
-      image: profile?.image || session.user.image || '',
+      recruiterName: typeof profile.recruiterName === 'string' ? profile.recruiterName : '',
+      plan: usage.plan,
+      companyName: typeof profile.companyName === 'string' ? profile.companyName : '',
+      email: typeof profile.email === 'string' ? profile.email : '',
+      phone: typeof profile.phone === 'string' ? profile.phone : '',
+      companySize: typeof profile.companySize === 'string' ? profile.companySize : '',
+      industry: typeof profile.industry === 'string' ? profile.industry : '',
+      companyWebsite: typeof profile.companyWebsite === 'string' ? profile.companyWebsite : '',
+      companyLogo: typeof profile.companyLogo === 'string' ? profile.companyLogo : '',
+      companyDescription:
+        typeof profile.companyDescription === 'string' ? profile.companyDescription : '',
+      emailNotifications: profile.emailNotifications !== false,
+      applicationNotifications: profile.applicationNotifications !== false,
+      image: typeof profile.image === 'string' ? profile.image : '',
     });
   } catch (error) {
-    console.error('Could not load recruiter profile and subscription', error);
+    console.error('Could not load recruiter profile from backend', error);
     return NextResponse.json({ error: 'Could not load recruiter profile.' }, { status: 502 });
   }
 }
 
 export async function PATCH(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'recruiter') {
-    return NextResponse.json({ error: 'Only recruiters can update this profile.' }, { status: 403 });
-  }
+  const context = await getRecruiterContext();
+  if (isResponse(context)) return context;
 
-  let body: unknown;
+  let value: unknown;
   try {
-    body = await request.json();
+    value = await request.json();
   } catch {
     return NextResponse.json({ error: 'Profile details must be valid JSON.' }, { status: 400 });
   }
-  if (!isRecord(body)) {
+  if (!isRecord(value)) {
     return NextResponse.json({ error: 'Please provide valid profile details.' }, { status: 400 });
   }
 
-  const companyWebsite = getOptionalUrl(body.companyWebsite);
-  const companyLogo = getOptionalUrl(body.companyLogo);
-  if (companyWebsite === null || companyLogo === null) {
-    return NextResponse.json(
-      { error: 'Company website and image must be valid HTTP or HTTPS URLs.' },
-      { status: 400 },
+  try {
+    const { response, data } = await fetchBackendWithSecret(
+      '/recruiter/profile',
+      'PATCH',
+      { ...value, recruiterId: context.recruiterId },
+      context.apiSecret,
     );
-  }
-
-  const image = typeof body.image === 'string' ? body.image : '';
-  let imageValue = image;
-  if (image.startsWith('data:')) {
-    const match = /^data:(image\/(?:png|jpeg|gif));base64,([A-Za-z0-9+/]+={0,2})$/.exec(image);
-    const imageBytes = match ? Buffer.from(match[2], 'base64') : null;
-    if (!match || !imageBytes || imageBytes.length > maxAvatarSize) {
+    if (!response.ok) {
       return NextResponse.json(
-        { error: 'Profile image must be a JPG, PNG, or GIF image no larger than 5 MB.' },
-        { status: 400 },
+        { error: getBackendError(data, 'Unable to save recruiter profile.') },
+        { status: response.status >= 400 && response.status < 500 ? response.status : 502 },
       );
     }
-  } else if (image) {
-    try {
-      const imageUrl = new URL(image);
-      if (!['http:', 'https:'].includes(imageUrl.protocol)) throw new Error('Unsupported protocol');
-      imageValue = imageUrl.toString();
-    } catch {
-      return NextResponse.json(
-        { error: 'Profile image must be a valid HTTP or HTTPS URL.' },
-        { status: 400 },
-      );
+    if (!isRecord(data) || data.success !== true || !isRecord(data.profile)) {
+      console.error('Recruiter profile backend returned an invalid update response');
+      return NextResponse.json({ error: 'Unable to save recruiter profile.' }, { status: 502 });
     }
+
+    return NextResponse.json({
+      success: true,
+      profile: data.profile,
+    });
+  } catch (error) {
+    console.error('Could not update recruiter profile through backend', error);
+    return NextResponse.json({ error: 'Unable to save recruiter profile.' }, { status: 502 });
   }
-
-  const db = await getDatabase();
-  const profileData = {
-    recruiterName: String(body.recruiterName || '').trim(),
-    image: imageValue,
-    companyName: String(body.companyName || '').trim(),
-    email: String(body.email || session.user.email || '').trim(),
-    phone: String(body.phone || '').trim(),
-    companySize: String(body.companySize || '').trim(),
-    industry: String(body.industry || '').trim(),
-    companyWebsite,
-    companyLogo,
-    companyDescription: String(body.companyDescription || '').trim().slice(0, 1000),
-    emailNotifications: Boolean(body.emailNotifications),
-    applicationNotifications: Boolean(body.applicationNotifications),
-  };
-
-  await db.collection('recruiter_profiles').updateOne(
-    { recruiterId: session.user.id },
-    {
-      $set: { ...profileData, updatedAt: new Date() },
-      $setOnInsert: { recruiterId: session.user.id, createdAt: new Date() },
-    },
-    { upsert: true },
-  );
-
-  await db.collection('user').updateOne(
-    {
-      $or: [
-        ...(ObjectId.isValid(session.user.id) ? [{ _id: new ObjectId(session.user.id) }] : []),
-        { id: session.user.id },
-      ],
-    },
-    {
-      $set: {
-        name: profileData.recruiterName || session.user.name,
-        email: profileData.email,
-        image: profileData.image,
-        updatedAt: new Date(),
-      },
-    },
-  );
-
-  return NextResponse.json({ success: true, profile: profileData });
 }

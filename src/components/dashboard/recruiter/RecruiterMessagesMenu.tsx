@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 type Conversation = {
   id: string;
   candidateId: string;
+  recruiterId: string;
   jobId: string;
   participantName: string;
   jobTitle: string;
@@ -73,6 +74,7 @@ export default function RecruiterMessagesMenu({ recruiterId }: { recruiterId: st
             isRecord(conversation) &&
             typeof conversation.id === 'string' &&
             typeof conversation.candidateId === 'string' &&
+            typeof conversation.recruiterId === 'string' &&
             typeof conversation.jobId === 'string' &&
             typeof conversation.participantName === 'string' &&
             typeof conversation.jobTitle === 'string' &&
@@ -424,6 +426,7 @@ export default function RecruiterMessagesMenu({ recruiterId }: { recruiterId: st
                           setSelected({
                             id: `new:${candidate.id}`,
                             candidateId: candidate.id,
+                            recruiterId,
                             jobId: 'direct',
                             participantName: candidate.name,
                             jobTitle: 'Direct message',

@@ -1,8 +1,11 @@
 import { auth } from '@/lib/auth';
-import { fetchBackendJobs } from '@/lib/job-api';
-import { getDatabase } from '@/lib/mongodb';
+import { fetchBackendJobs, fetchBackendWithSecret } from '@/lib/job-api';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 export async function GET(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -14,59 +17,36 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const limit = Math.min(50, Math.max(1, Number(searchParams.get('limit')) || 6));
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
+  if (!apiSecret) {
+    console.error('Job backend JWT signing secret is not configured');
+    return NextResponse.json({ error: 'Job service is not configured.' }, { status: 503 });
+  }
 
   try {
-    const { response, data } = await fetchBackendJobs('GET');
+    const query = new URLSearchParams({
+      recruiterId: session.user.id,
+      page: String(page),
+      limit: String(limit),
+    }).toString();
+    const { response, data } = await fetchBackendWithSecret(
+      `/recruiter/jobs?${query}`,
+      'GET',
+      undefined,
+      apiSecret,
+    );
     if (!response.ok) {
       return NextResponse.json(
         { error: 'Could not load jobs from backend' },
-        { status: response.status },
+        { status: response.status === 403 ? 403 : 502 },
       );
     }
-    const payload = data as
-      | { jobs?: Record<string, unknown>[]; total?: number }
-      | Record<string, unknown>[];
-    const allJobs = Array.isArray(payload) ? payload : payload.jobs || [];
-    const ownedJobs = allJobs.filter(
-      (job: { recruiterId?: string }) => !job.recruiterId || job.recruiterId === session.user.id,
-    );
-    const total = Array.isArray(payload) ? ownedJobs.length : (payload.total ?? ownedJobs.length);
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    const jobs = ownedJobs
-      .map((job: Record<string, unknown>) => ({
-        ...job,
-        id: String(job.id || job._id || ''),
-        _id: undefined,
-      }))
-      .slice((page - 1) * limit, page * limit);
-    const jobIds = jobs.map((job) => job.id).filter(Boolean);
-    const applications = jobIds.length
-      ? await (await getDatabase())
-          .collection('applications')
-          .find(
-            {
-              recruiterId: session.user.id,
-              isDummy: { $ne: true },
-              jobId: { $in: jobIds },
-            },
-            { projection: { jobId: 1 } },
-          )
-          .toArray()
-      : [];
-    const applicantCounts = new Map<string, number>();
-    for (const application of applications) {
-      const jobId = String(application.jobId);
-      applicantCounts.set(jobId, (applicantCounts.get(jobId) || 0) + 1);
+    if (!isRecord(data) || !Array.isArray(data.jobs) || !isRecord(data.pagination)) {
+      console.error('Recruiter jobs backend returned an invalid response shape');
+      return NextResponse.json({ error: 'Could not load jobs from backend' }, { status: 502 });
     }
-    const jobsWithApplicantCounts = jobs.map((job) => ({
-      ...job,
-      applicants: applicantCounts.get(job.id) || 0,
-    }));
 
-    return NextResponse.json({
-      jobs: jobsWithApplicantCounts,
-      pagination: { page, limit, total, totalPages },
-    });
+    return NextResponse.json({ jobs: data.jobs, pagination: data.pagination });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown backend error';
     return NextResponse.json(

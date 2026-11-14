@@ -27,6 +27,7 @@ export default function RecruiterDashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [jobs, setJobs] = useState<RecruiterJob[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [applicationsError, setApplicationsError] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function RecruiterDashboard() {
       setProfile(profileData);
       setJobs(jobsData?.jobs || []);
       setApplications(applicationsData?.applications || []);
+      setApplicationsError(!applicationsResponse.ok);
       setLoading(false);
     }
 
@@ -102,6 +104,10 @@ export default function RecruiterDashboard() {
         {loading ? (
           <div className="flex min-h-44 items-center justify-center text-[11px] text-[#858da1]">
             Loading applications...
+          </div>
+        ) : applicationsError ? (
+          <div role="alert" className="flex min-h-44 items-center justify-center px-5 text-center text-[11px] text-[#ff8797]">
+            Could not load applications. Please try again.
           </div>
         ) : applications.length === 0 ? (
           <div className="flex min-h-44 flex-col items-center justify-center px-5 text-center">

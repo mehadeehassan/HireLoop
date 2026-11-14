@@ -102,11 +102,23 @@ export async function fetchBackendApplications(candidateId: string, apiSecret: s
 
 export async function fetchBackendWithSecret(
   path: string,
-  method: 'GET' | 'POST' | 'PATCH',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   body: Record<string, unknown> | undefined,
   apiSecret: string,
 ) {
   return fetchBackend(path, method, body, getBackendAuthHeader(apiSecret));
+}
+
+export async function fetchBackendResponse(
+  path: string,
+  method: 'GET' | 'DELETE',
+  apiSecret: string,
+) {
+  return fetch(`${backendUrl()}${path}`, {
+    method,
+    headers: getBackendAuthHeader(apiSecret),
+    cache: 'no-store',
+  });
 }
 
 export async function fetchBackendUsage(

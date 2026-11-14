@@ -3,7 +3,6 @@ import { connection } from 'next/server';
 import JobDetails from '@/components/browse-jobs/JobDetails';
 import { fetchBackendJobs } from '@/lib/job-api';
 import { toPublicJob } from '@/lib/public-jobs';
-import { addRecruiterCompanyProfile, getRecruiterCompanyProfiles } from '@/lib/recruiter-company';
 
 export default async function JobDetailsPage({
   params,
@@ -22,8 +21,5 @@ export default async function JobDetailsPage({
   const job = toPublicJob(data);
   if (!job) notFound();
 
-  const companyProfiles = await getRecruiterCompanyProfiles([data]);
-  const jobWithCompanyProfile = addRecruiterCompanyProfile(job, data, companyProfiles);
-
-  return <JobDetails job={jobWithCompanyProfile} />;
+  return <JobDetails job={job} />;
 }

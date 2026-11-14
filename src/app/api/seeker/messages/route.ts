@@ -83,6 +83,7 @@ export async function GET() {
           isRecord(conversation) &&
           conversation.candidateId === context.candidateId &&
           typeof conversation.id === 'string' &&
+          typeof conversation.recruiterId === 'string' &&
           typeof conversation.participantName === 'string' &&
           isRecord(conversation.lastMessage) &&
           typeof conversation.lastMessage.body === 'string' &&
@@ -90,8 +91,15 @@ export async function GET() {
       )
       .map((conversation) => {
         const lastMessage = conversation.lastMessage as Record<string, unknown>;
+        const jobId =
+          typeof conversation.jobId === 'string' && conversation.jobId.trim().length > 0
+            ? conversation.jobId.trim()
+            : 'direct';
         return {
           id: conversation.id,
+          candidateId: context.candidateId,
+          recruiterId: conversation.recruiterId,
+          jobId,
           participantName: conversation.participantName,
           jobTitle: typeof conversation.jobTitle === 'string' ? conversation.jobTitle : '',
           unreadCount:

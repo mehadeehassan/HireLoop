@@ -10,7 +10,7 @@ import { useSeekerDashboardData } from './useSeekerDashboardData';
 import SeekerPageHeader from './SeekerPageHeader';
 
 export default function SeekerJobs({ initialSearch = '' }: { initialSearch?: string }) {
-  const { jobs, loading, error } = useSeekerDashboardData();
+  const { jobs, loading, error } = useSeekerDashboardData({ includeApplications: false });
   const [search, setSearch] = useState(initialSearch);
   const [page, setPage] = useState(1);
   const pageSize = 8;

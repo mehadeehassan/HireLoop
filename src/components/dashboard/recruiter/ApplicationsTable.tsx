@@ -37,6 +37,7 @@ export default function ApplicationsTable() {
   const [filter, setFilter] = useState('All');
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [page, setPage] = useState(1);
   const [selectedApplication, setSelectedApplication] = useState<
     Application | null
@@ -46,11 +47,24 @@ export default function ApplicationsTable() {
   useEffect(() => {
     let active = true;
     async function loadApplications() {
-      const response = await fetch('/api/recruiter/applications', { cache: 'no-store' });
-      const data = response.ok ? await response.json() : null;
-      if (active) {
-        setApplications(data?.applications || []);
-        setLoading(false);
+      try {
+        const response = await fetch('/api/recruiter/applications', { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(
+            typeof data?.error === 'string' ? data.error : 'Could not load applications.',
+          );
+        }
+        if (!Array.isArray(data?.applications)) {
+          throw new Error('The application service returned an unexpected response.');
+        }
+        if (active) setApplications(data.applications);
+      } catch (error) {
+        if (active) {
+          setLoadError(error instanceof Error ? error.message : 'Could not load applications.');
+        }
+      } finally {
+        if (active) setLoading(false);
       }
     }
     loadApplications();
@@ -106,7 +120,14 @@ export default function ApplicationsTable() {
         ))}
       </div>
       <div className="overflow-hidden rounded-lg border border-[#252d43]">
-        <div className="hidden overflow-x-auto md:block">
+        {loadError && (
+          <div role="alert" className="p-5 text-center text-[11px] text-[#ff8797]">
+            {loadError}
+          </div>
+        )}
+        {!loadError && (
+          <>
+            <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-175 text-left">
             <thead>
               <tr className="h-10 border-b border-[#252d43] text-[9px] uppercase tracking-[.08em] text-[#8c94a8]">
@@ -198,8 +219,8 @@ export default function ApplicationsTable() {
               ))}
             </tbody>
           </table>
-        </div>
-        <div className="divide-y divide-[#252d43] md:hidden">
+            </div>
+            <div className="divide-y divide-[#252d43] md:hidden">
           {pagedApplications.length === 0 && (
             <div className="flex h-44 items-center justify-center text-[11px] text-[#858da1]">
               No applications found
@@ -256,7 +277,9 @@ export default function ApplicationsTable() {
               </div>
             </div>
           ))}
-        </div>
+            </div>
+          </>
+        )}
       </div>
       <DashboardPagination page={page} totalPages={totalPages} onPageChange={setPage} />
       {selectedApplication && (
