@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import type { DashboardRole } from './DashboardTypes';
 import DashboardHeader from './DashboardHeader';
 import DashboardSidebar from './DashboardSidebar';
+import AdminDashboardShell from '@/components/dashboard/admin/AdminDashboardShell';
 
 export default function DashboardShell({
   role,
@@ -14,6 +15,14 @@ export default function DashboardShell({
   pathname: string;
   children: ReactNode;
 }) {
+  if (role === 'admin') {
+    return (
+      <AdminDashboardShell pathname={pathname}>
+        {children}
+      </AdminDashboardShell>
+    );
+  }
+
   return (
     <div className={`min-h-screen text-[#e6e8ef] ${role === 'seeker' ? 'bg-[#0d0d10]' : 'bg-[#080c1b]'}`}>
       <DashboardSidebar role={role} pathname={pathname} />
