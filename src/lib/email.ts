@@ -41,6 +41,14 @@ export async function sendEmail({ to, subject, text, html }: SendEmailInput) {
   });
 
   if (!response.ok) {
-    throw new Error('Email could not be sent.');
+    if (response.status === 401) {
+      throw new Error('Resend rejected the API key (HTTP 401). Check RESEND_API_KEY.');
+    }
+    if (response.status === 403 && /@resend\.dev(?:[>\s]|$)/i.test(from)) {
+      throw new Error(
+        'Resend rejected the test email. The onboarding@resend.dev sender can only deliver to the Resend account owner email.',
+      );
+    }
+    throw new Error(`Resend rejected email delivery (HTTP ${response.status}).`);
   }
 }
