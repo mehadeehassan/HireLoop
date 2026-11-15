@@ -72,3 +72,39 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - Email sign-in is implemented in `src/components/auth/AuthForm.tsx`. Keep invalid credentials generic (`Email or password is incorrect.`) to avoid exposing whether an account exists.
 - For invalid-credential responses, dismiss the loading toast before creating a separate error toast, and render the same error below the password field with `aria-invalid`/`aria-describedby`. Clear that server error when the user edits the email or password; keep client-side required/format validation separate.
+
+## Implemented HireLoop sections
+
+### Identity and admin security
+
+- Better Auth is the source of truth for `seeker`, `recruiter`, and `admin` roles. Public signup creates seekers; recruiter/admin access is assigned through protected admin flows, never from signup input.
+- The initial admin is bootstrapped server-side with `npm run auth:bootstrap-admin`; there is no public bootstrap endpoint.
+- Admin routes use an active Better Auth session on the Next.js server. Protected Express requests use a two-minute service JWT, and the backend rechecks the actor's current role and suspension state.
+- User management uses Better Auth Admin APIs for role and suspension changes, revokes sessions as needed, and records actions through the admin audit endpoints. Do not add a second role store.
+
+### Admin dashboard and users
+
+- `/dashboard/admin` has a shared responsive sidebar/layout and a database-backed overview for users, companies, jobs, applications, and payments.
+- `/dashboard/admin/users` supports search, role/status filters, sorting, pagination, and confirmed role/suspension actions. Prevent self-demotion/suspension and changes that would leave no active admin.
+- Keep server-side admin authorization on every new admin page/API; hiding navigation is not access control.
+
+### Company submissions and directory
+
+- Seeker and recruiter dashboards both have owner-scoped Companies pages. The backend derives `createdBy` and `createdByRole` from the authenticated Service JWT actor; never trust those fields from browser input.
+- Company records live in MongoDB. User APIs support validated create/list/details/update, duplicate handling, and ownership checks. Existing recruiter profile data is preserved.
+- The Admin Companies directory combines normalized submissions with legacy recruiter-profile and job company data. Do not add an approval workflow or delete/archive operation without an established lifecycle and safe reference handling.
+
+### Admin jobs
+
+- `/dashboard/admin/jobs` displays real, server-paginated job data with title/company search, status/category/location/type/recruiter filters, sorting, database-derived summaries, details, and validated editing.
+- Admin job APIs are `/api/admin/jobs`, `/api/admin/jobs/:jobId`, `/api/admin/jobs/:jobId/status`, and `DELETE /api/admin/jobs/:jobId`; matching Express endpoints are mounted under `/admin/jobs`.
+- Status management supports Active → Closed and Closed/Expired → Active. It does not change recruiter quota or application records. Closed/unpublished jobs are excluded from public listings and cannot accept new applications.
+- `AdminJobsManager` offers Delete from the jobs table and job-details dialog, with a confirmation dialog, success/error toast, and list refresh. The authenticated Next.js `DELETE /api/admin/jobs/:jobId` proxy calls the active-admin-only Express `DELETE /admin/jobs/:jobId` endpoint.
+- Deletion is a repeat-safe soft delete (`isDeleted`, `deletedAt`, `deletedBy` from the verified admin actor), and also sets status to Closed and `isActive` to false. Admin, recruiter, and public listings/details, dashboard totals, and related-company job counts exclude deleted jobs; application submission rejects them.
+- Soft deletion preserves application records and recruiter quota history; it does not physically delete a job or refund quota. Do not hard-delete jobs or add a restore flow without an explicit lifecycle contract.
+
+### Verification notes
+
+- For admin job changes, run the focused backend tests (`npm run test:admin-jobs`, `npm run test:applications`) and the frontend ESLint, `npx tsc --noEmit`, and `npm run build`.
+- Admin soft-delete coverage checks active-admin authorization, soft-delete metadata, repeat requests, and rejection of applications without consuming quota.
+- Dashboard statistics, jobs, companies, applications, and billing data must come from their authoritative backend/Better Auth sources. Do not add fabricated metrics or success-shaped fallbacks.

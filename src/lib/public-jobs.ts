@@ -89,7 +89,7 @@ export function toPublicJob(value: unknown): PublicJob | null {
   if (!job) return null;
 
   const status = getString(job.status).toLowerCase();
-  const isPublished = status === 'active' || job.isActive === true;
+  const isPublished = status ? status === 'active' : job.isActive === true;
   const id = getString(job.id, job._id);
   const title = getString(job.title);
   if (!isPublished || !id || !title) return null;

@@ -1,12 +1,14 @@
+import {
+  getActiveAdminSession,
+  isAdminSessionResponse,
+  type AdminServerSession,
+} from '@/lib/admin-server-auth';
 import { auth } from '@/lib/auth';
 import { isAccountActive, isManagedRole, type ManagedRole } from '@/lib/admin-user-policy';
 import { fetchBackendWithSecret } from '@/lib/job-api';
-import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-type AdminSession = {
-  actorId: string;
-  headers: Headers;
+type AdminSession = AdminServerSession & {
   apiSecret: string;
 };
 
@@ -32,30 +34,6 @@ function parseMutationBody(value: unknown): AdminMutationBody | null {
   }
   if (value.action === 'unsuspend') return { action: value.action };
   return null;
-}
-
-async function getAdminSession(): Promise<AdminSession | NextResponse> {
-  const requestHeaders = await headers();
-  const session = await auth.api.getSession({ headers: requestHeaders });
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!isAccountActive(session.user)) {
-    return NextResponse.json({ error: 'Only active admins can manage users.' }, { status: 403 });
-  }
-  if (session.user.role !== 'admin') {
-    return NextResponse.json({ error: 'Only active admins can manage users.' }, { status: 403 });
-  }
-
-  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
-  if (!apiSecret) {
-    console.error('Admin audit service JWT signing secret is not configured');
-    return NextResponse.json({ error: 'Admin user management is not configured.' }, { status: 503 });
-  }
-
-  return { actorId: session.user.id, headers: requestHeaders, apiSecret };
-}
-
-function isResponse(value: AdminSession | NextResponse): value is NextResponse {
-  return value instanceof Response;
 }
 
 async function updateAudit(
@@ -96,8 +74,15 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ userId: string }> },
 ) {
-  const context = await getAdminSession();
-  if (isResponse(context)) return context;
+  const sessionContext = await getActiveAdminSession();
+  if (isAdminSessionResponse(sessionContext)) return sessionContext;
+
+  const apiSecret = process.env.HIRELOOP_JWT_SECRET;
+  if (!apiSecret) {
+    console.error('Admin audit service JWT signing secret is not configured');
+    return NextResponse.json({ error: 'Admin user management is not configured.' }, { status: 503 });
+  }
+  const context: AdminSession = { ...sessionContext, apiSecret };
 
   const { userId } = await params;
   if (!userId.trim() || userId.length > 128) {
@@ -207,7 +192,10 @@ export async function PATCH(
         await updateAudit(context, auditId, 'partial_failure', 'session_revocation_failed');
         console.error('Role changed but existing Better Auth sessions could not be revoked', error);
         return NextResponse.json(
-          { error: 'The role changed, but sessions could not be revoked. Retry the operation.' },
+          {
+            error: 'The role changed, but sessions could not be revoked. Retry the operation.',
+            actionApplied: true,
+          },
           { status: 503 },
         );
       }
