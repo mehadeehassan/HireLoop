@@ -1,5 +1,5 @@
-import 'server-only';
 import { escapeEmailHtml, sendEmail } from '@/lib/email';
+import 'server-only';
 
 export async function sendPasswordResetEmail(email: string, name: string, resetUrl: string) {
   const safeName = escapeEmailHtml(name);
@@ -63,7 +63,24 @@ export async function sendPasswordResetEmail(email: string, name: string, resetU
   await sendEmail({
     to: email,
     subject: 'Reset your HireLoop password',
-    text: `Hello ${name},\n\nUse this link to reset your HireLoop password. The link expires in one hour.\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
+    text: `HIRELOOP
+Account security
+
+Reset your password
+
+Hello ${name},
+
+We received a request to reset the password for your HireLoop account.
+Use the secure link below to choose a new password:
+
+${resetUrl}
+
+This link expires in one hour.
+
+If you did not request a password reset, you can ignore this email.
+Your password will remain unchanged.
+
+This is an automated message from HireLoop. Please do not reply.`,
     html,
   });
 }
