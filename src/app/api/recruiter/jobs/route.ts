@@ -2,13 +2,18 @@ import { auth } from '@/lib/auth';
 import { fetchBackendJobs, fetchBackendWithSecret } from '@/lib/job-api';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { timeSessionLookup, withRequestPerformance } from '@/lib/request-performance';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export async function GET(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+async function handleGET(request: Request) {
+  const requestHeaders = await headers();
+  const session = await timeSessionLookup(
+    'GET /api/recruiter/jobs',
+    () => auth.api.getSession({ headers: requestHeaders }),
+  );
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (session.user.role !== 'recruiter') {
     return NextResponse.json({ error: 'Only recruiters can view recruiter jobs.' }, { status: 403 });
@@ -56,6 +61,8 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export const GET = withRequestPerformance('GET /api/recruiter/jobs', handleGET);
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });

@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { fetchBackendUsage, fetchBackendWithSecret } from '@/lib/job-api';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { timeSessionLookup, withRequestPerformance } from '@/lib/request-performance';
 
 type RecruiterProfileContext = {
   recruiterId: string;
@@ -14,7 +15,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function getRecruiterContext(): Promise<RecruiterProfileContext | NextResponse> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await timeSessionLookup(
+    'GET /api/recruiter/profile',
+    () => auth.api.getSession({ headers: requestHeaders }),
+  );
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (session.user.role !== 'recruiter') {
     return NextResponse.json({ error: 'Only recruiters can access this profile.' }, { status: 403 });
@@ -41,7 +46,7 @@ function getBackendError(data: unknown, fallback: string) {
   return isRecord(data) && typeof data.message === 'string' ? data.message : fallback;
 }
 
-export async function GET() {
+async function handleGET() {
   const context = await getRecruiterContext();
   if (isResponse(context)) return context;
 
@@ -95,6 +100,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Could not load recruiter profile.' }, { status: 502 });
   }
 }
+
+export const GET = withRequestPerformance('GET /api/recruiter/profile', handleGET);
 
 export async function PATCH(request: Request) {
   const context = await getRecruiterContext();

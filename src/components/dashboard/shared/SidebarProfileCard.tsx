@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { DashboardRole } from './DashboardTypes';
 import DashboardAvatar from './DashboardAvatar';
-import { useEffect, useState } from 'react';
+import { useDashboardProfile } from './DashboardProfileContext';
 
 type UserLike = {
   name?: string | null;
@@ -53,51 +53,14 @@ export default function SidebarProfileCard({
   role: DashboardRole;
   user?: UserLike;
 }) {
-  const [recruiterProfile, setRecruiterProfile] = useState<RecruiterProfile | null>(null);
-  const [seekerProfile, setSeekerProfile] = useState<SeekerProfile | null>(null);
-
-  useEffect(() => {
-    if (role !== 'recruiter' && role !== 'seeker') return;
-    let active = true;
-    async function loadProfile() {
-      const isRecruiter = role === 'recruiter';
-      const response = await fetch(
-        isRecruiter ? '/api/recruiter/profile' : '/api/seeker/profile',
-        { cache: 'no-store' },
-      );
-      if (!response.ok) throw new Error(`Could not load ${role} profile`);
-      const data: unknown = await response.json();
-      const profile =
-        typeof data === 'object' && data !== null
-          ? (data as { recruiterName?: unknown; plan?: unknown; name?: unknown; image?: unknown })
-          : {};
-      if (!active) return;
-
-      if (isRecruiter) {
-        setRecruiterProfile({
-          recruiterName: typeof profile.recruiterName === 'string' ? profile.recruiterName : '',
-          plan: typeof profile.plan === 'string' ? profile.plan : 'Starter',
-          image: typeof profile.image === 'string' ? profile.image : '',
-        });
-      } else {
-        setSeekerProfile({
-          plan: typeof profile.plan === 'string' ? profile.plan : 'Starter',
-          name: typeof profile.name === 'string' ? profile.name : '',
-          image: typeof profile.image === 'string' ? profile.image : '',
-        });
-      }
-    }
-    loadProfile().catch((error) => console.error(`Could not load ${role} sidebar profile`, error));
-    const updateEvent =
-      role === 'recruiter' ? 'recruiter-profile-updated' : 'seeker-profile-updated';
-    window.addEventListener(updateEvent, loadProfile);
-    return () => {
-      active = false;
-      window.removeEventListener(updateEvent, loadProfile);
-    };
-  }, [role]);
+  const profile = useDashboardProfile();
 
   if (role === 'seeker') {
+    const seekerProfile: SeekerProfile | null = profile ? {
+      name: profile.name,
+      plan: profile.plan,
+      image: profile.image,
+    } : null;
     const seekerPlan = getSeekerPlanLabel(seekerProfile?.plan || 'Starter');
 
     return (
@@ -120,6 +83,11 @@ export default function SidebarProfileCard({
   }
 
   if (role === 'recruiter') {
+    const recruiterProfile: RecruiterProfile | null = profile ? {
+      recruiterName: profile.recruiterName,
+      plan: profile.plan,
+      image: profile.image,
+    } : null;
     const recruiterPlan = recruiterProfile?.plan || 'Starter';
 
     return (

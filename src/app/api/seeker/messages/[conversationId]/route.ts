@@ -8,7 +8,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ conversationId: string }> },
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -22,7 +22,12 @@ export async function GET(
   }
 
   const { conversationId } = await params;
-  const query = new URLSearchParams({ candidateId: session.user.id }).toString();
+  const searchParams = new URL(request.url).searchParams;
+  const query = new URLSearchParams({ candidateId: session.user.id });
+  for (const key of ['page', 'limit'] as const) {
+    const value = searchParams.get(key);
+    if (value) query.set(key, value);
+  }
   try {
     const { response, data } = await fetchBackendWithSecret(
       `/messages/${encodeURIComponent(conversationId)}?${query}`,
@@ -71,7 +76,10 @@ export async function GET(
         createdAt: typeof message.createdAt === 'string' ? message.createdAt : '',
       }));
 
-    return NextResponse.json({ messages });
+    return NextResponse.json({
+      messages,
+      ...(isRecord(data.pagination) ? { pagination: data.pagination } : {}),
+    });
   } catch (error) {
     console.error('Could not load seeker message thread', error);
     return NextResponse.json(

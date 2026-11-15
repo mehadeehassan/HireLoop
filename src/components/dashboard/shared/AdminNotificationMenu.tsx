@@ -38,9 +38,10 @@ export default function AdminNotificationMenu() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const openRef = useRef(open);
 
-  const refreshCount = useCallback(async () => {
-    const payload = await readJson(await fetch('/api/admin/notifications/unread-count', { cache: 'no-store' }));
+  const refreshCount = useCallback(async (signal?: AbortSignal) => {
+    const payload = await readJson(await fetch('/api/admin/notifications/unread-count', { cache: 'no-store', signal }));
     if (!payload || typeof payload !== 'object' || !Number.isSafeInteger((payload as { unreadCount?: unknown }).unreadCount)) throw new Error('Unread count response was invalid.');
     setUnreadCount(Number((payload as { unreadCount: number }).unreadCount));
   }, []);
@@ -60,20 +61,26 @@ export default function AdminNotificationMenu() {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     const update = () => {
       if (document.visibilityState !== 'visible') return;
-      void refreshCount().catch((reason) => { if (active) setError(reason instanceof Error ? reason.message : 'Could not refresh notifications.'); });
-      if (open) void loadList();
+      if (openRef.current) {
+        void loadList();
+      } else {
+        void refreshCount(controller.signal).catch((reason) => { if (active && !controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not refresh notifications.'); });
+      }
     };
-    const initialTimer = window.setTimeout(() => {
-      void refreshCount().catch((reason) => { if (active) setError(reason instanceof Error ? reason.message : 'Could not load notifications.'); });
-    }, 0);
+    void refreshCount(controller.signal).catch((reason) => { if (active && !controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load notifications.'); });
     const timer = window.setInterval(update, 30_000);
     const onVisibility = () => { if (document.visibilityState === 'visible') update(); };
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('focus', update);
-    return () => { active = false; window.clearTimeout(initialTimer); window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisibility); window.removeEventListener('focus', update); };
-  }, [refreshCount, loadList, open]);
+    return () => { active = false; controller.abort(); window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisibility); window.removeEventListener('focus', update); };
+  }, [refreshCount, loadList]);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -115,7 +122,7 @@ export default function AdminNotificationMenu() {
   }
 
   return <div className="relative">
-    <button ref={buttonRef} type="button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} aria-haspopup="menu" aria-expanded={open} onClick={() => { const next = !open; setOpen(next); if (next) void loadList(); }} className="relative flex size-9 items-center justify-center rounded-md text-[#a6a6ae] transition hover:bg-white/[0.06] hover:text-white">
+    <button ref={buttonRef} type="button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} aria-haspopup="menu" aria-expanded={open} onClick={() => { const next = !open; openRef.current = next; setOpen(next); if (next) void loadList(); }} className="relative flex size-9 items-center justify-center rounded-md text-[#a6a6ae] transition hover:bg-white/[0.06] hover:text-white">
       <Bell aria-hidden="true" className="size-4" />
       {unreadCount > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full border border-[#0d0d10] bg-rose-500 px-1 text-center text-[9px] font-semibold leading-[14px] text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>}
     </button>

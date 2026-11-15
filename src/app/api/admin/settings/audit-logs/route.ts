@@ -1,12 +1,13 @@
 import { isAdminAuditLogsList } from '@/lib/admin-settings-contract';
 import { proxyAdminSettingsRequest } from '@/lib/admin-settings-proxy';
 import { NextResponse } from 'next/server';
+import { withRequestPerformance } from '@/lib/request-performance';
 
 const pageSizes = new Set(['10', '20', '50']);
 const sections = new Set(['all', 'branding', 'controls', 'notifications', 'plan_limits', 'pricing']);
 const allowedParams = ['page', 'pageSize', 'section'] as const;
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const params = new URL(request.url).searchParams;
   for (const key of allowedParams) {
     if (params.getAll(key).length > 1) {
@@ -50,3 +51,5 @@ export async function GET(request: Request) {
   }
   return NextResponse.json(result.data);
 }
+
+export const GET = withRequestPerformance('GET /api/admin/settings/audit-logs', handleGET);

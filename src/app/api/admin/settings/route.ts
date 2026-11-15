@@ -1,8 +1,9 @@
 import { isAdminSettings, isRecord } from '@/lib/admin-settings-contract';
 import { proxyAdminSettingsRequest } from '@/lib/admin-settings-proxy';
 import { NextResponse } from 'next/server';
+import { withRequestPerformance } from '@/lib/request-performance';
 
-export async function GET() {
+async function handleGET() {
   const result = await proxyAdminSettingsRequest('/admin/settings', 'GET');
   if (result.response) return result.response;
   if (!isAdminSettings(result.data)) {
@@ -14,6 +15,8 @@ export async function GET() {
   }
   return NextResponse.json(result.data);
 }
+
+export const GET = withRequestPerformance('GET /api/admin/settings', handleGET);
 
 export async function PATCH(request: Request) {
   let body: unknown;

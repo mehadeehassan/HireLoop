@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { isAccountActive } from '@/lib/admin-user-policy';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { timeSessionLookup } from '@/lib/request-performance';
 
 export type AdminServerSession = {
   actorId: string;
@@ -10,7 +11,10 @@ export type AdminServerSession = {
 
 export async function getActiveAdminSession(): Promise<AdminServerSession | NextResponse> {
   const requestHeaders = await headers();
-  const session = await auth.api.getSession({ headers: requestHeaders });
+  const session = await timeSessionLookup(
+    'getActiveAdminSession',
+    () => auth.api.getSession({ headers: requestHeaders }),
+  );
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

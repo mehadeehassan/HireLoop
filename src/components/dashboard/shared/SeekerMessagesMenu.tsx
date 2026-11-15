@@ -20,6 +20,8 @@ type Message = {
   createdAt: string;
 };
 
+type Pagination = { page: number; totalPages: number; total: number };
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -43,17 +45,21 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [conversationPage, setConversationPage] = useState(1);
+  const [conversationPagination, setConversationPagination] = useState<Pagination | null>(null);
+  const [messagePage, setMessagePage] = useState(1);
+  const [messagePagination, setMessagePagination] = useState<Pagination | null>(null);
 
   const unreadCount = useMemo(
     () => conversations.reduce((count, conversation) => count + conversation.unreadCount, 0),
     [conversations],
   );
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (page = 1) => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('/api/seeker/messages', { cache: 'no-store' });
+      const response = await fetch(`/api/seeker/messages?page=${page}&limit=20`, { cache: 'no-store' });
       const payload: unknown = await response.json();
       if (!response.ok) throw new Error(getErrorMessage(payload, 'Could not load messages.'));
       if (
@@ -76,6 +82,10 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
         throw new Error('The messaging service returned an unexpected response.');
       }
       setConversations(payload.conversations as Conversation[]);
+      setConversationPage(page);
+      if (isRecord(payload.pagination) && typeof payload.pagination.totalPages === 'number' && typeof payload.pagination.total === 'number') {
+        setConversationPagination({ page, totalPages: payload.pagination.totalPages, total: payload.pagination.total });
+      }
     } catch (loadError) {
       console.error('Could not load seeker messages', loadError);
       setError(loadError instanceof Error ? loadError.message : 'Could not load messages.');
@@ -89,13 +99,14 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
     return () => window.clearTimeout(timer);
   }, [loadConversations]);
 
-  const loadThread = useCallback(async (conversation: Conversation) => {
+  const loadThread = useCallback(async (conversation: Conversation, page = 1) => {
     setSelected(conversation);
+    setMessagePage(page);
     setLoading(true);
     setError('');
     try {
       const response = await fetch(
-        `/api/seeker/messages/${encodeURIComponent(conversation.id)}`,
+        `/api/seeker/messages/${encodeURIComponent(conversation.id)}?page=${page}&limit=50`,
         { cache: 'no-store' },
       );
       const payload: unknown = await response.json();
@@ -114,6 +125,9 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
         throw new Error('The messaging service returned an unexpected conversation.');
       }
       setMessages(payload.messages as Message[]);
+      if (isRecord(payload.pagination) && typeof payload.pagination.totalPages === 'number' && typeof payload.pagination.total === 'number') {
+        setMessagePagination({ page, totalPages: payload.pagination.totalPages, total: payload.pagination.total });
+      }
       const readResponse = await fetch(
         `/api/seeker/messages/${encodeURIComponent(conversation.id)}`,
         { method: 'PATCH' },
@@ -141,12 +155,12 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
     window.addEventListener('keydown', closeOnEscape);
     const refreshTimer = selected
       ? null
-      : window.setInterval(() => void loadConversations(), 15_000);
+      : window.setInterval(() => void loadConversations(conversationPage), 15_000);
     return () => {
       window.removeEventListener('keydown', closeOnEscape);
       if (refreshTimer) window.clearInterval(refreshTimer);
     };
-  }, [open, selected, loadConversations]);
+  }, [open, selected, loadConversations, conversationPage]);
 
   useEffect(() => {
     if (!open || !selected) return;
@@ -154,7 +168,7 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
     const refreshThread = async () => {
       try {
         const response = await fetch(
-          `/api/seeker/messages/${encodeURIComponent(selected.id)}`,
+          `/api/seeker/messages/${encodeURIComponent(selected.id)}?page=${messagePage}&limit=50`,
           { cache: 'no-store' },
         );
         const payload: unknown = await response.json();
@@ -182,7 +196,7 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
       active = false;
       window.clearInterval(refreshTimer);
     };
-  }, [open, selected]);
+  }, [open, selected, messagePage]);
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -286,6 +300,7 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
                   <p className="py-8 text-center text-[10px] text-[#85858e]">No messages in this conversation yet.</p>
                 ) : null}
               </div>
+              {messagePagination && messagePagination.totalPages > 1 && <div className="flex items-center justify-between border-t border-[#29292f] px-3 py-2 text-[9px] text-[#85858e]"><button type="button" disabled={messagePage >= messagePagination.totalPages || loading} onClick={() => void loadThread(selected, messagePage + 1)} className="text-[#aaa2ff] disabled:opacity-40">Older</button><span>Page {messagePage} of {messagePagination.totalPages}</span><button type="button" disabled={messagePage <= 1 || loading} onClick={() => void loadThread(selected, messagePage - 1)} className="text-[#aaa2ff] disabled:opacity-40">Newer</button></div>}
               <form onSubmit={sendMessage} className="flex items-end gap-2 border-t border-[#29292f] p-3">
                 <label className="sr-only" htmlFor="seeker-message-reply">Write a reply</label>
                 <textarea
@@ -305,6 +320,7 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
           ) : loading ? (
             <div className="space-y-2 p-4">{[0, 1, 2].map((row) => <div key={row} className="h-14 animate-pulse rounded bg-white/5" />)}</div>
           ) : conversations.length ? (
+            <>
             <ul className="max-h-80 divide-y divide-[#242428] overflow-y-auto">
               {conversations.map((conversation) => (
                 <li key={conversation.id}>
@@ -324,6 +340,8 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
                 </li>
               ))}
             </ul>
+            {conversationPagination && conversationPagination.totalPages > 1 && <div className="flex items-center justify-between border-t border-[#29292f] px-3 py-2 text-[9px] text-[#85858e]"><button type="button" disabled={conversationPage <= 1 || loading} onClick={() => void loadConversations(conversationPage - 1)} className="text-[#aaa2ff] disabled:opacity-40">Previous</button><span>{conversationPagination.total.toLocaleString()} conversations · {conversationPage}/{conversationPagination.totalPages}</span><button type="button" disabled={conversationPage >= conversationPagination.totalPages || loading} onClick={() => void loadConversations(conversationPage + 1)} className="text-[#aaa2ff] disabled:opacity-40">Next</button></div>}
+            </>
           ) : !error ? (
             <div className="px-4 py-10 text-center">
               <p className="text-[10px] font-medium text-[#d9d9df]">No recruiter messages yet</p>

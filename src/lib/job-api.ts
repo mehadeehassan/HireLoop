@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createHmac, randomUUID } from 'node:crypto';
+import { recordBackendCall } from '@/lib/request-performance';
 
 const backendUrl = () =>
   (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000').replace(/\/$/, '');
@@ -47,27 +48,31 @@ async function fetchBackend(
   body?: unknown,
   additionalHeaders?: HeadersInit,
 ) {
-  const response = await fetch(`${backendUrl()}${path}`, {
-    method,
-    headers: {
-      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...additionalHeaders,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    cache: 'no-store',
-  });
-
-  const responseText = await response.text();
-  let responseData: unknown = null;
-  if (responseText) {
-    try {
-      responseData = JSON.parse(responseText);
-    } catch {
-      responseData = responseText;
+  const startedAt = performance.now();
+  try {
+    const response = await fetch(`${backendUrl()}${path}`, {
+      method,
+      headers: {
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...additionalHeaders,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: 'no-store',
+    });
+    const responseText = await response.text();
+    let responseData: unknown = null;
+    if (responseText) {
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        responseData = responseText;
+      }
     }
-  }
 
-  return { response, data: responseData };
+    return { response, data: responseData };
+  } finally {
+    recordBackendCall(`${method} ${path}`, performance.now() - startedAt);
+  }
 }
 
 export async function fetchBackendJobs(
@@ -140,11 +145,16 @@ export async function fetchBackendResponse(
   apiSecret: string,
   actor: ServiceActor,
 ) {
-  return fetch(`${backendUrl()}${path}`, {
-    method,
-    headers: getBackendAuthHeader(apiSecret, actor),
-    cache: 'no-store',
-  });
+  const startedAt = performance.now();
+  try {
+    return await fetch(`${backendUrl()}${path}`, {
+      method,
+      headers: getBackendAuthHeader(apiSecret, actor),
+      cache: 'no-store',
+    });
+  } finally {
+    recordBackendCall(`${method} ${path}`, performance.now() - startedAt);
+  }
 }
 
 export async function fetchBackendUsage(

@@ -23,13 +23,18 @@ async function getRecruiterContext() {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ conversationId: string }> },
 ) {
   const context = await getRecruiterContext();
   if ('error' in context) return context.error;
   const { conversationId } = await params;
+  const searchParams = new URL(request.url).searchParams;
   const query = new URLSearchParams({ recruiterId: context.recruiterId });
+  for (const key of ['page', 'limit'] as const) {
+    const value = searchParams.get(key);
+    if (value) query.set(key, value);
+  }
 
   try {
     const { response, data } = await fetchBackendWithSecret(
@@ -62,7 +67,10 @@ export async function GET(
         typeof message.senderId === 'string' &&
         typeof message.body === 'string',
     );
-    return NextResponse.json({ messages });
+    return NextResponse.json({
+      messages,
+      ...(isRecord(data.pagination) ? { pagination: data.pagination } : {}),
+    });
   } catch (error) {
     console.error('Could not load recruiter message thread', error);
     return NextResponse.json({ error: 'Could not connect to the messaging service.' }, { status: 502 });

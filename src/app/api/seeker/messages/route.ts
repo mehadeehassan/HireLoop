@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { fetchBackendWithSecret } from '@/lib/job-api';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { timeSessionLookup, withRequestPerformance } from '@/lib/request-performance';
 
 type MessageContext = {
   candidateId: string;
@@ -14,7 +15,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function getMessageContext(): Promise<MessageContext | NextResponse> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await timeSessionLookup(
+    'GET /api/seeker/messages',
+    () => auth.api.getSession({ headers: requestHeaders }),
+  );
   if (!session?.user) {
     return NextResponse.json({ error: 'Sign in to view messages.' }, { status: 401 });
   }
@@ -52,12 +57,17 @@ function getBackendError(status: number) {
   return 'The messaging service could not complete this request.';
 }
 
-export async function GET() {
+async function handleGET(request: Request) {
   const context = await getMessageContext();
   if (isResponse(context)) return context;
 
   try {
-    const query = new URLSearchParams({ candidateId: context.candidateId }).toString();
+    const params = new URL(request.url).searchParams;
+    const query = new URLSearchParams({ candidateId: context.candidateId });
+    for (const key of ['page', 'limit'] as const) {
+      const value = params.get(key);
+      if (value) query.set(key, value);
+    }
     const { response, data } = await fetchBackendWithSecret(
       `/messages?${query}`,
       'GET',
@@ -120,7 +130,10 @@ export async function GET() {
         };
       });
 
-    return NextResponse.json({ conversations });
+    return NextResponse.json({
+      conversations,
+      ...(isRecord(data) && isRecord(data.pagination) ? { pagination: data.pagination } : {}),
+    });
   } catch (error) {
     console.error('Could not load seeker conversations', error);
     return NextResponse.json(
@@ -129,6 +142,8 @@ export async function GET() {
     );
   }
 }
+
+export const GET = withRequestPerformance('GET /api/seeker/messages', handleGET);
 
 export async function POST(request: Request) {
   const context = await getMessageContext();

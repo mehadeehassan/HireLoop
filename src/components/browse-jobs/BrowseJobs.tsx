@@ -85,8 +85,9 @@ export default function BrowseJobs({ initialSearch = '' }: { initialSearch?: str
       try {
         const query = new URLSearchParams();
         if (submittedSearch) query.set('search', submittedSearch);
+        query.set('limit', '100');
 
-        const response = await fetch(`/api/jobs${query.size ? `?${query}` : ''}`, {
+        const response = await fetch(`/api/jobs?${query}`, {
           cache: 'no-store',
           signal: controller.signal,
         });

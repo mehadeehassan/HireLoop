@@ -3,10 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { RecruiterJob } from './recruiter-data';
-
-type Profile = {
-  recruiterName: string;
-};
+import { useDashboardProfile } from '@/components/dashboard/shared/DashboardProfileContext';
 
 type JobsResponse = {
   jobs: RecruiterJob[];
@@ -24,7 +21,7 @@ type Application = {
 };
 
 export default function RecruiterDashboard() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const profile = useDashboardProfile();
   const [jobs, setJobs] = useState<RecruiterJob[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [applicationsError, setApplicationsError] = useState(false);
@@ -34,18 +31,17 @@ export default function RecruiterDashboard() {
     let active = true;
 
     async function loadDashboard() {
-      const [profileResponse, jobsResponse, applicationsResponse] = await Promise.all([
-        fetch('/api/recruiter/profile', { cache: 'no-store' }),
+      const [jobsResponse, applicationsResponse] = await Promise.all([
         fetch('/api/recruiter/jobs?limit=50', { cache: 'no-store' }),
         fetch('/api/recruiter/applications', { cache: 'no-store' }),
       ]);
 
-      const profileData = profileResponse.ok ? await profileResponse.json() : null;
-      const jobsData: JobsResponse | null = jobsResponse.ok ? await jobsResponse.json() : null;
-      const applicationsData = applicationsResponse.ok ? await applicationsResponse.json() : null;
+      const [jobsData, applicationsData]: [JobsResponse | null, { applications?: Application[] } | null] = await Promise.all([
+        jobsResponse.ok ? jobsResponse.json() : Promise.resolve(null),
+        applicationsResponse.ok ? applicationsResponse.json() : Promise.resolve(null),
+      ]);
 
       if (!active) return;
-      setProfile(profileData);
       setJobs(jobsData?.jobs || []);
       setApplications(applicationsData?.applications || []);
       setApplicationsError(!applicationsResponse.ok);

@@ -2,13 +2,24 @@ import { auth } from '@/lib/auth';
 import { fetchBackendWithSecret } from '@/lib/job-api';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { timeSessionLookup, withRequestPerformance } from '@/lib/request-performance';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-async function getRecruiterContext() {
-  const session = await auth.api.getSession({ headers: await headers() });
+type RecruiterMessageContext = {
+  recruiterId: string;
+  apiSecret: string;
+  actor: { id: string; role: 'recruiter' };
+} | { error: NextResponse };
+
+async function getRecruiterContext(): Promise<RecruiterMessageContext> {
+  const requestHeaders = await headers();
+  const session = await timeSessionLookup(
+    'GET /api/recruiter/messages',
+    () => auth.api.getSession({ headers: requestHeaders }),
+  );
   if (!session?.user) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
@@ -33,7 +44,7 @@ async function getRecruiterContext() {
   };
 }
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const context = await getRecruiterContext();
   if ('error' in context) return context.error;
 
@@ -43,6 +54,10 @@ export async function GET(request: Request) {
   const jobId = search.get('jobId');
   if (candidateId) query.set('candidateId', candidateId);
   if (jobId) query.set('jobId', jobId);
+  for (const key of ['page', 'limit'] as const) {
+    const value = search.get(key);
+    if (value) query.set(key, value);
+  }
 
   try {
     const { response, data } = await fetchBackendWithSecret(
@@ -102,7 +117,10 @@ export async function GET(request: Request) {
           },
         };
       });
-    return NextResponse.json({ conversations });
+    return NextResponse.json({
+      conversations,
+      ...(isRecord(data) && isRecord(data.pagination) ? { pagination: data.pagination } : {}),
+    });
   } catch (error) {
     console.error('Could not load recruiter conversations', error);
     return NextResponse.json(
@@ -111,6 +129,8 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export const GET = withRequestPerformance('GET /api/recruiter/messages', handleGET);
 
 export async function POST(request: Request) {
   const context = await getRecruiterContext();

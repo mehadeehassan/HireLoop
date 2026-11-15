@@ -28,6 +28,7 @@ export type PublicJob = {
 export type PublicJobsResponse = {
   jobs: PublicJob[];
   newJobsThisMonth: number;
+  pagination?: { page: number; limit: number; total: number; totalPages: number };
 };
 
 type BackendJob = Record<string, unknown>;

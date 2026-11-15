@@ -3,6 +3,7 @@ import { isAccountActive } from '@/lib/admin-user-policy';
 import { fetchBackendWithSecret } from '@/lib/job-api';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { timeSessionLookup, withRequestPerformance } from '@/lib/request-performance';
 
 const allowedPeriods = new Set(['30d', '90d', 'all']);
 
@@ -10,8 +11,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export async function GET(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+async function handleGET(request: Request) {
+  const requestHeaders = await headers();
+  const session = await timeSessionLookup(
+    'GET /api/admin/dashboard',
+    () => auth.api.getSession({ headers: requestHeaders }),
+  );
   if (!session?.user || !isAccountActive(session.user)) {
     return NextResponse.json({ error: 'An active session is required.' }, { status: 401 });
   }
@@ -58,3 +63,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Could not connect to the admin dashboard service.' }, { status: 502 });
   }
 }
+
+export const GET = withRequestPerformance('GET /api/admin/dashboard', handleGET);

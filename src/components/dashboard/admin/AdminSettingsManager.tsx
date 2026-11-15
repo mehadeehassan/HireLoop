@@ -27,6 +27,7 @@ import {
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type ReactNode,
@@ -512,6 +513,7 @@ export default function AdminSettingsManager() {
   const [auditError, setAuditError] = useState<string | null>(null);
   const [auditPage, setAuditPage] = useState(1);
   const [auditSection, setAuditSection] = useState('all');
+  const settingsLoadedVersion = useRef<number | null>(null);
 
   function applySettings(next: AdminSettings) {
     setData(next);
@@ -529,80 +531,56 @@ export default function AdminSettingsManager() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const timer = window.setTimeout(() => {
+    const loadSettings = settingsLoadedVersion.current !== refreshVersion;
+    const query = new URLSearchParams({
+      page: String(auditPage),
+      pageSize: String(pageSize),
+      section: auditSection,
+    });
+    setAuditLoading(true);
+    setAuditError(null);
+    if (loadSettings) {
       setLoading(true);
       setError(null);
-      fetch('/api/admin/settings', { signal: controller.signal, cache: 'no-store' })
-        .then(getResponsePayload)
-        .then((payload: unknown) => {
-          if (!isAdminSettings(payload)) {
-            throw new Error('The settings response was invalid.');
-          }
-          applySettings(payload);
-        })
-        .catch((requestError: unknown) => {
-          if (
-            requestError instanceof DOMException &&
-            requestError.name === 'AbortError'
-          ) {
-            return;
-          }
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : 'Could not load platform settings.',
-          );
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    }, 0);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [refreshVersion]);
+    }
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      setAuditLoading(true);
-      setAuditError(null);
-      const query = new URLSearchParams({
-        page: String(auditPage),
-        pageSize: String(pageSize),
-        section: auditSection,
-      });
-      fetch(`/api/admin/settings/audit-logs?${query}`, {
-        signal: controller.signal,
-        cache: 'no-store',
-      })
-        .then(getResponsePayload)
-        .then((payload: unknown) => {
-          if (!isAdminAuditLogsList(payload)) {
-            throw new Error('The audit log response was invalid.');
-          }
-          setAuditData(payload);
-        })
-        .catch((requestError: unknown) => {
-          if (
-            requestError instanceof DOMException &&
-            requestError.name === 'AbortError'
-          ) {
-            return;
-          }
-          setAuditError(
-            requestError instanceof Error
-              ? requestError.message
-              : 'Could not load audit records.',
-          );
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setAuditLoading(false);
-        });
-    }, 0);
+    const settingsRequest = loadSettings
+      ? fetch('/api/admin/settings', { signal: controller.signal, cache: 'no-store' })
+          .then(getResponsePayload)
+      : Promise.resolve(null);
+    const auditRequest = fetch(`/api/admin/settings/audit-logs?${query}`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    }).then(getResponsePayload);
+
+    Promise.allSettled([settingsRequest, auditRequest]).then(([settingsResult, auditResult]) => {
+      if (controller.signal.aborted) return;
+
+      if (loadSettings) {
+        if (settingsResult.status === 'fulfilled' && isAdminSettings(settingsResult.value)) {
+          applySettings(settingsResult.value);
+          settingsLoadedVersion.current = refreshVersion;
+        } else {
+          const reason = settingsResult.status === 'rejected'
+            ? settingsResult.reason
+            : new Error('The settings response was invalid.');
+          setError(reason instanceof Error ? reason.message : 'Could not load platform settings.');
+        }
+        setLoading(false);
+      }
+
+      if (auditResult.status === 'fulfilled' && isAdminAuditLogsList(auditResult.value)) {
+        setAuditData(auditResult.value);
+      } else {
+        const reason = auditResult.status === 'rejected'
+          ? auditResult.reason
+          : new Error('The audit log response was invalid.');
+        setAuditError(reason instanceof Error ? reason.message : 'Could not load audit records.');
+      }
+      setAuditLoading(false);
+    });
+
     return () => {
-      window.clearTimeout(timer);
       controller.abort();
     };
   }, [auditPage, auditSection, refreshVersion]);
