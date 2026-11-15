@@ -12,8 +12,6 @@ type AuthFormProps = {
   mode: 'signin' | 'signup';
 };
 
-type UserRole = 'seeker' | 'recruiter';
-
 function getCallbackUrl() {
   const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl');
   if (!callbackUrl || !callbackUrl.startsWith('/') || callbackUrl.startsWith('//')) return '/';
@@ -24,7 +22,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const isSignUp = mode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState<UserRole>('seeker');
   const [credentialError, setCredentialError] = useState('');
   const { errors, validateForm, updateFieldError } = useFormValidation();
 
@@ -57,7 +54,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
             email,
             password,
             name,
-            registrationRole: role,
           })
         : await authClient.signIn.email({ email, password });
 
@@ -170,75 +166,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
               className="space-y-4"
             >
               {isSignUp && (
-                <fieldset>
-                  <legend className="mb-2 block text-xs font-medium text-[#c8c8d0]">
-                    Joining HireLoop as
-                  </legend>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(
-                      [
-                        [
-                          'seeker',
-                          'Seeker',
-                          <svg
-                            key="seeker"
-                            width="17"
-                            height="17"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.7"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                          >
-                            <circle cx="12" cy="8" r="3.5" />
-                            <path d="M5.5 21v-1.5a6.5 6.5 0 0 1 13 0V21" />
-                          </svg>,
-                        ],
-                        [
-                          'recruiter',
-                          'Recruiter',
-                          <svg
-                            key="recruiter"
-                            width="17"
-                            height="17"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.7"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                          >
-                            <rect x="3" y="7" width="18" height="13" rx="2" />
-                            <path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7M3 12h18M10 12v2h4v-2" />
-                          </svg>,
-                        ],
-                      ] as const
-                    ).map(([value, label, icon]) => (
-                      <label
-                        key={value}
-                        className={`flex h-12 cursor-pointer items-center justify-center gap-2 rounded-[10px] border text-xs font-medium transition ${
-                          role === value
-                            ? 'border-[#6258ff] bg-[#6258ff]/15 text-[#a8a4ff]'
-                            : 'border-white/9 bg-[#17171d] text-[#9899a9] hover:border-white/20 hover:text-[#c8c8d0]'
-                        }`}
-                      >
-                        <input
-                          className="sr-only"
-                          type="radio"
-                          name="role"
-                          value={value}
-                          checked={role === value}
-                          onChange={() => setRole(value)}
-                        />
-                        <span className="shrink-0">{icon}</span>
-                        <span>{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
+                <p className="rounded-[10px] border border-white/9 bg-[#17171d] px-4 py-3 text-xs leading-5 text-[#9899a9]">
+                  New accounts start as seekers. Recruiter access is assigned by an administrator.
+                </p>
               )}
 
               {isSignUp && (

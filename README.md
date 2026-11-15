@@ -28,6 +28,13 @@ Authenticated admin user-management requests go through `PATCH /api/admin/users/
 Admin Plugin mutation endpoints are blocked so role and suspension changes cannot bypass safety
 checks, session revocation, or the backend audit record.
 
+Public email and Google signups always receive the Better Auth `seeker` role. Recruiter access is
+assigned by an active admin through the protected user-management API. To bootstrap the first admin,
+first create and verify a normal account, then run `npm run auth:bootstrap-admin -- user@example.com`
+in a trusted server environment with `BETTER_AUTH_DB_URL` configured. The command can only promote
+the specified existing account, is idempotent for that account, revokes its sessions, and records the
+bootstrap action in the admin audit collection; it is not an HTTP endpoint.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

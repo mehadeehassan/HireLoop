@@ -17,20 +17,10 @@ const adminPluginInstance = adminPlugin({
 
 export function normalizeCreatedUser(
   user: Record<string, unknown>,
-  allowAdminBootstrap: boolean,
 ) {
-  const isBootstrapAdmin = allowAdminBootstrap && user.role === 'admin';
-  const role = isBootstrapAdmin
-    ? 'admin'
-    : user.registrationRole === 'recruiter'
-      ? 'recruiter'
-      : 'seeker';
-
-  return {
-    ...user,
-    role,
-    registrationRole: undefined,
-  };
+  const createdUser: Record<string, unknown> = { ...user, role: 'seeker' };
+  delete createdUser.registrationRole;
+  return createdUser;
 }
 
 export function createHireLoopAuthRoleConfig() {
@@ -42,21 +32,13 @@ export function createHireLoopAuthRoleConfig() {
           input: false as const,
           required: false as const,
         },
-        registrationRole: {
-          type: 'string' as const,
-          input: true as const,
-          required: false as const,
-        },
       },
     },
     databaseHooks: {
       user: {
         create: {
           before: async (user: Record<string, unknown>) => ({
-            data: normalizeCreatedUser(
-              user,
-              process.env.HIRELOOP_ADMIN_BOOTSTRAP === 'true',
-            ),
+            data: normalizeCreatedUser(user),
           }),
         },
       },

@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "auth:bootstrap-admin": "node scripts/bootstrap-admin.mjs",
+    "test:auth-security": "node --experimental-strip-types --test scripts/auth-role-config.test.mjs scripts/auth-http-guard.test.mjs scripts/bootstrap-admin.test.mjs"
   },
   "dependencies": {
     "@better-auth/mongo-adapter": "^1.7.18",
+    "@next/env": "16.4.5",
     "@stripe/stripe-js": "^10.2.1",
     "better-auth": "^1.7.18",
     "mongodb": "^7.8.0",

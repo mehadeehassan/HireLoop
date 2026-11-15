@@ -38,6 +38,9 @@ async function getAdminSession(): Promise<AdminSession | NextResponse> {
   const requestHeaders = await headers();
   const session = await auth.api.getSession({ headers: requestHeaders });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isAccountActive(session.user)) {
+    return NextResponse.json({ error: 'Only active admins can manage users.' }, { status: 403 });
+  }
   if (session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Only active admins can manage users.' }, { status: 403 });
   }
