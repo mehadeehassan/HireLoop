@@ -26,8 +26,8 @@ export function DashboardProfileProvider({
   const [profile, setProfile] = useState<DashboardProfile | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
 
-  const loadProfile = useCallback(async () => {
-    if (role !== 'recruiter' && role !== 'seeker') return;
+  const loadProfile = useCallback(async (): Promise<DashboardProfile | null> => {
+    if (role !== 'recruiter' && role !== 'seeker') return null;
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
@@ -42,26 +42,32 @@ export function DashboardProfileProvider({
       const data = typeof value === 'object' && value !== null
         ? value as Record<string, unknown>
         : {};
-      if (controller.signal.aborted) return;
-      setProfile({
+      if (controller.signal.aborted) return null;
+      return {
         name: typeof data.name === 'string' ? data.name : '',
         recruiterName: typeof data.recruiterName === 'string' ? data.recruiterName : '',
         plan: typeof data.plan === 'string' ? data.plan : 'Starter',
         image: typeof data.image === 'string' ? data.image : '',
-      });
+      };
     } catch (error) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) return null;
       console.error(`Could not load ${role} dashboard profile`, error);
+      return null;
     }
   }, [role]);
 
   useEffect(() => {
     if (role !== 'recruiter' && role !== 'seeker') return;
     const updateEvent = role === 'recruiter' ? 'recruiter-profile-updated' : 'seeker-profile-updated';
-    void loadProfile();
-    window.addEventListener(updateEvent, loadProfile);
+    const handleProfileUpdate = () => {
+      void loadProfile().then((nextProfile) => {
+        if (nextProfile) setProfile(nextProfile);
+      });
+    };
+    handleProfileUpdate();
+    window.addEventListener(updateEvent, handleProfileUpdate);
     return () => {
-      window.removeEventListener(updateEvent, loadProfile);
+      window.removeEventListener(updateEvent, handleProfileUpdate);
       controllerRef.current?.abort();
       controllerRef.current = null;
     };

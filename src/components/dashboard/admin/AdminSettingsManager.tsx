@@ -537,12 +537,6 @@ export default function AdminSettingsManager() {
       pageSize: String(pageSize),
       section: auditSection,
     });
-    setAuditLoading(true);
-    setAuditError(null);
-    if (loadSettings) {
-      setLoading(true);
-      setError(null);
-    }
 
     const settingsRequest = loadSettings
       ? fetch('/api/admin/settings', { signal: controller.signal, cache: 'no-store' })
@@ -585,6 +579,19 @@ export default function AdminSettingsManager() {
     };
   }, [auditPage, auditSection, refreshVersion]);
 
+  function refreshSettings() {
+    setLoading(true);
+    setError(null);
+    setAuditLoading(true);
+    setAuditError(null);
+    setRefreshVersion((value) => value + 1);
+  }
+
+  function refreshAudit() {
+    setAuditLoading(true);
+    setAuditError(null);
+  }
+
   const brandingDirty = useMemo(() => {
     if (!data || !branding) return false;
     return (
@@ -618,11 +625,11 @@ export default function AdminSettingsManager() {
           'Refreshing reloads the persisted settings and discards your current form edits.',
         confirmLabel: 'Discard & refresh',
         tone: 'danger',
-        action: () => setRefreshVersion((value) => value + 1),
+        action: refreshSettings,
       });
       return;
     }
-    setRefreshVersion((value) => value + 1);
+    refreshSettings();
   }
 
   async function saveBranding() {
@@ -654,7 +661,7 @@ export default function AdminSettingsManager() {
       }
       applySettings(payload);
       toast.success('Branding settings saved.');
-      setRefreshVersion((value) => value + 1);
+      refreshSettings();
     } catch (requestError) {
       toast.error(
         requestError instanceof Error
@@ -715,7 +722,7 @@ export default function AdminSettingsManager() {
           }
           applySettings(payload);
           toast.success(`${label.title} ${nextValue ? 'enabled' : 'disabled'}.`);
-          setRefreshVersion((value) => value + 1);
+          refreshSettings();
         } catch (requestError) {
           toast.error(
             requestError instanceof Error
@@ -758,7 +765,7 @@ export default function AdminSettingsManager() {
           });
           await getResponsePayload(response);
           toast.success(`${limit.role} ${limit.plan} limit updated.`);
-          setRefreshVersion((version) => version + 1);
+          refreshSettings();
         } catch (requestError) {
           toast.error(
             requestError instanceof Error
@@ -1333,7 +1340,7 @@ export default function AdminSettingsManager() {
         <AdminNotificationSettings
           key={refreshVersion}
           globalSettings={data.settings.controls.notifications}
-          onSaved={() => setRefreshVersion((value) => value + 1)}
+          onSaved={refreshSettings}
         />
       ) : activeTab === 'audit' ? (
         <section className={`${cardClass} overflow-hidden`}>
@@ -1352,6 +1359,7 @@ export default function AdminSettingsManager() {
               aria-label="Filter audit logs by section"
               value={auditSection}
               onChange={(event) => {
+                refreshAudit();
                 setAuditSection(event.target.value);
                 setAuditPage(1);
               }}
@@ -1376,7 +1384,7 @@ export default function AdminSettingsManager() {
             <div className="p-4">
               <ErrorBanner
                 message={auditError}
-                onRetry={() => setRefreshVersion((value) => value + 1)}
+                onRetry={refreshSettings}
               />
             </div>
           )}
@@ -1458,7 +1466,10 @@ export default function AdminSettingsManager() {
                 totalPages={auditData.pagination.totalPages}
                 total={auditData.pagination.total}
                 loading={auditLoading}
-                onPageChange={setAuditPage}
+                onPageChange={(page) => {
+                  refreshAudit();
+                  setAuditPage(page);
+                }}
               />
             </>
           ) : null}
