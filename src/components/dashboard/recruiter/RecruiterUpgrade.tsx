@@ -60,6 +60,7 @@ async function fetchAvailablePlans(signal?: AbortSignal) {
   return {
     plans: availablePlans,
     currentPlan: typeof result.currentPlan === 'string' ? result.currentPlan : 'Starter',
+    hasActiveStripeSubscription: result.hasActiveStripeSubscription === true,
   };
 }
 
@@ -69,9 +70,11 @@ export default function RecruiterUpgrade() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [plans, setPlans] = useState<UpgradePlan[]>([]);
   const [currentPlan, setCurrentPlan] = useState('Starter');
+  const [hasActiveStripeSubscription, setHasActiveStripeSubscription] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [checkoutPending, setCheckoutPending] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
   const [portalPending, setPortalPending] = useState(false);
 
   function retryPlans() {
@@ -81,6 +84,7 @@ export default function RecruiterUpgrade() {
       .then((result) => {
         setPlans(result.plans);
         setCurrentPlan(result.currentPlan);
+        setHasActiveStripeSubscription(result.hasActiveStripeSubscription);
       })
       .catch((loadError: unknown) => {
         setError(loadError instanceof Error ? loadError.message : 'Subscription plans could not be loaded.');
@@ -99,6 +103,7 @@ export default function RecruiterUpgrade() {
         if (controller.signal.aborted) return;
         setPlans(result.plans);
         setCurrentPlan(result.currentPlan);
+        setHasActiveStripeSubscription(result.hasActiveStripeSubscription);
       })
       .catch((loadError: unknown) => {
         if (!controller.signal.aborted) {
@@ -112,7 +117,11 @@ export default function RecruiterUpgrade() {
   }, []);
 
   async function startCheckout(planName: string) {
-    if (checkoutPending || (planRank[planName] ?? -1) <= (planRank[currentPlan] ?? 0)) return;
+    const selectedPlan = plans.find((plan) => plan.planName === planName);
+    const selectedAmount = billingPeriod === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.price;
+    const purchasingPaidStarter = planName === 'Starter' && currentPlan === 'Starter' &&
+      !hasActiveStripeSubscription && Number(selectedAmount) > 0;
+    if (checkoutPending || (!purchasingPaidStarter && (planRank[planName] ?? -1) <= (planRank[currentPlan] ?? 0))) return;
     setCheckoutPending(true);
     try {
       const response = await fetch('/api/checkout_sessions', {
@@ -121,6 +130,7 @@ export default function RecruiterUpgrade() {
         body: JSON.stringify({
           planName,
           billingInterval: billingPeriod === 'yearly' ? 'year' : 'month',
+          ...(promoCode.trim() ? { promoCode: promoCode.trim() } : {}),
         }),
       });
       const result: unknown = await response.json();
@@ -200,6 +210,14 @@ export default function RecruiterUpgrade() {
         <span className="rounded-full bg-emerald-500/10 px-3 py-1.5 text-[10px] text-emerald-300">
           Yearly saves 25%
         </span>
+        <input
+          value={promoCode}
+          onChange={(event) => setPromoCode(event.target.value.toUpperCase())}
+          maxLength={32}
+          placeholder="Promo code"
+          aria-label="Promo code"
+          className="h-9 w-36 rounded-full border border-[#303036] bg-[#131316] px-3 text-[11px] text-[#dedee3] outline-none focus:border-[#8178ff]/70"
+        />
       </div>
 
       {error && (
@@ -218,8 +236,9 @@ export default function RecruiterUpgrade() {
             ))
           : orderedPlans.map((plan) => {
           const isCurrentPlan = currentPlan.toLowerCase() === plan.planName.toLowerCase();
-          const isPaidPlan = plan.planName !== 'Starter';
-          const canSelectPlan = isPaidPlan && (planRank[plan.planName] ?? -1) > (planRank[currentPlan] ?? 0);
+          const isPaidPlan = plan.planName !== 'Starter' || (billingPeriod === 'yearly' ? plan.yearlyPrice : plan.price) > 0;
+          const canPurchasePaidStarter = plan.planName === 'Starter' && currentPlan === 'Starter' && !hasActiveStripeSubscription && isPaidPlan;
+          const canSelectPlan = canPurchasePaidStarter || (plan.planName !== 'Starter' && (planRank[plan.planName] ?? -1) > (planRank[currentPlan] ?? 0));
           const monthlyPrice = billingPeriod === 'yearly' ? plan.yearlyPrice / 12 : plan.price;
           const planLimit = plan.monthlyJobPostLimit;
           return (
@@ -290,7 +309,7 @@ export default function RecruiterUpgrade() {
                   : 'border border-[#303a55] text-[#c5ccda] hover:bg-white/5'
               } disabled:cursor-not-allowed disabled:opacity-50`}
             >
-              {isCurrentPlan
+              {isCurrentPlan && !canPurchasePaidStarter
                 ? 'Current plan'
                 : !isPaidPlan
                   ? 'Included'

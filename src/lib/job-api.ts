@@ -43,7 +43,7 @@ function getBackendAuthHeader(secret: string, actor: ServiceActor): Record<strin
 
 async function fetchBackend(
   path: string,
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
   body?: unknown,
   additionalHeaders?: HeadersInit,
 ) {
@@ -126,7 +126,7 @@ export async function fetchBackendApplications(
 
 export async function fetchBackendWithSecret(
   path: string,
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
   body: Record<string, unknown> | undefined,
   apiSecret: string,
   actor: ServiceActor,

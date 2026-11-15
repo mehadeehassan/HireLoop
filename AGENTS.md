@@ -41,7 +41,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - Routes under `src/app/dashboard/{seeker,recruiter,admin}/` stay thin and render components from `src/components/dashboard/<role>/`; the shell, header, sidebar, and shared widgets live in `src/components/dashboard/shared/`.
 - `src/app/dashboard/layout.tsx` redirects unauthenticated users; `DashboardSessionGuard` also redirects to the role-correct dashboard client-side. `getDashboardRole` maps unknown roles to `seeker`.
-- `/dashboard` is the role-aware entry point. Seeker pages: overview, jobs, saved, applied, companies, billing, settings, upgrade. Recruiter: overview, jobs, add-job, applications, companies, billing, settings, upgrade. Admin: overview, users, companies, jobs, payments; other `/dashboard/admin/[section]` values are placeholders.
+- `/dashboard` is the role-aware entry point. Seeker pages: overview, jobs, saved, applied, companies, billing, settings, upgrade. Recruiter: overview, jobs, add-job, applications, companies, billing, settings, upgrade. Admin: overview, users, companies, jobs, payments, settings; other `/dashboard/admin/[section]` values are placeholders.
 
 ## Backend contract and data safety
 
@@ -50,10 +50,22 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - `HIRELOOP_JWT_SECRET` is server-only, at least 32 bytes, and identical in both packages. Keep it out of `NEXT_PUBLIC_*`; the backend rejects raw secrets and unauthenticated requests.
 - Resume bytes must never appear in seeker list/profile/application responses. The only resume path is `/api/seeker/resume`.
 - Application PDFs are base64-encoded once and capped at 5 MB; the backend JSON body limit is 16 MB (5 MB resume + 5 MB avatar). A 413 means a body limit is too low.
-- Conversation lists must return `{ conversations: [...] }` with a string `jobId` per item (`"direct"` when there is no job). Notifications return `{ notifications: [...] }` with `id`, `jobId`, `jobTitle`, `company`, `status`, `createdAt`. The UI validates these shapes, so a mismatch breaks the whole menu.
+- Conversation lists must return `{ conversations: [...] }` with a string `jobId` per item (`"direct"` when there is no job). Seeker notifications keep their existing `{ notifications: [...] }` shape with `id`, `jobId`, `jobTitle`, `company`, `status`, and `createdAt`; admin notifications use the separate admin notification contract.
 - Company pages are owner-scoped; the backend derives `createdBy`/`createdByRole` from the JWT actor. The admin directory merges normalized submissions with legacy recruiter-profile/job data; do not add an approval/delete workflow without a defined lifecycle.
 - Admin job deletion is a repeat-safe soft delete (`isDeleted`, `deletedAt`, `deletedBy`) that also closes the job. Do not hard-delete, restore, or refund quota; application records and quota history stay.
 - Admin payments are read-only: backend `/admin/payments/overview`, `/admin/payments`, `/admin/payments/:paymentId`, and `/admin/subscriptions` only read the existing `payments`/`subscriptions` collections through `requireAdminRole`. Do not add refunds, manual charges, subscription overrides, or trust browser-supplied payment status. Return only safe method metadata and Stripe session/invoice references—never secret keys, card numbers, or CVC.
+
+## Platform settings and enforcement
+
+- Platform configuration lives in one Mongo doc `platform_settings` with `_id: "platform"` (`branding`, `controls`, `createdAt`, `updatedAt`, `updatedBy`). Defaults are merged at read time in `../hireloop-server/services/platform-settings.js`, so a missing doc means "everything on, default branding". Never hardcode a second source of truth in the frontend.
+- Backend endpoints: `GET /admin/settings` (admin only), `PATCH /admin/settings` (admin only, allowlisted `branding`/`controls`, unknown keys rejected, atomic `$set`), `GET /admin/settings/audit-logs` (admin only, server-side pagination, filter by `section`), `GET /admin/settings/public` (signature-only service JWT via `requireHireLoopService`, returns only branding + `registration.seekerEnabled`). Next proxies under `src/app/api/admin/settings/**` only verify the admin session, sign the service JWT, validate the response shape, and forward.
+- Enforcement is real, not UI-only: `seekerRegistration` is checked inside Better Auth `databaseHooks.user.create.before` (`src/lib/auth-role-config.ts`) and throws `APIError('FORBIDDEN')`; `jobPosting` gates `POST /jobs` and `PATCH /jobs/:id`; `jobApplications` gates `POST /applications` through `isJobApplicationsEnabled`. Toggles are re-read from Mongo on every request, so changes apply immediately. Disabling registration must never block existing sign-ins, and disabling a feature must never delete jobs, applications, or quota.
+- There is no recruiter public signup path (signup always creates `seeker`), so `recruiterRegistration` is intentionally not exposed. Recruiter access is granted by an active admin through `/api/admin/users/:userId`.
+- Job text limits (`responsibility`/`qualifications` 5000) and resume rules (PDF only, 5 MB, `%PDF-` magic-byte check) are read-only in the settings UI because they are enforced in `utils/job-validation.js` and `routes/seeker-resume-routes.js`. Do not make them editable without wiring matching client-side `maxLength` and keeping the 16 MB body-parser limit.
+- Plan limits are read from the `plans` collection, not hardcoded. Starter is fixed at 5 and non-editable; Growth/Premium updates reuse `PUT /subscription-plans/:role/:plan` (6–100000). Never edit Stripe prices, activate subscriptions, or treat settings as a billing source of truth.
+- Admin notifications are real in-app alerts stored separately from seeker/recruiter notifications. Platform-wide type toggles live under `platform_settings.controls.notifications`; per-admin in-app preferences and read markers use separate Mongo collections. Email/push remain unconfigured and must be shown disabled. Do not change the existing seeker/recruiter notification response shape or use localStorage for admin read state.
+- Admin configuration changes are appended to `admin_settings_audits` (actorId, action, section, field, previousValue, newValue, createdAt). Records are immutable from the dashboard—never add edit/delete. Logo values are logged as `[image]` and long strings truncated to 240 chars.
+- Logo upload uses the existing base64 data-URL path (PNG/JPEG/WebP, 1 MB, magic-byte verified). Public branding is reflected on `/signin` and `/signup` via `src/lib/platform-settings.ts`; never expose the full settings doc publicly.
 
 ## Billing and plans
 
@@ -65,7 +77,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## UI conventions and local-only state
 
 - Plan labels are display-only: recruiter `Starter` -> `Free` and `Premium` -> `Growth`; seeker shows `Starter Tier`, `Growth Tier`, or `Premium Tier`. Missing plan defaults to `Starter`.
-- Saved jobs (`src/lib/seeker-jobs.ts`), archived applications (`hireloop:archived-applications`), and notification read markers (`hireloop:seeker-notification-read`) are browser-local and do not sync. Do not imply server persistence.
+- Saved jobs (`src/lib/seeker-jobs.ts`), archived applications (`hireloop:archived-applications`), and seeker notification read markers (`hireloop:seeker-notification-read`) are browser-local and do not sync. Admin notification read state is backend-persisted per admin.
 - Job apply links go through `getJobApplyHref` in `src/lib/job-routes.ts`.
 - `DashboardAvatar` falls back to the first two characters of the name. `next/image` with external or data URLs needs explicit dimensions and `unoptimized`.
 - Keep sign-in errors generic (`Email or password is incorrect.`) and show them as both a toast and an inline password-field error with `aria-invalid`/`aria-describedby`; clear the server error when the user edits email or password.

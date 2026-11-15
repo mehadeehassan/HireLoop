@@ -70,6 +70,16 @@ export async function POST(
       if (response.status === 404) {
         return NextResponse.json({ error: 'This job is no longer available.' }, { status: 404 });
       }
+      if (response.status === 403) {
+        return NextResponse.json(
+          {
+            error:
+              backendMessage ||
+              'Job applications are currently unavailable. Please try again later.',
+          },
+          { status: 403 },
+        );
+      }
       if (response.status === 409) {
         return NextResponse.json(
           { error: 'You have already applied for this job.', alreadyApplied: true },

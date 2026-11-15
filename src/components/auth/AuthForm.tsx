@@ -2,6 +2,7 @@
 'use client';
 
 import { authClient } from '@/lib/auth-client';
+import type { PublicPlatformSettings } from '@/lib/platform-settings';
 import Image from 'next/image';
 import Link from 'next/link';
 import { type ChangeEvent, type FormEvent, useState } from 'react';
@@ -10,6 +11,7 @@ import { FieldError, useFormValidation } from '@/components/form/useFormValidati
 
 type AuthFormProps = {
   mode: 'signin' | 'signup';
+  platform?: PublicPlatformSettings;
 };
 
 function getCallbackUrl() {
@@ -18,7 +20,7 @@ function getCallbackUrl() {
   return callbackUrl;
 }
 
-export default function AuthForm({ mode }: AuthFormProps) {
+export default function AuthForm({ mode, platform }: AuthFormProps) {
   const isSignUp = mode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -103,14 +105,15 @@ export default function AuthForm({ mode }: AuthFormProps) {
     <main className="min-h-screen bg-[#08080a] px-4 py-4 text-[#ededf3] sm:px-6 sm:py-6 lg:px-10">
       <div className="mx-auto grid min-h-[calc(100vh-32px)] max-w-7xl overflow-hidden rounded-[18px] border border-white/6 bg-[#101014] lg:min-h-[calc(100vh-48px)] lg:grid-cols-[1fr_0.92fr]">
         <section className="flex min-h-145 flex-col px-5 py-6 sm:px-10 lg:min-h-0 lg:px-14 xl:px-20">
-          <Link href="/" aria-label="Hireloop home">
+          <Link href="/" aria-label={`${platform?.branding.name ?? 'HireLoop'} home`}>
             <Image
-              src="/images/logo.png"
-              alt="Hireloop"
+              src={platform?.branding.logo || '/images/logo.png'}
+              alt={platform?.branding.name ?? 'HireLoop'}
               width={154}
               height={44}
               className="h-11 w-38.5"
               priority
+              unoptimized={Boolean(platform?.branding.logo)}
             />
           </Link>
 
@@ -119,13 +122,25 @@ export default function AuthForm({ mode }: AuthFormProps) {
               {isSignUp ? 'Create account' : 'Welcome back'}
             </p>
             <h1 className="font-sans text-[32px] font-semibold leading-[1.1] tracking-[-1.2px] sm:text-[40px]">
-              {isSignUp ? 'Start your next opportunity' : 'Sign in to Hireloop'}
+              {isSignUp
+                ? 'Start your next opportunity'
+                : `Sign in to ${platform?.branding.name ?? 'HireLoop'}`}
             </h1>
             <p className="mt-3 text-sm leading-6 text-[#9899a9]">
               {isSignUp
                 ? 'Create an account and discover roles matched to your skills.'
                 : 'Continue your job search and manage your applications.'}
             </p>
+
+            {isSignUp && platform && !platform.registration.seekerEnabled ? (
+              <div
+                role="status"
+                className="mt-6 rounded-[10px] border border-amber-400/25 bg-amber-400/[0.08] px-4 py-3 text-xs leading-5 text-amber-200"
+              >
+                New account registration is currently disabled by the platform
+                administrator. Existing accounts can still sign in.
+              </div>
+            ) : null}
 
             <button
               type="button"
@@ -265,7 +280,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
             </form>
 
             <p className="mt-6 text-center text-sm text-[#9899a9]">
-              {isSignUp ? 'Already have an account?' : 'New to Hireloop?'}{' '}
+              {isSignUp
+                ? 'Already have an account?'
+                : `New to ${platform?.branding.name ?? 'HireLoop'}?`}{' '}
               <Link
                 href={isSignUp ? '/signin' : '/signup'}
                 onClick={(event) => {

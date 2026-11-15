@@ -1,8 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Bell, CircleHelp, Search } from 'lucide-react';
+import { CircleHelp, Search } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
+import AdminNotificationMenu from '@/components/dashboard/shared/AdminNotificationMenu';
 
 export default function AdminDashboardShell({
   pathname,
@@ -30,13 +31,7 @@ export default function AdminDashboardShell({
         </label>
 
         <div className="ml-auto flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="relative flex size-9 items-center justify-center rounded-md text-[#a6a6ae] transition hover:bg-white/[0.06] hover:text-white"
-          >
-            <Bell className="size-4" />
-          </button>
+          <AdminNotificationMenu />
           <button
             type="button"
             aria-label="Help"

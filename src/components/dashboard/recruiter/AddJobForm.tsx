@@ -129,7 +129,18 @@ export default function AddJobForm({
         }
       }
       if (!response.ok) {
-        toast.error(mode === 'edit' ? 'Job update failed' : 'Job publish failed');
+        let message = '';
+        try {
+          const result: unknown = await response.json();
+          if (typeof result === 'object' && result !== null && 'error' in result) {
+            message = typeof result.error === 'string' ? result.error : '';
+          }
+        } catch {
+          message = '';
+        }
+        toast.error(
+          message || (mode === 'edit' ? 'Job update failed' : 'Job publish failed'),
+        );
         return;
       }
 

@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
   if (
     !isRecord(payload) ||
-    !['Growth', 'Premium'].includes(String(payload.planName)) ||
+    !['Starter', 'Growth', 'Premium'].includes(String(payload.planName)) ||
     !['month', 'year'].includes(String(payload.billingInterval))
   ) {
     return NextResponse.json({ error: 'Choose a valid plan and billing interval.' }, { status: 400 });
@@ -38,6 +38,7 @@ export async function POST(request: Request) {
         role: context.role,
         planName: payload.planName,
         billingInterval: payload.billingInterval,
+        ...(typeof payload.promoCode === 'string' ? { promoCode: payload.promoCode } : {}),
       },
     );
     if (!response.ok) {

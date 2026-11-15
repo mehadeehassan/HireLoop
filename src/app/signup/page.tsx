@@ -1,5 +1,9 @@
 import AuthForm from '@/components/auth/AuthForm';
+import { getPublicPlatformSettings } from '@/lib/platform-settings';
 
-export default function SignUpPage() {
-  return <AuthForm mode="signup" />;
+export const instant = false;
+
+export default async function SignUpPage() {
+  const platform = await getPublicPlatformSettings();
+  return <AuthForm mode="signup" platform={platform} />;
 }

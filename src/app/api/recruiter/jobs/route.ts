@@ -98,6 +98,16 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       if (response.status === 429) return NextResponse.json(data, { status: 429 });
+      if (response.status === 403) {
+        const backendMessage =
+          typeof data === 'object' &&
+          data !== null &&
+          'message' in data &&
+          typeof data.message === 'string'
+            ? data.message
+            : 'Job posting is currently unavailable.';
+        return NextResponse.json({ error: backendMessage }, { status: 403 });
+      }
       return NextResponse.json(
         { error: 'Backend job creation failed', details: data },
         { status: response.status },

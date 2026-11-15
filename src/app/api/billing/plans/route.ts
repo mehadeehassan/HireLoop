@@ -48,6 +48,7 @@ export async function GET() {
     return NextResponse.json({
       plans: plansData.plans,
       currentPlan: overviewData.subscription.plan,
+      hasActiveStripeSubscription: overviewData.subscription.stripeSubscriptionActive === true,
       status: overviewData.status,
       role: context.role,
     });
