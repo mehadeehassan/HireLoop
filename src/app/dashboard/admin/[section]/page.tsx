@@ -5,7 +5,6 @@ const sectionTitles: Record<string, string> = {
   users: 'Users',
   companies: 'Companies',
   jobs: 'Jobs',
-  payments: 'Payments',
   settings: 'Settings',
 };
 
