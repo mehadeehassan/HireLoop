@@ -32,7 +32,6 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from 'react';
-import Link from 'next/link';
 import { toast } from 'sonner';
 import type {
   AdminAuditLogsList,
@@ -128,6 +127,13 @@ const controlLabels: Record<
       'Allow new seeker accounts to be created through email or Google signup.',
     disabledEffect:
       'New account creation will be rejected at the Better Auth registration boundary. Existing accounts keep full access.',
+  },
+  recruiterRegistration: {
+    title: 'Recruiter registration',
+    description:
+      'Allow new recruiter accounts to be created through email or Google signup.',
+    disabledEffect:
+      'New recruiter account creation will be rejected at the Better Auth registration boundary. Existing accounts keep full access.',
   },
   jobPosting: {
     title: 'Job posting',
@@ -1090,31 +1096,6 @@ export default function AdminSettingsManager() {
                   </div>
                 );
               })}
-              <div className="flex flex-col gap-3 py-4 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-xs font-medium text-[#dcdce3]">
-                      Recruiter registration
-                    </h3>
-                    <Badge>
-                      <span className="inline-flex items-center gap-1">
-                        <Lock aria-hidden="true" className="size-2.5" /> Read-only
-                      </span>
-                    </Badge>
-                  </div>
-                  <p className="mt-1 max-w-xl text-[10px] leading-5 text-[#777780]">
-                    Public signup always creates a seeker account, so there is no recruiter
-                    self-registration path to switch off. Recruiter access is granted by an
-                    active admin from the Users page.
-                  </p>
-                </div>
-                <Link
-                  href="/dashboard/admin/users"
-                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-white/[0.09] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/[0.05]"
-                >
-                  Manage users
-                </Link>
-              </div>
             </div>
           </SectionCard>
         </div>

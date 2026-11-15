@@ -1,9 +1,50 @@
 import { admin as adminPlugin } from 'better-auth/plugins';
-import { APIError } from 'better-auth/api';
+import { APIError, addOAuthServerContext, createAuthMiddleware, getOAuthState } from 'better-auth/api';
+import type { BetterAuthPlugin } from 'better-auth';
 import { createAccessControl } from 'better-auth/plugins/access';
 import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access';
 import { getPlatformControls } from '@/lib/platform-settings';
 import { fetchBackendWithSecret } from '@/lib/job-api';
+
+type SignupIntent = 'seeker' | 'recruiter';
+const signupIntentLifetimeMs = 5 * 60 * 1000;
+
+function isSignupIntent(value: unknown): value is SignupIntent {
+  return value === 'seeker' || value === 'recruiter';
+}
+
+const signupIntentPlugin: BetterAuthPlugin = {
+  id: 'hireloop-signup-intent',
+  hooks: {
+    before: [
+      {
+        matcher: (context) => context.path === '/sign-in/social',
+        handler: createAuthMiddleware(async (context) => {
+          const additionalData = context.body?.additionalData;
+          if (
+            typeof additionalData !== 'object' ||
+            additionalData === null ||
+            Array.isArray(additionalData) ||
+            !Object.hasOwn(additionalData, 'signupIntent')
+          ) {
+            return;
+          }
+
+          const intent = (additionalData as Record<string, unknown>).signupIntent;
+          if (!isSignupIntent(intent)) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Signup intent must be seeker or recruiter.',
+            });
+          }
+          await addOAuthServerContext({
+            signupIntent: intent,
+            signupIntentIssuedAt: Date.now(),
+          });
+        }),
+      },
+    ],
+  },
+};
 
 const accessControl = createAccessControl(defaultStatements);
 const roles = {
@@ -93,9 +134,11 @@ function validateProfileImage(value: unknown): string | null {
 
 export function normalizeCreatedUser(
   user: Record<string, unknown>,
+  role: SignupIntent = 'seeker',
 ) {
-  const createdUser: Record<string, unknown> = { ...user, role: 'seeker' };
+  const createdUser: Record<string, unknown> = { ...user, role };
   delete createdUser.registrationRole;
+  delete createdUser.signupIntent;
   return createdUser;
 }
 
@@ -134,6 +177,11 @@ export function createHireLoopAuthRoleConfig() {
           input: false as const,
           required: false as const,
         },
+        signupIntent: {
+          type: 'string' as const,
+          input: true as const,
+          required: false as const,
+        },
         phone: {
           type: 'string' as const,
           input: true as const,
@@ -166,18 +214,48 @@ export function createHireLoopAuthRoleConfig() {
     databaseHooks: {
       user: {
         create: {
-          before: async (user: Record<string, unknown>) => {
+          before: async (
+            user: Record<string, unknown>,
+            context: { path?: string } | null,
+          ) => {
+            let signupIntent: SignupIntent = 'seeker';
+            if (context?.path === '/sign-up/email') {
+              if (user.signupIntent !== undefined) {
+                if (!isSignupIntent(user.signupIntent)) {
+                  throw new APIError('BAD_REQUEST', {
+                    message: 'Signup intent must be seeker or recruiter.',
+                  });
+                }
+                signupIntent = user.signupIntent;
+              }
+            } else if (context?.path?.startsWith('/callback/')) {
+              const oauthState = await getOAuthState();
+              const oauthIntent = oauthState?.serverContext?.signupIntent;
+              const issuedAt = oauthState?.serverContext?.signupIntentIssuedAt;
+              const age = typeof issuedAt === 'number' ? Date.now() - issuedAt : Infinity;
+              if (
+                isSignupIntent(oauthIntent) &&
+                age >= -60_000 &&
+                age <= signupIntentLifetimeMs
+              ) {
+                signupIntent = oauthIntent;
+              }
+            }
+
             const controls = await getPlatformControls();
-            if (!controls.seekerRegistration) {
+            const registrationControl =
+              signupIntent === 'seeker' ? 'seekerRegistration' : 'recruiterRegistration';
+            if (!controls[registrationControl]) {
               throw new APIError('FORBIDDEN', {
                 message:
                   'New account registration is currently disabled. Please contact support.',
               });
             }
-            return { data: normalizeCreatedUser(user) };
+            return { data: normalizeCreatedUser(user, signupIntent) };
           },
           after: async (user: Record<string, unknown>) => {
             if (typeof user.id !== 'string' || !user.id) return;
+            if (!isSignupIntent(user.role)) return;
             const secret = process.env.HIRELOOP_JWT_SECRET;
             if (!secret) return;
             void fetchBackendWithSecret(
@@ -185,8 +263,8 @@ export function createHireLoopAuthRoleConfig() {
               'POST',
               {},
               secret,
-              { id: user.id, role: 'seeker' },
-            ).catch((error) => console.error('Could not notify admins about new seeker signup', error));
+              { id: user.id, role: user.role },
+            ).catch((error) => console.error('Could not notify admins about new account signup', error));
           },
         },
         update: {
@@ -196,6 +274,9 @@ export function createHireLoopAuthRoleConfig() {
         },
       },
     },
-    plugins: [adminPluginInstance] as [typeof adminPluginInstance],
+    plugins: [adminPluginInstance, signupIntentPlugin] as [
+      typeof adminPluginInstance,
+      typeof signupIntentPlugin,
+    ],
   };
 }

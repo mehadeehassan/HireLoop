@@ -14,6 +14,8 @@ type AuthFormProps = {
   platform?: PublicPlatformSettings;
 };
 
+type SignupIntent = 'seeker' | 'recruiter';
+
 function getCallbackUrl() {
   const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl');
   if (!callbackUrl || !callbackUrl.startsWith('/') || callbackUrl.startsWith('//')) return '/';
@@ -25,7 +27,13 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [credentialError, setCredentialError] = useState('');
+  const [signupIntent, setSignupIntent] = useState<SignupIntent>('seeker');
   const { errors, validateForm, updateFieldError } = useFormValidation();
+  const seekerEnabled = platform?.registration.seekerEnabled ?? true;
+  const recruiterEnabled = platform?.registration.recruiterEnabled ?? true;
+  const selectedIntentEnabled =
+    signupIntent === 'seeker' ? seekerEnabled : recruiterEnabled;
+  const registrationDisabled = !seekerEnabled && !recruiterEnabled;
 
   function handleFormChange(event: ChangeEvent<HTMLFormElement>) {
     updateFieldError(event);
@@ -49,6 +57,7 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
     const email = String(form.get('email') ?? '');
     const password = String(form.get('password') ?? '');
     const name = String(form.get('name') ?? '');
+    const submittedIntent = String(form.get('signupIntent') ?? 'seeker');
 
     try {
       const result = isSignUp
@@ -56,6 +65,7 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
             email,
             password,
             name,
+            signupIntent: submittedIntent,
           })
         : await authClient.signIn.email({ email, password });
 
@@ -73,7 +83,7 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
         toast.success(isSignUp ? 'Account created successfully!' : 'Welcome back!', {
           id: toastId,
         });
-        window.location.href = getCallbackUrl();
+        window.location.href = isSignUp ? '/dashboard' : getCallbackUrl();
       }
     } catch {
       toast.dismiss(toastId);
@@ -89,7 +99,8 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
     try {
       await authClient.signIn.social({
         provider: 'google',
-        callbackURL: getCallbackUrl(),
+        callbackURL: isSignUp ? '/dashboard' : getCallbackUrl(),
+        ...(isSignUp ? { additionalData: { signupIntent } } : {}),
       });
       toast.dismiss(toastId);
     } catch {
@@ -117,7 +128,11 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
             />
           </Link>
 
-          <div className="mx-auto flex w-full max-w-105 flex-1 flex-col justify-center py-10">
+          <div
+            className={`mx-auto flex w-full ${
+              isSignUp ? 'max-w-140' : 'max-w-105'
+            } flex-1 flex-col justify-center py-10`}
+          >
             <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[#777bff]">
               {isSignUp ? 'Create account' : 'Welcome back'}
             </p>
@@ -132,7 +147,7 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
                 : 'Continue your job search and manage your applications.'}
             </p>
 
-            {isSignUp && platform && !platform.registration.seekerEnabled ? (
+            {isSignUp && registrationDisabled ? (
               <div
                 role="status"
                 className="mt-6 rounded-[10px] border border-amber-400/25 bg-amber-400/[0.08] px-4 py-3 text-xs leading-5 text-amber-200"
@@ -142,10 +157,108 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
               </div>
             ) : null}
 
+            {isSignUp && (
+              <fieldset
+                role="radiogroup"
+                aria-labelledby="signup-intent-label"
+                className="mt-5 grid w-full grid-cols-2 gap-2.5"
+              >
+                <legend
+                  id="signup-intent-label"
+                  className="col-span-2 mb-1 text-sm font-semibold tracking-[-0.2px] text-[#e7e7ef]"
+                >
+                  I am signing up as
+                </legend>
+                {([
+                  {
+                    value: 'seeker',
+                    title: 'Job Seeker',
+                    description: 'Discover roles and manage your applications.',
+                    enabled: seekerEnabled,
+                  },
+                  {
+                    value: 'recruiter',
+                    title: 'Recruiter',
+                    description: 'Post jobs and manage applicants.',
+                    enabled: recruiterEnabled,
+                  },
+                ] as const).map((option) => (
+                  <label
+                    key={option.value}
+                    className={`group relative flex min-h-20 w-full cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-200 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#8b85ff]/70 focus-within:ring-offset-2 focus-within:ring-offset-[#101014] ${
+                      signupIntent === option.value
+                        ? 'border-[#8b85ff]/55 bg-[linear-gradient(115deg,rgba(98,88,255,0.17),rgba(29,28,43,0.9)_48%,rgba(23,23,29,0.95))] shadow-[0_8px_28px_rgba(74,65,194,0.12)]'
+                        : 'border-white/[0.09] bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.045]'
+                    } ${option.enabled ? '' : 'cursor-not-allowed opacity-45'}`}
+                  >
+                    <input
+                      type="radio"
+                      name="signupIntent"
+                      form="auth-form"
+                      value={option.value}
+                      checked={signupIntent === option.value}
+                      disabled={!option.enabled}
+                      onChange={() => setSignupIntent(option.value)}
+                      className="peer sr-only"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className={`flex size-7 shrink-0 items-center justify-center rounded-md ring-1 transition-colors ${
+                        signupIntent === option.value
+                          ? 'bg-[#7770ff]/15 text-[#aaa5ff] ring-[#9b96ff]/20'
+                          : 'bg-white/[0.045] text-[#a6a7b5] ring-white/[0.07] group-hover:bg-white/[0.07]'
+                      }`}
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        {option.value === 'seeker' ? (
+                          <>
+                            <circle cx="10.5" cy="8" r="3.25" />
+                            <path d="M4.5 19v-1a6 6 0 0 1 9.5-4.85" />
+                            <circle cx="17.5" cy="17.5" r="3" />
+                            <path d="m19.7 19.7 1.8 1.8" />
+                          </>
+                        ) : (
+                          <>
+                            <path d="M3 21h18M5 21V6l7-3 7 3v15M9 9h.01M15 9h.01M9 13h.01M15 13h.01M10 21v-4h4v4" />
+                          </>
+                        )}
+                      </svg>
+                    </span>
+                    <span className="w-full min-w-0">
+                      <span className="block text-xs font-semibold tracking-[-0.1px] text-[#f0eff7]">
+                        {option.title}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] leading-3.5 text-[#a4a4b3]">
+                        {option.description}
+                      </span>
+                      {!option.enabled && (
+                        <span className="mt-0.5 block text-[9px] leading-3 text-amber-200">
+                          New {option.title.toLowerCase()} accounts are currently disabled.
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                ))}
+                <p className="col-span-2 pt-0.5 text-[10px] leading-4 text-[#8f909f]">
+                  Choose the account type that fits how you’ll use HireLoop.
+                </p>
+              </fieldset>
+            )}
+
             <button
               type="button"
               onClick={signInWithGoogle}
-              className="mt-8 flex h-12 w-full items-center justify-center gap-3 rounded-[10px] border border-white/9 bg-[#17171d] text-sm font-medium transition hover:bg-[#1d1d24]"
+              disabled={isSignUp && !selectedIntentEnabled}
+              className="mt-8 flex h-12 w-full items-center justify-center gap-3 rounded-[10px] border border-white/9 bg-[#17171d] text-sm font-medium transition hover:bg-[#1d1d24] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#777bff] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
                 <path
@@ -175,17 +288,12 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
             </div>
 
             <form
+              id="auth-form"
               noValidate
               onSubmit={handleSubmit}
               onChangeCapture={handleFormChange}
               className="space-y-4"
             >
-              {isSignUp && (
-                <p className="rounded-[10px] border border-white/9 bg-[#17171d] px-4 py-3 text-xs leading-5 text-[#9899a9]">
-                  New accounts start as seekers. Recruiter access is assigned by an administrator.
-                </p>
-              )}
-
               {isSignUp && (
                 <label className="block">
                   <span className="mb-2 block text-xs font-medium text-[#c8c8d0]">Full name</span>
@@ -272,7 +380,7 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (isSignUp && !selectedIntentEnabled)}
                 className="h-12 w-full rounded-[10px] bg-[#6258ff] text-sm font-semibold text-white shadow-[inset_0_3px_10px_rgba(255,255,255,0.16)] transition hover:bg-[#7168ff] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? 'Please wait...' : isSignUp ? 'Create account' : 'Sign in'}

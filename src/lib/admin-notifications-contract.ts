@@ -1,5 +1,5 @@
 export const adminNotificationTypes = {
-  user_registered: ['New user registration', 'A seeker created an account.'],
+  user_registered: ['New account registration', 'A new seeker or recruiter account was created.'],
   payment_failed: ['Important payment failures', 'A subscription payment failed.'],
   payment_succeeded: ['Payment succeeded', 'A subscription payment was received.'],
   subscription_changed: ['Subscription changed', 'A subscription changed or ended.'],

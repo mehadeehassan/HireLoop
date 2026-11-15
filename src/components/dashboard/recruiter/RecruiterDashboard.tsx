@@ -6,7 +6,7 @@ import type { RecruiterJob } from './recruiter-data';
 import { useDashboardProfile } from '@/components/dashboard/shared/DashboardProfileContext';
 
 type JobsResponse = {
-  jobs: RecruiterJob[];
+  jobs: Array<Pick<RecruiterJob, 'id'> & { status?: string }>;
 };
 
 type Application = {
@@ -14,37 +14,75 @@ type Application = {
   name: string;
   initials: string;
   role: string;
-  email: string;
   experience: string;
   status: string;
   date: string;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isDashboardJob(
+  value: unknown,
+): value is Pick<RecruiterJob, 'id'> & { status?: string } {
+  return isRecord(value) &&
+    typeof value.id === 'string' &&
+    (value.status === undefined || typeof value.status === 'string');
+}
+
+function isApplication(value: unknown): value is Application {
+  return isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.initials === 'string' &&
+    typeof value.role === 'string' &&
+    typeof value.experience === 'string' &&
+    typeof value.status === 'string' &&
+    typeof value.date === 'string';
+}
+
 export default function RecruiterDashboard() {
   const profile = useDashboardProfile();
-  const [jobs, setJobs] = useState<RecruiterJob[]>([]);
+  const [jobs, setJobs] = useState<JobsResponse['jobs']>([]);
   const [applications, setApplications] = useState<Application[]>([]);
-  const [applicationsError, setApplicationsError] = useState(false);
+  const [dashboardError, setDashboardError] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
 
     async function loadDashboard() {
-      const [jobsResponse, applicationsResponse] = await Promise.all([
-        fetch('/api/recruiter/jobs?limit=50', { cache: 'no-store' }),
-        fetch('/api/recruiter/applications', { cache: 'no-store' }),
-      ]);
-
-      const [jobsData, applicationsData]: [JobsResponse | null, { applications?: Application[] } | null] = await Promise.all([
-        jobsResponse.ok ? jobsResponse.json() : Promise.resolve(null),
-        applicationsResponse.ok ? applicationsResponse.json() : Promise.resolve(null),
+      const [jobsResult, applicationsResult] = await Promise.allSettled([
+        fetch('/api/recruiter/jobs?limit=50', { cache: 'no-store' }).then(async (response) => {
+          if (!response.ok) throw new Error('Jobs request failed.');
+          const value: unknown = await response.json();
+          if (!isRecord(value) || !Array.isArray(value.jobs) || !value.jobs.every(isDashboardJob)) {
+            throw new Error('Jobs response was invalid.');
+          }
+          return value.jobs;
+        }),
+        fetch('/api/recruiter/applications', { cache: 'no-store' }).then(async (response) => {
+          if (!response.ok) throw new Error('Applications request failed.');
+          const value: unknown = await response.json();
+          if (
+            !isRecord(value) ||
+            !Array.isArray(value.applications) ||
+            !value.applications.every(isApplication)
+          ) {
+            throw new Error('Applications response was invalid.');
+          }
+          return value.applications;
+        }),
       ]);
 
       if (!active) return;
-      setJobs(jobsData?.jobs || []);
-      setApplications(applicationsData?.applications || []);
-      setApplicationsError(!applicationsResponse.ok);
+      if (jobsResult.status === 'fulfilled' && applicationsResult.status === 'fulfilled') {
+        setJobs(jobsResult.value);
+        setApplications(applicationsResult.value);
+      } else {
+        setDashboardError(true);
+      }
       setLoading(false);
     }
 
@@ -84,7 +122,7 @@ export default function RecruiterDashboard() {
           <StatCard
             key={stat.label}
             label={stat.label}
-            value={loading ? '—' : stat.value.toLocaleString()}
+            value={loading || dashboardError ? '—' : stat.value.toLocaleString()}
             index={index}
           />
         ))}
@@ -101,9 +139,9 @@ export default function RecruiterDashboard() {
           <div className="flex min-h-44 items-center justify-center text-[11px] text-[#858da1]">
             Loading applications...
           </div>
-        ) : applicationsError ? (
+        ) : dashboardError ? (
           <div role="alert" className="flex min-h-44 items-center justify-center px-5 text-center text-[11px] text-[#ff8797]">
-            Could not load applications. Please try again.
+            Could not load recruiter dashboard data. Please try again.
           </div>
         ) : applications.length === 0 ? (
           <div className="flex min-h-44 flex-col items-center justify-center px-5 text-center">

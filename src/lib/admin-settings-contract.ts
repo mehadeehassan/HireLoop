@@ -8,6 +8,7 @@ export type AdminPlatformBranding = {
 
 export type AdminPlatformControls = {
   seekerRegistration: boolean;
+  recruiterRegistration: boolean;
   jobPosting: boolean;
   jobApplications: boolean;
   notifications: Record<string, boolean>;
@@ -115,6 +116,7 @@ function isControls(value: unknown): value is AdminPlatformControls {
   return (
     isRecord(value) &&
     isBoolean(value.seekerRegistration) &&
+    isBoolean(value.recruiterRegistration) &&
     isBoolean(value.jobPosting) &&
     isBoolean(value.jobApplications) &&
     isRecord(value.notifications) &&

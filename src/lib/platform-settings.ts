@@ -10,13 +10,14 @@ export type PlatformBranding = {
 
 export type PlatformControls = {
   seekerRegistration: boolean;
+  recruiterRegistration: boolean;
   jobPosting: boolean;
   jobApplications: boolean;
 };
 
 export type PublicPlatformSettings = {
   branding: PlatformBranding;
-  registration: { seekerEnabled: boolean };
+  registration: { seekerEnabled: boolean; recruiterEnabled: boolean };
 };
 
 const defaults: PublicPlatformSettings = {
@@ -28,7 +29,7 @@ const defaults: PublicPlatformSettings = {
     websiteUrl: '',
     logo: null,
   },
-  registration: { seekerEnabled: true },
+  registration: { seekerEnabled: true, recruiterEnabled: true },
 };
 
 function text(value: unknown, fallback: string) {
@@ -51,6 +52,7 @@ export async function getPlatformControls(): Promise<PlatformControls> {
       : {};
   return {
     seekerRegistration: bool(controls.seekerRegistration, true),
+    recruiterRegistration: bool(controls.recruiterRegistration, true),
     jobPosting: bool(controls.jobPosting, true),
     jobApplications: bool(controls.jobApplications, true),
   };
@@ -80,6 +82,7 @@ export async function getPublicPlatformSettings(): Promise<PublicPlatformSetting
     },
     registration: {
       seekerEnabled: bool(controls.seekerRegistration, true),
+      recruiterEnabled: bool(controls.recruiterRegistration, true),
     },
   };
 }
