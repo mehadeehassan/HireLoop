@@ -1,5 +1,6 @@
 'use client';
 
+import { Copy } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import DashboardIcon from './DashboardIcon';
@@ -133,7 +134,7 @@ export default function BillingHistory({
     const query = search.trim().toLowerCase();
     if (!query) return invoices;
     return invoices.filter((invoice) =>
-      `${invoice.number} ${invoice.plan} ${statusOverrides[invoice.id] || invoice.status}`
+      `${invoice.id} ${invoice.number} ${invoice.plan} ${statusOverrides[invoice.id] || invoice.status}`
         .toLowerCase()
         .includes(query),
     );
@@ -150,6 +151,15 @@ export default function BillingHistory({
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [selectedInvoice, cancelTarget]);
+
+  async function copyTransactionId(transactionId: string) {
+    try {
+      await navigator.clipboard.writeText(transactionId);
+      toast.success('Transaction ID copied.');
+    } catch {
+      toast.error('Could not copy the transaction ID.');
+    }
+  }
 
   async function showDetails(invoice: BillingInvoiceRow) {
     setSelectedInvoice(invoice);
@@ -261,7 +271,7 @@ export default function BillingHistory({
           <div>
             <h2 className="text-sm font-semibold text-[#ededf2]">Billing History</h2>
             <p className="mt-1 text-[9px] text-[#777780]">
-              Invoices and payment status from your billing provider.
+              Invoices and payment status from your billing provider. Share a transaction ID with support to locate a payment.
             </p>
           </div>
           <div className="billing-no-print flex flex-wrap items-center gap-2">
@@ -295,10 +305,10 @@ export default function BillingHistory({
           <div className="space-y-px">{[0, 1, 2, 3].map((row) => <div key={row} className="h-14 animate-pulse bg-white/[0.025]" />)}</div>
         ) : filteredInvoices.length ? (
           <div className="overflow-x-auto">
-            <div className="grid min-w-[900px] grid-cols-[.9fr_1fr_.8fr_1.1fr_.7fr_1.25fr] gap-3 bg-[#19191e] px-5 py-3 text-[9px] uppercase tracking-wide text-[#85858e]">
-              <span>Date</span><span>Plan</span><span>Amount</span><span>Invoice</span><span>Status</span><span className="text-right">Actions</span>
+            <div className="grid min-w-[1120px] grid-cols-[.8fr_1fr_.8fr_1.4fr_1fr_.7fr_1.1fr] gap-3 bg-[#19191e] px-5 py-3 text-[9px] uppercase tracking-wide text-[#85858e]">
+              <span>Date</span><span>Plan</span><span>Amount</span><span>Transaction ID</span><span>Invoice</span><span>Status</span><span className="text-right">Actions</span>
             </div>
-            <ul className="min-w-[900px] divide-y divide-[#242428]">
+            <ul className="min-w-[1120px] divide-y divide-[#242428]">
               {filteredInvoices.map((invoice) => {
                 const status = statusOverrides[invoice.id] || invoice.status;
                 const isPending = status.toLowerCase() === 'pending';
@@ -306,11 +316,21 @@ export default function BillingHistory({
                 return (
                   <li
                     key={invoice.id}
-                    className="grid grid-cols-[.9fr_1fr_.8fr_1.1fr_.7fr_1.25fr] items-center gap-3 px-5 py-4 text-[10px] transition-colors hover:bg-white/[0.018]"
+                    className="grid grid-cols-[.8fr_1fr_.8fr_1.4fr_1fr_.7fr_1.1fr] items-center gap-3 px-5 py-4 text-[10px] transition-colors hover:bg-white/[0.018]"
                   >
                     <time className="text-[#c7c7ce]">{formatDate(invoice.date)}</time>
                     <span className="truncate text-[#e1e1e7]">{invoice.plan || 'Subscription'}</span>
                     <span className="text-[#c7c7ce]">{formatMoney(invoice.amountMinor, invoice.currency)}</span>
+                    <button
+                      type="button"
+                      onClick={() => void copyTransactionId(invoice.id)}
+                      aria-label={`Copy transaction ID ${invoice.id}`}
+                      title={invoice.id}
+                      className="inline-flex min-w-0 items-center gap-1.5 text-left font-mono text-[9px] text-[#aaa2ff] transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8178ff]"
+                    >
+                      <span className="truncate">{invoice.id}</span>
+                      <Copy aria-hidden="true" className="size-3 shrink-0" />
+                    </button>
                     {invoice.invoiceUrl ? (
                       <a href={invoice.invoiceUrl} target="_blank" rel="noreferrer" className="truncate text-[#aaa2ff] hover:text-white">
                         {invoice.number}
@@ -474,6 +494,7 @@ export default function BillingHistory({
                       ['Payment date', formatDate(paymentDetails.paymentDate || selectedInvoice.date)],
                       ['Payment method', paymentDetails.paymentMethod || 'Card'],
                       ['Invoice number', paymentDetails.invoiceNumber || selectedInvoice.number],
+                      ['Transaction ID', selectedInvoice.id],
                       ['Invoice reference', paymentDetails.stripeInvoiceId],
                       ['Payment reference', paymentDetails.stripePaymentIntentId || paymentDetails.stripeSessionId],
                     ].filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0)
