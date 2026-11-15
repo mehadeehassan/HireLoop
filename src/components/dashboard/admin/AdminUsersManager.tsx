@@ -21,6 +21,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useSession } from '@/lib/auth-client';
 import { isAccountActive, isManagedRole, type ManagedRole } from '@/lib/admin-user-policy';
+import { formatDisplayDate } from '@/lib/date-format';
 import DashboardAvatar from '@/components/dashboard/shared/DashboardAvatar';
 
 type AdminUser = {
@@ -111,17 +112,6 @@ function getErrorMessage(payload: unknown, fallback: string) {
   return isRecord(payload) && typeof payload.error === 'string' ? payload.error : fallback;
 }
 
-function formatDate(value: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: '2-digit',
-    year: 'numeric',
-  }).format(date);
-}
-
 function roleClass(role: string | null) {
   switch (role) {
     case 'recruiter':
@@ -153,7 +143,7 @@ function exportUsers(users: AdminUser[]) {
       user.email,
       user.role || 'Unknown',
       statusStyle(user).label,
-      formatDate(user.createdAt),
+      formatDisplayDate(user.createdAt),
     ]),
   ];
   const csv = rows.map((row) => row.map(csvCell).join(',')).join('\r\n');
@@ -250,7 +240,7 @@ function UserRow({
         </span>
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 text-[10px] text-[#a2a2aa]">
-        {formatDate(user.createdAt)}
+        {formatDisplayDate(user.createdAt)}
       </td>
       <td className="px-3 py-3.5">
         <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] ${status.className}`}>
@@ -751,7 +741,7 @@ export default function AdminUsersManager() {
                       </span>
                       <span className="ml-auto flex items-center gap-1 text-[10px] text-[#85858d]">
                         <CalendarDays aria-hidden="true" className="size-3" />
-                        {formatDate(user.createdAt)}
+                        {formatDisplayDate(user.createdAt)}
                       </span>
                     </div>
                     <div className="mt-3 border-t border-white/[0.06] pt-2">

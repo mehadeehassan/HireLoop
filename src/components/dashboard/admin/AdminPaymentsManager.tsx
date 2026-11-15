@@ -41,6 +41,7 @@ import {
   isAdminSubscriptionsList,
   isRecord,
 } from '@/lib/admin-payment-contract';
+import { formatDisplayDate } from '@/lib/date-format';
 
 type PaymentSortField =
   | 'paymentDate'
@@ -129,17 +130,6 @@ function formatMoney(amount: number | null, currency: string) {
   } catch {
     return `${amount.toFixed(2)} ${code}`;
   }
-}
-
-function formatDate(value: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: '2-digit',
-    year: 'numeric',
-  }).format(date);
 }
 
 function formatDateTime(value: string | null) {
@@ -1195,7 +1185,7 @@ export default function AdminPaymentsManager() {
                         </span>
                       </td>
                       <td className="px-3 py-3.5 text-[10px] text-[#96969e]">
-                        {formatDate(payment.paymentDate)}
+                        {formatDisplayDate(payment.paymentDate)}
                       </td>
                       <td className="px-4 py-3.5 sm:px-5">
                         <div className="flex justify-end">
@@ -1577,10 +1567,10 @@ function SubscriptionRow({ subscription }: { subscription: AdminSubscription }) 
         </Pill>
       </td>
       <td className="px-3 py-3.5 text-[10px] text-[#96969e]">
-        {formatDate(subscription.startDate)}
+        {formatDisplayDate(subscription.startDate)}
       </td>
       <td className="px-3 py-3.5 text-[10px] text-[#96969e]">
-        {subscription.expiryDate ? formatDate(subscription.expiryDate) : 'No expiry'}
+        {subscription.expiryDate ? formatDisplayDate(subscription.expiryDate) : 'No expiry'}
       </td>
       <td className="px-3 py-3.5">
         <div className="min-w-[110px]">
@@ -1600,7 +1590,7 @@ function SubscriptionRow({ subscription }: { subscription: AdminSubscription }) 
         </div>
       </td>
       <td className="px-3 py-3.5 text-[10px] text-[#96969e]">
-        {formatDate(subscription.nextResetDate)}
+        {formatDisplayDate(subscription.nextResetDate)}
       </td>
     </tr>
   );

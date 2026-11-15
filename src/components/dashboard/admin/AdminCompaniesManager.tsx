@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import DashboardAvatar from '@/components/dashboard/shared/DashboardAvatar';
+import { formatDisplayDate } from '@/lib/date-format';
 
 type Company = {
   id: string;
@@ -136,17 +137,6 @@ function isCompanyDetails(value: unknown): value is CompanyDetails {
 
 function getErrorMessage(payload: unknown, fallback: string) {
   return isRecord(payload) && typeof payload.error === 'string' ? payload.error : fallback;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: '2-digit',
-    year: 'numeric',
-  }).format(date);
 }
 
 function getSafeWebsite(value: string | null) {
@@ -275,7 +265,7 @@ function CompanyRow({
         {company.jobCount.toLocaleString()}
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 text-[10px] text-[#a2a2aa]">
-        {formatDate(company.createdAt)}
+        {formatDisplayDate(company.createdAt)}
       </td>
       <td className="px-4 py-3.5 text-right sm:px-5">
         <button
@@ -872,14 +862,14 @@ export default function AdminCompaniesManager() {
                 <CalendarDays aria-hidden="true" className="size-3.5" />
                 First seen
               </div>
-              <p className="mt-1.5 text-xs text-[#e5e5ea]">{formatDate(selectedCompanyDetails.createdAt)}</p>
+              <p className="mt-1.5 text-xs text-[#e5e5ea]">{formatDisplayDate(selectedCompanyDetails.createdAt)}</p>
             </div>
             <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
               <div className="flex items-center gap-2 text-[10px] text-[#85858d]">
                 <CalendarDays aria-hidden="true" className="size-3.5" />
                 Last updated
               </div>
-              <p className="mt-1.5 text-xs text-[#e5e5ea]">{formatDate(selectedCompanyDetails.updatedAt)}</p>
+              <p className="mt-1.5 text-xs text-[#e5e5ea]">{formatDisplayDate(selectedCompanyDetails.updatedAt)}</p>
             </div>
             <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
               <div className="flex items-center gap-2 text-[10px] text-[#85858d]">
@@ -956,7 +946,7 @@ export default function AdminCompaniesManager() {
                     <div className="min-w-0">
                       <p className="truncate text-[11px] font-medium text-[#e5e5ea]">{job.title}</p>
                       <p className="mt-1 truncate text-[10px] text-[#85858d]">
-                        {job.location || 'Location not provided'} · {formatDate(job.createdAt)}
+                        {job.location || 'Location not provided'} · {formatDisplayDate(job.createdAt)}
                       </p>
                     </div>
                     <span className={`w-fit rounded-full px-2 py-1 text-[9px] ${getJobStatusStyle(job.status)}`}>
