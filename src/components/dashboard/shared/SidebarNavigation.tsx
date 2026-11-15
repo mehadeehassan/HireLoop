@@ -19,7 +19,6 @@ export const sidebarNavigation: Record<
     { label: 'Jobs', href: '/dashboard/seeker/jobs', icon: 'briefcase' },
     { label: 'Saved Jobs', href: '/dashboard/seeker/saved', icon: 'bookmark' },
     { label: 'Applications', href: '/dashboard/seeker/applied', icon: 'document' },
-    { label: 'Companies', href: '/dashboard/seeker/companies', icon: 'building' },
     { label: 'Billing', href: '/dashboard/seeker/billing', icon: 'wallet' },
     { label: 'Settings', href: '/dashboard/seeker/settings', icon: 'settings' },
   ],

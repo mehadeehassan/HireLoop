@@ -560,7 +560,7 @@ export default function UserCompaniesManager() {
                   <button
                     type="button"
                     onClick={() => openDetails(company)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/[0.09] px-3 text-[10px] font-medium text-[#c9ccda] transition hover:bg-white/[0.05] hover:text-white"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/9 px-3 text-[10px] font-medium text-[#c9ccda] transition hover:bg-white/[0.05] hover:text-white"
                   >
                     Details
                     <ArrowUpRight aria-hidden="true" className="size-3" />
@@ -614,7 +614,7 @@ export default function UserCompaniesManager() {
                 disabled={page <= 1}
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 aria-label="Previous page"
-                className="flex size-8 items-center justify-center rounded-lg border border-white/[0.08] text-[#b8bdcc] transition hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-8 items-center justify-center rounded-lg border border-white/8 text-[#b8bdcc] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft aria-hidden="true" className="size-4" />
               </button>
@@ -626,7 +626,7 @@ export default function UserCompaniesManager() {
                 disabled={page >= totalPages}
                 onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                 aria-label="Next page"
-                className="flex size-8 items-center justify-center rounded-lg border border-white/[0.08] text-[#b8bdcc] transition hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-8 items-center justify-center rounded-lg border border-white/8 text-[#b8bdcc] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronRight aria-hidden="true" className="size-4" />
               </button>
@@ -639,7 +639,7 @@ export default function UserCompaniesManager() {
         ref={formDialog}
         aria-modal="true"
         aria-labelledby="company-form-title"
-        className="m-auto max-h-[92vh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl border border-white/[0.1] bg-[#171c2a] p-5 text-[#e7eaf2] shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm sm:p-6"
+        className="m-auto max-h-[92vh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-[#171c2a] p-5 text-[#e7eaf2] shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm sm:p-6"
         onCancel={(event) => {
           event.preventDefault();
           closeModal();
@@ -666,7 +666,7 @@ export default function UserCompaniesManager() {
                 type="button"
                 aria-label="Close company form"
                 onClick={closeModal}
-                className="rounded-lg p-2 text-[#8991a5] transition hover:bg-white/[0.06] hover:text-white"
+                className="rounded-lg p-2 text-[#8991a5] transition hover:bg-white/6 hover:text-white"
               >
                 <X aria-hidden="true" className="size-4" />
               </button>
@@ -685,7 +685,7 @@ export default function UserCompaniesManager() {
         ref={detailDialog}
         aria-modal="true"
         aria-labelledby="company-details-title"
-        className="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-white/[0.1] bg-[#171c2a] p-5 text-[#e7eaf2] shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm sm:p-6"
+        className="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#171c2a] p-5 text-[#e7eaf2] shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm sm:p-6"
         onCancel={(event) => {
           event.preventDefault();
           closeModal();
@@ -710,14 +710,14 @@ export default function UserCompaniesManager() {
                 type="button"
                 aria-label="Close company details"
                 onClick={closeModal}
-                className="rounded-lg p-2 text-[#8991a5] transition hover:bg-white/[0.06] hover:text-white"
+                className="rounded-lg p-2 text-[#8991a5] transition hover:bg-white/6 hover:text-white"
               >
                 <X aria-hidden="true" className="size-4" />
               </button>
             </div>
 
             {activeDetailError ? (
-              <div role="alert" className="mt-5 rounded-lg border border-rose-400/15 bg-rose-400/[0.04] p-3 text-xs text-rose-200">
+              <div role="alert" className="mt-5 rounded-lg border border-rose-400/15 bg-rose-400/4 p-3 text-xs text-rose-200">
                 {activeDetailError}
                 <button
                   type="button"
@@ -733,7 +733,7 @@ export default function UserCompaniesManager() {
             ) : (
               <>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+                  <div className="rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
                     <div className="flex items-center gap-2 text-[10px] text-[#8991a5]">
                       <Users aria-hidden="true" className="size-3.5" />
                       Company details
@@ -746,7 +746,7 @@ export default function UserCompaniesManager() {
                       {visibleDetail.location || 'Location not provided'}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+                  <div className="rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
                     <div className="flex items-center gap-2 text-[10px] text-[#8991a5]">
                       <CalendarDays aria-hidden="true" className="size-3.5" />
                       Submitted
@@ -770,7 +770,7 @@ export default function UserCompaniesManager() {
                     <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
                   </a>
                 )}
-                <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+                <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
                   <p className="text-[10px] text-[#8991a5]">Description</p>
                   <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[#c7cbd7]">
                     {visibleDetail.description || 'No description provided.'}
@@ -784,7 +784,7 @@ export default function UserCompaniesManager() {
                   {activeDetails ? activeDetails.jobs.length ? (
                     <ul className="space-y-2">
                       {activeDetails.jobs.map((job) => (
-                        <li key={job.id} className="flex flex-col gap-2 rounded-lg border border-white/[0.06] bg-[#10141f] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                        <li key={job.id} className="flex flex-col gap-2 rounded-lg border border-white/6 bg-[#10141f] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0">
                             <p className="truncate text-[11px] font-medium text-[#e5e8f0]">{job.title}</p>
                             <p className="mt-1 truncate text-[10px] text-[#8991a5]">
@@ -798,13 +798,13 @@ export default function UserCompaniesManager() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="rounded-lg border border-white/[0.06] bg-[#10141f] px-3 py-4 text-center text-[10px] text-[#8991a5]">
+                    <p className="rounded-lg border border-white/6 bg-[#10141f] px-3 py-4 text-center text-[10px] text-[#8991a5]">
                       No related job posts.
                     </p>
                   ) : (
                     <div aria-label="Loading related jobs" className="animate-pulse space-y-2">
-                      <div className="h-12 rounded-lg bg-white/[0.04]" />
-                      <div className="h-12 rounded-lg bg-white/[0.04]" />
+                      <div className="h-12 rounded-lg bg-white/4" />
+                      <div className="h-12 rounded-lg bg-white/4" />
                     </div>
                   )}
                 </div>
