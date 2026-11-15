@@ -13,10 +13,45 @@ function isSignupIntent(value: unknown): value is SignupIntent {
   return value === 'seeker' || value === 'recruiter';
 }
 
+function isSameOriginRelativePath(value: unknown): value is string {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) {
+    return false;
+  }
+  try {
+    return new URL(value, 'https://hireloop.invalid').origin === 'https://hireloop.invalid';
+  } catch {
+    return false;
+  }
+}
+
 const signupIntentPlugin: BetterAuthPlugin = {
   id: 'hireloop-signup-intent',
   hooks: {
     before: [
+      {
+        matcher: (context) =>
+          context.path !== undefined &&
+          [
+            '/sign-up/email',
+            '/sign-in/email',
+            '/sign-in/social',
+            '/send-verification-email',
+            '/verify-email',
+          ].includes(context.path),
+        handler: createAuthMiddleware(async (context) => {
+          const callbackURL: unknown =
+            context.path === '/verify-email'
+              ? context.request
+                ? new URL(context.request.url).searchParams.get('callbackURL')
+                : undefined
+              : context.body?.callbackURL;
+          if (callbackURL !== undefined && callbackURL !== null && !isSameOriginRelativePath(callbackURL)) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Callback URL must be a same-origin relative path.',
+            });
+          }
+        }),
+      },
       {
         matcher: (context) => context.path === '/sign-in/social',
         handler: createAuthMiddleware(async (context) => {

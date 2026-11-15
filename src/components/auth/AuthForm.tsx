@@ -5,28 +5,45 @@ import { authClient } from '@/lib/auth-client';
 import type { PublicPlatformSettings } from '@/lib/platform-settings';
 import Image from 'next/image';
 import Link from 'next/link';
-import { type ChangeEvent, type FormEvent, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { FieldError, useFormValidation } from '@/components/form/useFormValidation';
 
 type AuthFormProps = {
   mode: 'signin' | 'signup';
   platform?: PublicPlatformSettings;
+  verificationResult?: 'success' | 'expired' | 'invalid';
 };
 
 type SignupIntent = 'seeker' | 'recruiter';
 
-function getCallbackUrl() {
+function getCallbackUrl(fallback = '/') {
   const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl');
-  if (!callbackUrl || !callbackUrl.startsWith('/') || callbackUrl.startsWith('//')) return '/';
-  return callbackUrl;
+  if (!callbackUrl || !callbackUrl.startsWith('/') || callbackUrl.startsWith('//')) {
+    return fallback;
+  }
+  try {
+    return new URL(callbackUrl, window.location.origin).origin === window.location.origin
+      ? callbackUrl
+      : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-export default function AuthForm({ mode, platform }: AuthFormProps) {
+export default function AuthForm({ mode, platform, verificationResult }: AuthFormProps) {
   const isSignUp = mode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [credentialError, setCredentialError] = useState('');
+  const [emailVerificationError, setEmailVerificationError] = useState(false);
+  const [emailValue, setEmailValue] = useState('');
+  const [checkEmailAddress, setCheckEmailAddress] = useState('');
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+  const [resendError, setResendError] = useState('');
   const [signupIntent, setSignupIntent] = useState<SignupIntent>('seeker');
   const { errors, validateForm, updateFieldError } = useFormValidation();
   const seekerEnabled = platform?.registration.seekerEnabled ?? true;
@@ -34,6 +51,15 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
   const selectedIntentEnabled =
     signupIntent === 'seeker' ? seekerEnabled : recruiterEnabled;
   const registrationDisabled = !seekerEnabled && !recruiterEnabled;
+
+  useEffect(() => {
+    if (resendCooldown === 0) return;
+    const timer = window.setTimeout(
+      () => setResendCooldown((remaining) => Math.max(remaining - 1, 0)),
+      1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
 
   function handleFormChange(event: ChangeEvent<HTMLFormElement>) {
     updateFieldError(event);
@@ -43,6 +69,35 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
       (field.name === 'email' || field.name === 'password')
     ) {
       setCredentialError('');
+      setEmailVerificationError(false);
+    }
+    if (field instanceof HTMLInputElement && field.name === 'email') {
+      setEmailValue(field.value);
+    }
+  }
+
+  async function resendVerificationEmail(email: string) {
+    if (!email || resendLoading || resendCooldown > 0) return;
+    setResendLoading(true);
+    setResendMessage('');
+    setResendError('');
+    try {
+      const result = await authClient.sendVerificationEmail({
+        email,
+        callbackURL: '/signin?verification=success',
+      });
+      if (result.error) {
+        setResendError('We could not send a link right now. Please try again later.');
+        return;
+      }
+      setResendMessage(
+        'If this address has an unverified account, a verification link will be sent shortly.',
+      );
+    } catch {
+      setResendError('We could not send a link right now. Please try again later.');
+    } finally {
+      setResendCooldown(60);
+      setResendLoading(false);
     }
   }
 
@@ -50,6 +105,7 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
     event.preventDefault();
     if (!validateForm(event.currentTarget)) return;
     setCredentialError('');
+    setEmailVerificationError(false);
     setLoading(true);
     const toastId = toast.loading(isSignUp ? 'Creating your account...' : 'Signing you in...');
 
@@ -66,24 +122,44 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
             password,
             name,
             signupIntent: submittedIntent,
+            callbackURL: '/signin?verification=success',
           })
-        : await authClient.signIn.email({ email, password });
+        : await authClient.signIn.email({
+            email,
+            password,
+            callbackURL: getCallbackUrl(verificationResult === 'success' ? '/dashboard' : '/'),
+          });
 
       if (result.error) {
         const invalidCredentials =
           !isSignUp &&
           (result.error.status === 401 || result.error.code === 'INVALID_EMAIL_OR_PASSWORD');
+        const emailNotVerified = !isSignUp && result.error.code === 'EMAIL_NOT_VERIFIED';
         const message = invalidCredentials
           ? 'Email or password is incorrect.'
-          : result.error.message || 'Something went wrong. Please try again.';
+          : emailNotVerified
+            ? 'Please verify your email before signing in.'
+            : result.error.message || 'Something went wrong. Please try again.';
         if (invalidCredentials) setCredentialError(message);
+        if (emailNotVerified) {
+          setEmailVerificationError(true);
+          setResendEmail(email);
+          setResendCooldown(60);
+          setResendMessage('');
+          setResendError('');
+        }
         toast.dismiss(toastId);
         toast.error(message);
-      } else {
-        toast.success(isSignUp ? 'Account created successfully!' : 'Welcome back!', {
+      } else if (isSignUp) {
+        setCheckEmailAddress(email);
+        setResendEmail(email);
+        setResendCooldown(60);
+        toast.success('Check your email for a verification link, if one is needed.', {
           id: toastId,
         });
-        window.location.href = isSignUp ? '/dashboard' : getCallbackUrl();
+      } else {
+        toast.success('Welcome back!', { id: toastId });
+        window.location.href = getCallbackUrl(verificationResult === 'success' ? '/dashboard' : '/');
       }
     } catch {
       toast.dismiss(toastId);
@@ -99,7 +175,9 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
     try {
       await authClient.signIn.social({
         provider: 'google',
-        callbackURL: isSignUp ? '/dashboard' : getCallbackUrl(),
+        callbackURL: isSignUp
+          ? '/dashboard'
+          : getCallbackUrl(verificationResult === 'success' ? '/dashboard' : '/'),
         ...(isSignUp ? { additionalData: { signupIntent } } : {}),
       });
       toast.dismiss(toastId);
@@ -133,6 +211,53 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
               isSignUp ? 'max-w-140' : 'max-w-105'
             } flex-1 flex-col justify-center py-10`}
           >
+            {checkEmailAddress ? (
+              <section
+                role="status"
+                aria-live="polite"
+                className="rounded-xl border border-[#777bff]/25 bg-[#777bff]/[0.07] p-5 sm:p-6"
+              >
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#aaa5ff]">
+                  Email verification
+                </p>
+                <h1 className="mt-3 text-2xl font-semibold tracking-tight">Check your email</h1>
+                <p className="mt-3 text-sm leading-6 text-[#c2c2d0]">
+                  If an account needs verification, a link was sent to{' '}
+                  <span className="font-semibold text-white">{checkEmailAddress}</span>. Open it to
+                  verify your email, then sign in. If you already have an account, you can request a
+                  fresh link below.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void resendVerificationEmail(checkEmailAddress)}
+                  disabled={resendLoading || resendCooldown > 0}
+                  className="mt-5 h-11 w-full rounded-[10px] border border-white/10 bg-white/[0.04] text-sm font-semibold text-white transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {resendLoading
+                    ? 'Sending...'
+                    : resendCooldown > 0
+                      ? `Resend available in ${resendCooldown}s`
+                      : 'Resend verification email'}
+                </button>
+                {resendMessage ? (
+                  <p role="status" className="mt-3 text-xs leading-5 text-emerald-200">
+                    {resendMessage}
+                  </p>
+                ) : null}
+                {resendError ? (
+                  <p role="alert" className="mt-3 text-xs leading-5 text-red-300">
+                    {resendError}
+                  </p>
+                ) : null}
+                <p className="mt-5 text-center text-sm text-[#9899a9]">
+                  Already verified?{' '}
+                  <Link href="/signin" className="font-semibold text-[#aaa5ff]">
+                    Return to sign in
+                  </Link>
+                </p>
+              </section>
+            ) : (
+              <>
             <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[#777bff]">
               {isSignUp ? 'Create account' : 'Welcome back'}
             </p>
@@ -146,6 +271,23 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
                 ? 'Create an account and discover roles matched to your skills.'
                 : 'Continue your job search and manage your applications.'}
             </p>
+
+            {verificationResult ? (
+              <div
+                role={verificationResult === 'success' ? 'status' : 'alert'}
+                className={`mt-5 rounded-[10px] border px-4 py-3 text-xs leading-5 ${
+                  verificationResult === 'success'
+                    ? 'border-emerald-400/25 bg-emerald-400/[0.07] text-emerald-200'
+                    : 'border-amber-400/25 bg-amber-400/[0.07] text-amber-200'
+                }`}
+              >
+                {verificationResult === 'success'
+                  ? 'Your email is verified. Sign in to continue.'
+                  : verificationResult === 'expired'
+                    ? 'This verification link has expired. Enter your email below to request a new link.'
+                    : 'This verification link is invalid or has already been used. Enter your email below to request a new link.'}
+              </div>
+            ) : null}
 
             {isSignUp && registrationDisabled ? (
               <div
@@ -319,6 +461,8 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
                   required
                   autoComplete="email"
                   placeholder="you@example.com"
+                  value={emailValue}
+                  onChange={(event) => setEmailValue(event.target.value)}
                   aria-invalid={Boolean(errors.email)}
                   aria-describedby={errors.email ? 'auth-email-error' : undefined}
                   className="h-12 w-full rounded-[10px] border border-white/9 bg-[#17171d] px-4 text-sm outline-none transition placeholder:text-[#696a77] focus:border-[#6258ff]"
@@ -381,6 +525,41 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
               </button>
             </form>
 
+            {emailVerificationError ? (
+              <p role="alert" className="mt-4 text-xs leading-5 text-amber-200">
+                Please verify your email before signing in. A verification link was sent if the
+                account is eligible.
+              </p>
+            ) : null}
+
+            {!isSignUp &&
+            (resendEmail || verificationResult === 'expired' || verificationResult === 'invalid') ? (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => void resendVerificationEmail(emailValue || resendEmail)}
+                  disabled={!emailValue && !resendEmail || resendLoading || resendCooldown > 0}
+                  className="text-left text-xs font-semibold text-[#aaa5ff] underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {resendLoading
+                    ? 'Sending verification link...'
+                    : resendCooldown > 0
+                      ? `Resend available in ${resendCooldown}s`
+                      : 'Resend verification email'}
+                </button>
+                {resendMessage ? (
+                  <p role="status" className="mt-2 text-xs leading-5 text-emerald-200">
+                    {resendMessage}
+                  </p>
+                ) : null}
+                {resendError ? (
+                  <p role="alert" className="mt-2 text-xs leading-5 text-red-300">
+                    {resendError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <p className="mt-6 text-center text-sm text-[#9899a9]">
               {isSignUp
                 ? 'Already have an account?'
@@ -399,6 +578,8 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
                 {isSignUp ? 'Sign in' : 'Create account'}
               </Link>
             </p>
+              </>
+            )}
           </div>
         </section>
 

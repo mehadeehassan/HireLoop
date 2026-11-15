@@ -30,17 +30,24 @@ checks, session revocation, or the backend audit record.
 
 ## Password reset email
 
-Password reset uses Better Auth's one-time reset token and sends email through Resend. Configure
-`RESEND_API_KEY` and `RESEND_FROM_EMAIL` in the frontend server environment; the sender address must
-be verified in Resend. Keep these values server-only and do not use `NEXT_PUBLIC_` variables. Reset
-links expire after one hour.
+Password reset and signup email verification use the same server-only Resend sender. Configure
+`RESEND_API_KEY` and `EMAIL_FROM` in the frontend server environment; the sender address must be
+verified in Resend. Keep these values server-only and do not use `NEXT_PUBLIC_` variables. Reset
+links expire after one hour. Signup verification links expire after 15 minutes and lead to sign-in
+after verification (they do not automatically create a session). Existing deployments using
+`RESEND_FROM_EMAIL` continue to work until migrated to `EMAIL_FROM`.
 
-Public email and Google signups always receive the Better Auth `seeker` role. Recruiter access is
-assigned by an active admin through the protected user-management API. To bootstrap the first admin,
-first create and verify a normal account, then run `npm run auth:bootstrap-admin -- user@example.com`
-in a trusted server environment with `BETTER_AUTH_DB_URL` configured. The command can only promote
-the specified existing account, is idempotent for that account, revokes its sessions, and records the
-bootstrap action in the admin audit collection; it is not an HTTP endpoint.
+Set `EMAIL_VERIFICATION_REQUIRED=false` to allow sign-in before email verification. This is the
+default; signup still sends a verification email. Before changing it to `true`, verify every existing
+admin account and ensure the Resend sender domain is verified. With enforcement enabled, unverified
+users cannot sign in until they verify their email.
+
+Public signup accepts the seeker or recruiter intent; the role is set server-side and never taken
+from an email link. To bootstrap the first admin, create a normal account and run
+`npm run auth:bootstrap-admin -- user@example.com` in a trusted server environment with
+`BETTER_AUTH_DB_URL` configured. The command can only promote the specified existing account, is
+idempotent for that account, revokes its sessions, and records the bootstrap action in the admin
+audit collection; it is not an HTTP endpoint.
 
 ## Learn More
 
