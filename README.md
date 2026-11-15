@@ -28,6 +28,13 @@ Authenticated admin user-management requests go through `PATCH /api/admin/users/
 Admin Plugin mutation endpoints are blocked so role and suspension changes cannot bypass safety
 checks, session revocation, or the backend audit record.
 
+## Password reset email
+
+Password reset uses Better Auth's one-time reset token and sends email through Resend. Configure
+`RESEND_API_KEY` and `RESEND_FROM_EMAIL` in the frontend server environment; the sender address must
+be verified in Resend. Keep these values server-only and do not use `NEXT_PUBLIC_` variables. Reset
+links expire after one hour.
+
 Public email and Google signups always receive the Better Auth `seeker` role. Recruiter access is
 assigned by an active admin through the protected user-management API. To bootstrap the first admin,
 first create and verify a normal account, then run `npm run auth:bootstrap-admin -- user@example.com`

@@ -330,15 +330,9 @@ export default function AuthForm({ mode, platform }: AuthFormProps) {
                 {!isSignUp && (
                   <span className="mb-2 flex items-center justify-between text-xs font-medium text-[#c8c8d0]">
                     Password
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toast.info('Password reset will be available soon.', { duration: 4000 })
-                      }
-                      className="font-normal text-[#777bff]"
-                    >
+                    <Link href="/forgot-password" className="font-normal text-[#777bff]">
                       Forgot password?
-                    </button>
+                    </Link>
                   </span>
                 )}
                 {isSignUp && (
