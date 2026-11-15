@@ -9,7 +9,7 @@ type HeroSectionProps = {
   popularSearches: string[];
   onQueryChange: (value: string) => void;
   onLocationChange: (value: string) => void;
-  onSearch: () => void;
+  onSearch: (query: string, location: string) => void;
 };
 
 export default function HeroSection({
@@ -23,13 +23,13 @@ export default function HeroSection({
 }: HeroSectionProps) {
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSearch();
+    onSearch(query, location);
   }
 
   function selectPopularSearch(search: string) {
     onQueryChange(search);
     onLocationChange("");
-    onSearch();
+    onSearch(search, '');
   }
 
   return (

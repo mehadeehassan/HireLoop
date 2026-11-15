@@ -1,17 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import JobSaveButton from '@/components/browse-jobs/JobSaveButton';
 import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
 import type { PublicJob } from '@/lib/public-jobs';
 import { getJobApplyHref } from '@/lib/job-routes';
-import { getTimeAgo } from './seeker-data';
+import { getTimeAgo, isPublicJob } from './seeker-data';
 import { useSavedJobIds } from './useSavedJobIds';
-import { useSeekerDashboardData } from './useSeekerDashboardData';
 import SeekerMetricCard from './SeekerMetricCard';
 import SeekerPageHeader from './SeekerPageHeader';
+
+const SAVED_JOB_BATCH_SIZE = 100;
+const SAVED_JOBS_PAGE_SIZE = 8;
 
 function getDaysUntilDeadline(deadline?: string | null) {
   if (!deadline) return null;
@@ -22,10 +24,66 @@ function getDaysUntilDeadline(deadline?: string | null) {
 }
 
 export default function SeekerSavedJobs() {
-  const { jobs, loading, error } = useSeekerDashboardData({ includeApplications: false });
   const { jobIds, savedAt } = useSavedJobIds();
+  const [jobs, setJobs] = useState<PublicJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
   const [category, setCategory] = useState('All Saved');
   const [sort, setSort] = useState('Recently Saved');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadSavedJobs() {
+      setLoading(true);
+      setError('');
+      try {
+        const foundJobs: PublicJob[] = [];
+        for (let offset = 0; offset < jobIds.length; offset += SAVED_JOB_BATCH_SIZE) {
+          const query = new URLSearchParams();
+          for (const id of jobIds.slice(offset, offset + SAVED_JOB_BATCH_SIZE)) {
+            query.append('ids', id);
+          }
+          const response = await fetch(`/api/jobs?${query}`, {
+            cache: 'no-store',
+            signal: controller.signal,
+          });
+          const payload: unknown = await response.json();
+          if (!response.ok) {
+            throw new Error(
+              typeof payload === 'object' &&
+                payload !== null &&
+                'error' in payload &&
+                typeof payload.error === 'string'
+                ? payload.error
+                : 'Could not load saved jobs.',
+            );
+          }
+          if (
+            typeof payload !== 'object' ||
+            payload === null ||
+            !('jobs' in payload) ||
+            !Array.isArray(payload.jobs) ||
+            !payload.jobs.every(isPublicJob)
+          ) {
+            throw new Error('The saved jobs service returned an unexpected response.');
+          }
+          foundJobs.push(...payload.jobs);
+        }
+        setJobs(foundJobs);
+      } catch (loadError) {
+        if (controller.signal.aborted) return;
+        setError(loadError instanceof Error ? loadError.message : 'Could not load saved jobs.');
+        setJobs([]);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void loadSavedJobs();
+    return () => controller.abort();
+  }, [jobIds]);
+
   const savedJobs = useMemo(() => {
     const saved = jobs.filter((job) => jobIds.includes(job.id));
     const filtered = category === 'All Saved'
@@ -50,6 +108,9 @@ export default function SeekerSavedJobs() {
     const days = getDaysUntilDeadline(job.deadline);
     return days !== null && days >= 0 && days <= 7;
   }).length;
+  const pageCount = Math.max(1, Math.ceil(savedJobs.length / SAVED_JOBS_PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageJobs = savedJobs.slice((currentPage - 1) * SAVED_JOBS_PAGE_SIZE, currentPage * SAVED_JOBS_PAGE_SIZE);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-7">
@@ -66,7 +127,7 @@ export default function SeekerSavedJobs() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#26262b] bg-[#131316] p-3">
         <div className="flex flex-wrap gap-1.5">
           {['All Saved', ...categories].map((item) => (
-            <button key={item} type="button" onClick={() => setCategory(item)} className={`rounded-md px-3 py-2 text-[10px] transition ${category === item ? 'bg-[#25252b] text-white' : 'text-[#92929b] hover:bg-white/5 hover:text-white'}`}>
+            <button key={item} type="button" onClick={() => { setCategory(item); setPage(1); }} className={`rounded-md px-3 py-2 text-[10px] transition ${category === item ? 'bg-[#25252b] text-white' : 'text-[#92929b] hover:bg-white/5 hover:text-white'}`}>
               {item}
             </button>
           ))}
@@ -82,9 +143,12 @@ export default function SeekerSavedJobs() {
 
       {error && <ErrorBanner message={error} />}
       {loading ? <LoadingList /> : savedJobs.length ? (
-        <div className="space-y-3">
-          {savedJobs.map((job) => <SavedJobCard key={job.id} job={job} savedAt={savedAt[job.id]} />)}
-        </div>
+        <>
+          <div className="space-y-3">
+            {pageJobs.map((job) => <SavedJobCard key={job.id} job={job} savedAt={savedAt[job.id]} />)}
+          </div>
+          {pageCount > 1 && <div className="mt-5 flex items-center justify-between text-[10px] text-[#85858e]"><span>{savedJobs.length} saved jobs · {currentPage}/{pageCount}</span><div className="flex gap-2"><button type="button" disabled={currentPage <= 1 || loading} onClick={() => setPage(currentPage - 1)} className="rounded border border-[#303036] px-3 py-2 disabled:opacity-40">Previous</button><button type="button" disabled={currentPage >= pageCount || loading} onClick={() => setPage(currentPage + 1)} className="rounded border border-[#303036] px-3 py-2 disabled:opacity-40">Next</button></div></div>}
+        </>
       ) : (
         <div className="rounded-xl border border-[#26262b] bg-[#131316] px-5 py-16 text-center">
           <span className="mx-auto flex size-11 items-center justify-center rounded-lg bg-white/5 text-[#aaa2ff]"><DashboardIcon name="bookmark" /></span>

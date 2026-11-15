@@ -92,6 +92,13 @@ async function handleGET(request: Request) {
         { status: 502 },
       );
     }
+    if (!isRecord(data) || !Number.isSafeInteger(data.unreadCount) || Number(data.unreadCount) < 0) {
+      console.error('Messaging backend returned an invalid unread total');
+      return NextResponse.json(
+        { error: 'The messaging service returned an unexpected response.' },
+        { status: 502 },
+      );
+    }
 
     const conversations = records
       .filter(
@@ -132,6 +139,7 @@ async function handleGET(request: Request) {
 
     return NextResponse.json({
       conversations,
+      unreadCount: Number(data.unreadCount),
       ...(isRecord(data) && isRecord(data.pagination) ? { pagination: data.pagination } : {}),
     });
   } catch (error) {

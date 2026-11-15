@@ -5,6 +5,15 @@ import type { PublicJob } from "@/lib/public-jobs";
 import FeaturedJobsSection from "@/components/home/FeaturedJobsSection";
 import HeroSection from "@/components/home/HeroSection";
 import HomeStatsSection from "@/components/home/HomeStatsSection";
+import type { JobFilterOption } from "@/components/browse-jobs/JobFilters";
+
+const HOME_JOBS_PER_PAGE = 6;
+
+type HomeFilterOptions = {
+  types: JobFilterOption[];
+  companies: JobFilterOption[];
+  workModes: JobFilterOption[];
+};
 
 function isPublicJob(value: unknown): value is PublicJob {
   if (typeof value !== "object" || value === null) return false;
@@ -42,6 +51,15 @@ export default function HomeDynamicSections() {
   const [newJobsThisMonth, setNewJobsThisMonth] = useState(0);
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [submittedLocation, setSubmittedLocation] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filterOptions, setFilterOptions] = useState<HomeFilterOptions>({
+    types: [],
+    companies: [],
+    workModes: [],
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -54,7 +72,13 @@ export default function HomeDynamicSections() {
       setError("");
 
       try {
-        const response = await fetch("/api/jobs", {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(HOME_JOBS_PER_PAGE),
+        });
+        if (submittedQuery.trim()) params.set("search", submittedQuery.trim());
+        if (submittedLocation.trim()) params.set("location", submittedLocation.trim());
+        const response = await fetch(`/api/jobs?${params}`, {
           cache: "no-store",
           signal: controller.signal,
         });
@@ -63,19 +87,56 @@ export default function HomeDynamicSections() {
         }
 
         const payload: unknown = await response.json();
-        const result = payload as { jobs?: unknown; newJobsThisMonth?: unknown };
+        const result = payload as {
+          jobs?: unknown;
+          newJobsThisMonth?: unknown;
+          pagination?: unknown;
+          filterOptions?: unknown;
+        };
+        const pagination =
+          typeof result.pagination === "object" && result.pagination !== null
+            ? result.pagination as Record<string, unknown>
+            : null;
+        const options =
+          typeof result.filterOptions === "object" && result.filterOptions !== null
+            ? result.filterOptions as Record<string, unknown>
+            : null;
+        const readOptions = (key: string) => {
+          const values = options?.[key];
+          return Array.isArray(values)
+            ? values.filter((item): item is JobFilterOption =>
+                typeof item === "object" && item !== null &&
+                typeof (item as JobFilterOption).value === "string" &&
+                typeof (item as JobFilterOption).count === "number",
+              )
+            : [];
+        };
         if (
           !Array.isArray(result.jobs) ||
           !result.jobs.every(isPublicJob) ||
           typeof result.newJobsThisMonth !== "number" ||
           !Number.isInteger(result.newJobsThisMonth) ||
-          result.newJobsThisMonth < 0
+          result.newJobsThisMonth < 0 ||
+          !pagination ||
+          typeof pagination.totalPages !== "number" ||
+          !options
         ) {
           throw new Error("The job service returned an unexpected response.");
         }
 
+        const safeTotalPages = Math.max(1, pagination.totalPages);
+        if (page > safeTotalPages) {
+          setPage(safeTotalPages);
+          return;
+        }
         setJobs(result.jobs);
         setNewJobsThisMonth(result.newJobsThisMonth);
+        setTotalPages(safeTotalPages);
+        setFilterOptions({
+          types: readOptions("types"),
+          companies: readOptions("companies"),
+          workModes: readOptions("workModes"),
+        });
       } catch (loadError) {
         if (controller.signal.aborted) return;
         setError(
@@ -90,67 +151,60 @@ export default function HomeDynamicSections() {
 
     loadJobs();
     return () => controller.abort();
-  }, [reloadKey]);
-
-  const filteredJobs = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    const normalizedLocation = location.trim().toLowerCase();
-
-    return jobs.filter((job) => {
-      const matchesQuery =
-        !normalizedQuery ||
-        [job.title, job.company, job.type, job.description]
-          .join(" ")
-          .toLowerCase()
-          .includes(normalizedQuery);
-      const matchesLocation =
-        !normalizedLocation || job.location.toLowerCase().includes(normalizedLocation);
-      return matchesQuery && matchesLocation;
-    });
-  }, [jobs, location, query]);
+  }, [page, reloadKey, submittedLocation, submittedQuery]);
 
   const popularSearches = useMemo(
     () => [...new Set(jobs.map((job) => job.title))].slice(0, 4),
     [jobs],
   );
-  const companyCount = new Set(jobs.map((job) => job.company.toLowerCase())).size;
-  const remoteCount = jobs.filter((job) => job.remote).length;
-  const jobTypeCount = new Set(jobs.map((job) => job.type.toLowerCase())).size;
+  const activeJobCount = filterOptions.workModes.reduce((count, item) => count + item.count, 0);
+  const companyCount = filterOptions.companies.length;
+  const remoteCount = filterOptions.workModes.find((item) => item.value === "Remote")?.count ?? 0;
+  const jobTypeCount = filterOptions.types.length;
 
-  function applySearch() {
+  function applySearch(nextQuery = query, nextLocation = location) {
+    setPage(1);
+    setSubmittedQuery(nextQuery);
+    setSubmittedLocation(nextLocation);
     document.getElementById("open-roles")?.scrollIntoView({ behavior: "smooth" });
   }
 
   function clearSearch() {
     setQuery("");
     setLocation("");
+    setSubmittedQuery("");
+    setSubmittedLocation("");
+    setPage(1);
   }
 
   return (
     <>
       <HeroSection
         newJobsThisMonth={newJobsThisMonth}
-        query={query}
-        location={location}
+        query={submittedQuery}
+        location={submittedLocation}
         popularSearches={popularSearches}
         onQueryChange={setQuery}
         onLocationChange={setLocation}
         onSearch={applySearch}
       />
       <HomeStatsSection
-        activeJobs={jobs.length}
+        activeJobs={activeJobCount}
         companies={companyCount}
         remoteJobs={remoteCount}
         jobTypes={jobTypeCount}
         loading={loading}
       />
       <FeaturedJobsSection
-        jobs={filteredJobs}
-        query={query}
-        location={location}
+        jobs={jobs}
+        query={submittedQuery}
+        location={submittedLocation}
         loading={loading}
         error={error}
-        hasFilters={Boolean(query || location)}
+        hasFilters={Boolean(submittedQuery || submittedLocation)}
+        page={page}
+        pageCount={totalPages}
+        onPageChange={setPage}
         onClearFilters={clearSearch}
         onRetry={() => setReloadKey((key) => key + 1)}
       />

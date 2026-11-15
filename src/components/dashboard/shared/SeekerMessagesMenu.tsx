@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 
 type Conversation = {
   id: string;
@@ -43,19 +43,21 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);
+  const [threadBusy, setThreadBusy] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
   const [conversationPage, setConversationPage] = useState(1);
   const [conversationPagination, setConversationPagination] = useState<Pagination | null>(null);
   const [messagePage, setMessagePage] = useState(1);
   const [messagePagination, setMessagePagination] = useState<Pagination | null>(null);
 
-  const unreadCount = useMemo(
-    () => conversations.reduce((count, conversation) => count + conversation.unreadCount, 0),
-    [conversations],
-  );
+  const conversationLoadingRef = useRef(false);
+  const threadLoadingRef = useRef(false);
 
   const loadConversations = useCallback(async (page = 1) => {
+    if (conversationLoadingRef.current) return;
+    conversationLoadingRef.current = true;
     setLoading(true);
     setError('');
     try {
@@ -65,6 +67,8 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
       if (
         !isRecord(payload) ||
         !Array.isArray(payload.conversations) ||
+        !Number.isSafeInteger(payload.unreadCount) ||
+        Number(payload.unreadCount) < 0 ||
         !payload.conversations.every(
           (conversation) =>
             isRecord(conversation) &&
@@ -82,14 +86,22 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
         throw new Error('The messaging service returned an unexpected response.');
       }
       setConversations(payload.conversations as Conversation[]);
-      setConversationPage(page);
-      if (isRecord(payload.pagination) && typeof payload.pagination.totalPages === 'number' && typeof payload.pagination.total === 'number') {
-        setConversationPagination({ page, totalPages: payload.pagination.totalPages, total: payload.pagination.total });
-      }
+      setUnreadCount(Number(payload.unreadCount));
+      if (
+        !isRecord(payload.pagination) ||
+        !Number.isSafeInteger(payload.pagination.page) ||
+        !Number.isSafeInteger(payload.pagination.totalPages) ||
+        !Number.isSafeInteger(payload.pagination.total)
+      ) throw new Error('The messaging service returned invalid pagination data.');
+      const currentPage = Math.max(1, Number(payload.pagination.page));
+      const totalPages = Math.max(1, Number(payload.pagination.totalPages));
+      setConversationPage(currentPage);
+      setConversationPagination({ page: currentPage, totalPages, total: Number(payload.pagination.total) });
     } catch (loadError) {
       console.error('Could not load seeker messages', loadError);
       setError(loadError instanceof Error ? loadError.message : 'Could not load messages.');
     } finally {
+      conversationLoadingRef.current = false;
       setLoading(false);
     }
   }, []);
@@ -100,8 +112,13 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
   }, [loadConversations]);
 
   const loadThread = useCallback(async (conversation: Conversation, page = 1) => {
+    if (threadLoadingRef.current) return;
+    threadLoadingRef.current = true;
     setSelected(conversation);
     setMessagePage(page);
+    setMessages([]);
+    setMessagePagination(null);
+    setThreadBusy(true);
     setLoading(true);
     setError('');
     try {
@@ -125,9 +142,16 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
         throw new Error('The messaging service returned an unexpected conversation.');
       }
       setMessages(payload.messages as Message[]);
-      if (isRecord(payload.pagination) && typeof payload.pagination.totalPages === 'number' && typeof payload.pagination.total === 'number') {
-        setMessagePagination({ page, totalPages: payload.pagination.totalPages, total: payload.pagination.total });
-      }
+      if (
+        !isRecord(payload.pagination) ||
+        !Number.isSafeInteger(payload.pagination.page) ||
+        !Number.isSafeInteger(payload.pagination.totalPages) ||
+        !Number.isSafeInteger(payload.pagination.total)
+      ) throw new Error('The messaging service returned invalid history pagination data.');
+      const currentPage = Math.max(1, Number(payload.pagination.page));
+      const totalPages = Math.max(1, Number(payload.pagination.totalPages));
+      setMessagePage(currentPage);
+      setMessagePagination({ page: currentPage, totalPages, total: Number(payload.pagination.total) });
       const readResponse = await fetch(
         `/api/seeker/messages/${encodeURIComponent(conversation.id)}`,
         { method: 'PATCH' },
@@ -139,10 +163,13 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
       setConversations((current) =>
         current.map((item) => item.id === conversation.id ? { ...item, unreadCount: 0 } : item),
       );
+      setUnreadCount((current) => Math.max(0, current - conversation.unreadCount));
     } catch (loadError) {
       console.error('Could not load seeker message thread', loadError);
       setError(loadError instanceof Error ? loadError.message : 'Could not load this conversation.');
     } finally {
+      threadLoadingRef.current = false;
+      setThreadBusy(false);
       setLoading(false);
     }
   }, []);
@@ -166,6 +193,9 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
     if (!open || !selected) return;
     let active = true;
     const refreshThread = async () => {
+      if (threadLoadingRef.current) return;
+      threadLoadingRef.current = true;
+      setThreadBusy(true);
       try {
         const response = await fetch(
           `/api/seeker/messages/${encodeURIComponent(selected.id)}?page=${messagePage}&limit=50`,
@@ -189,6 +219,9 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
         }
       } catch (refreshError) {
         console.error('Could not refresh seeker conversation', refreshError);
+      } finally {
+        threadLoadingRef.current = false;
+        if (active) setThreadBusy(false);
       }
     };
     const refreshTimer = window.setInterval(() => void refreshThread(), 8_000);
@@ -297,10 +330,10 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
                     );
                   })
                 ) : !error ? (
-                  <p className="py-8 text-center text-[10px] text-[#85858e]">No messages in this conversation yet.</p>
+                  <p className="py-8 text-center text-[10px] text-[#85858e]">{messagePagination?.total ? 'No messages on this page.' : 'No messages in this conversation yet.'}</p>
                 ) : null}
               </div>
-              {messagePagination && messagePagination.totalPages > 1 && <div className="flex items-center justify-between border-t border-[#29292f] px-3 py-2 text-[9px] text-[#85858e]"><button type="button" disabled={messagePage >= messagePagination.totalPages || loading} onClick={() => void loadThread(selected, messagePage + 1)} className="text-[#aaa2ff] disabled:opacity-40">Older</button><span>Page {messagePage} of {messagePagination.totalPages}</span><button type="button" disabled={messagePage <= 1 || loading} onClick={() => void loadThread(selected, messagePage - 1)} className="text-[#aaa2ff] disabled:opacity-40">Newer</button></div>}
+              {messagePagination && messagePagination.totalPages > 1 && <div className="flex items-center justify-between border-t border-[#29292f] px-3 py-2 text-[9px] text-[#85858e]"><button type="button" disabled={messagePage >= messagePagination.totalPages || loading || threadBusy} onClick={() => void loadThread(selected, messagePage + 1)} className="text-[#aaa2ff] disabled:opacity-40">Older</button><span>Page {messagePage} of {messagePagination.totalPages}</span><button type="button" disabled={messagePage <= 1 || loading || threadBusy} onClick={() => void loadThread(selected, messagePage - 1)} className="text-[#aaa2ff] disabled:opacity-40">Newer</button></div>}
               <form onSubmit={sendMessage} className="flex items-end gap-2 border-t border-[#29292f] p-3">
                 <label className="sr-only" htmlFor="seeker-message-reply">Write a reply</label>
                 <textarea

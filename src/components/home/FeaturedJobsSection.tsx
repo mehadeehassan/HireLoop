@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { useState } from "react";
 import type { PublicJob } from "@/lib/public-jobs";
 import { getJobApplyHref } from "@/lib/job-routes";
+import JobPagination from "@/components/browse-jobs/JobPagination";
 
 type FeaturedJobsSectionProps = {
   jobs: PublicJob[];
@@ -10,6 +10,9 @@ type FeaturedJobsSectionProps = {
   loading: boolean;
   error: string;
   hasFilters: boolean;
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
   onClearFilters: () => void;
   onRetry: () => void;
 };
@@ -102,13 +105,12 @@ export default function FeaturedJobsSection({
   loading,
   error,
   hasFilters,
+  page,
+  pageCount,
+  onPageChange,
   onClearFilters,
   onRetry,
 }: FeaturedJobsSectionProps) {
-  const [expandedSearch, setExpandedSearch] = useState<string | null>(null);
-  const searchKey = `${query.trim().toLowerCase()}|${location.trim().toLowerCase()}`;
-  const showAll = expandedSearch === searchKey;
-
   return (
     <section
       id="open-roles"
@@ -163,20 +165,9 @@ export default function FeaturedJobsSection({
         ) : (
           <>
             <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-              {(showAll ? jobs : jobs.slice(0, 6)).map((job) => <JobCard key={job.id} job={job} />)}
+              {jobs.map((job) => <JobCard key={job.id} job={job} />)}
             </div>
-
-            {jobs.length > 6 && (
-              <div className="mt-7 text-center">
-                <button
-                  type="button"
-                  onClick={() => setExpandedSearch(showAll ? null : searchKey)}
-                  className="min-h-10.5 rounded-lg bg-white px-4 text-[12px] font-medium text-[#111113] transition hover:bg-[#e8e8ed]"
-                >
-                  {showAll ? "Show featured jobs" : "View all open jobs"}
-                </button>
-              </div>
-            )}
+            <JobPagination page={page} pageCount={pageCount} onPageChange={onPageChange} />
           </>
         )}
 

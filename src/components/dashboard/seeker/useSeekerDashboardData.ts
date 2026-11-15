@@ -4,12 +4,24 @@ import { useCallback, useEffect, useState } from 'react';
 import type { PublicJob } from '@/lib/public-jobs';
 import { isPublicJob, isSeekerApplication, type SeekerApplication } from './seeker-data';
 
+type JobPagination = { page: number; limit: number; total: number; totalPages: number };
+
 export function useSeekerDashboardData({
   includeApplications = true,
   includeJobs = true,
-}: { includeApplications?: boolean; includeJobs?: boolean } = {}) {
+  jobSearch = '',
+  jobPage = 1,
+  jobLimit = 50,
+}: {
+  includeApplications?: boolean;
+  includeJobs?: boolean;
+  jobSearch?: string;
+  jobPage?: number;
+  jobLimit?: number;
+} = {}) {
   const [applications, setApplications] = useState<SeekerApplication[]>([]);
   const [jobs, setJobs] = useState<PublicJob[]>([]);
+  const [jobPagination, setJobPagination] = useState<JobPagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -34,12 +46,17 @@ export function useSeekerDashboardData({
 
     async function load() {
       try {
+        const jobQuery = new URLSearchParams({
+          page: String(jobPage),
+          limit: String(jobLimit),
+        });
+        if (jobSearch.trim()) jobQuery.set('search', jobSearch.trim());
         const [applicationsResponse, jobsResponse] = await Promise.all([
           includeApplications
             ? fetch('/api/seeker/applications', { cache: 'no-store', signal: controller.signal })
             : Promise.resolve(null),
           includeJobs
-            ? fetch('/api/jobs', { cache: 'no-store', signal: controller.signal })
+            ? fetch(`/api/jobs?${jobQuery}`, { cache: 'no-store', signal: controller.signal })
             : Promise.resolve(null),
         ]);
         if (applicationsResponse) {
@@ -87,6 +104,42 @@ export function useSeekerDashboardData({
           throw new Error('The jobs service returned an unexpected response.');
         }
         setJobs(nextJobs);
+        const pagination =
+          typeof jobsPayload === 'object' &&
+          jobsPayload !== null &&
+          'pagination' in jobsPayload &&
+          typeof jobsPayload.pagination === 'object' &&
+          jobsPayload.pagination !== null
+            ? jobsPayload.pagination
+            : null;
+        if (
+          pagination &&
+          'page' in pagination &&
+          'limit' in pagination &&
+          'total' in pagination &&
+          'totalPages' in pagination &&
+          typeof pagination.page === 'number' &&
+          Number.isSafeInteger(pagination.page) &&
+          pagination.page >= 0 &&
+          typeof pagination.limit === 'number' &&
+          Number.isSafeInteger(pagination.limit) &&
+          pagination.limit >= 0 &&
+          typeof pagination.total === 'number' &&
+          Number.isSafeInteger(pagination.total) &&
+          pagination.total >= 0 &&
+          typeof pagination.totalPages === 'number' &&
+          Number.isSafeInteger(pagination.totalPages) &&
+          pagination.totalPages >= 0
+        ) {
+          setJobPagination({
+            page: pagination.page,
+            limit: pagination.limit,
+            total: pagination.total,
+            totalPages: Math.max(1, pagination.totalPages),
+          });
+        } else {
+          throw new Error('The jobs service returned invalid pagination data.');
+        }
       } catch (loadError) {
         if (controller.signal.aborted) return;
         setError(
@@ -99,7 +152,7 @@ export function useSeekerDashboardData({
 
     void load();
     return () => controller.abort();
-  }, [includeApplications, includeJobs, reloadKey]);
+  }, [includeApplications, includeJobs, jobLimit, jobPage, jobSearch, reloadKey]);
 
-  return { applications, jobs, loading, error, refresh };
+  return { applications, jobs, jobPagination, loading, error, refresh };
 }

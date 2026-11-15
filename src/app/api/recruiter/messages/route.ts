@@ -87,6 +87,13 @@ async function handleGET(request: Request) {
         { status: 502 },
       );
     }
+    if (!isRecord(data) || !Number.isSafeInteger(data.unreadCount) || Number(data.unreadCount) < 0) {
+      console.error('Recruiter messaging backend returned an invalid unread total');
+      return NextResponse.json(
+        { error: 'The messaging service returned an unexpected response.' },
+        { status: 502 },
+      );
+    }
     const conversations = items
       .filter(
         (item): item is Record<string, unknown> =>
@@ -119,6 +126,7 @@ async function handleGET(request: Request) {
       });
     return NextResponse.json({
       conversations,
+      unreadCount: Number(data.unreadCount),
       ...(isRecord(data) && isRecord(data.pagination) ? { pagination: data.pagination } : {}),
     });
   } catch (error) {

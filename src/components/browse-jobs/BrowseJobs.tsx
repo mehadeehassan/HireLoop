@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import HomeNavbar from '@/components/home/HomeNavbar';
 import type { PublicJob } from '@/lib/public-jobs';
+import type { JobFilterOption } from './JobFilters';
 import JobCard from './JobCard';
 import JobFilters from './JobFilters';
 import JobPagination from './JobPagination';
@@ -42,24 +43,6 @@ function isPublicJob(value: unknown): value is PublicJob {
   );
 }
 
-function getDepartment(job: PublicJob) {
-  return job.category || job.department;
-}
-
-function getWorkMode(job: PublicJob) {
-  if (job.workMode === 'Hybrid') return 'Hybrid';
-  return job.remote ? 'Remote' : 'On-site';
-}
-
-function getFilterOptions(values: string[]) {
-  return [...new Set(values.filter(Boolean))]
-    .sort((first, second) => first.localeCompare(second))
-    .map((value) => ({
-      value,
-      count: values.filter((option) => option === value).length,
-    }));
-}
-
 export default function BrowseJobs({ initialSearch = '' }: { initialSearch?: string }) {
   const [jobs, setJobs] = useState<PublicJob[]>([]);
   const [searchInput, setSearchInput] = useState(initialSearch);
@@ -74,6 +57,14 @@ export default function BrowseJobs({ initialSearch = '' }: { initialSearch?: str
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
+  const [filterOptions, setFilterOptions] = useState({
+    types: [] as JobFilterOption[],
+    categories: [] as JobFilterOption[],
+    locations: [] as JobFilterOption[],
+    companies: [] as JobFilterOption[],
+    workModes: [] as JobFilterOption[],
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -85,7 +76,18 @@ export default function BrowseJobs({ initialSearch = '' }: { initialSearch?: str
       try {
         const query = new URLSearchParams();
         if (submittedSearch) query.set('search', submittedSearch);
-        query.set('limit', '100');
+        query.set('page', String(page));
+        query.set('limit', String(JOBS_PER_PAGE));
+        if (selectedLocation) query.set('location', selectedLocation);
+        if (selectedCompany) query.set('company', selectedCompany);
+        if (selectedDepartment) query.set('category', selectedDepartment);
+        if (sortOrder === 'title') query.set('sortBy', 'title');
+        for (const type of selectedTypes) query.append('type', type);
+        if (selectedWorkModes.length === 1 && selectedWorkModes[0] === 'Remote') {
+          query.set('remote', 'true');
+        } else {
+          for (const mode of selectedWorkModes) query.append('workMode', mode);
+        }
 
         const response = await fetch(`/api/jobs?${query}`, {
           cache: 'no-store',
@@ -100,11 +102,40 @@ export default function BrowseJobs({ initialSearch = '' }: { initialSearch?: str
           typeof payload === 'object' && payload !== null
             ? (payload as Record<string, unknown>)
             : null;
-        if (!result || !Array.isArray(result.jobs) || !result.jobs.every(isPublicJob)) {
+        if (
+          !result || !Array.isArray(result.jobs) || !result.jobs.every(isPublicJob) ||
+          typeof result.pagination !== 'object' || result.pagination === null ||
+          typeof (result.pagination as Record<string, unknown>).total !== 'number' ||
+          typeof (result.pagination as Record<string, unknown>).totalPages !== 'number'
+        ) {
           throw new Error('The job service returned an unexpected response.');
         }
 
+        const pageInfo = result.pagination as { total: number; totalPages: number };
+        if (page > Math.max(1, pageInfo.totalPages)) {
+          setPage(Math.max(1, pageInfo.totalPages));
+          return;
+        }
         setJobs(result.jobs);
+        setPagination({ total: pageInfo.total, totalPages: Math.max(1, pageInfo.totalPages) });
+        const options = result.filterOptions as Record<string, unknown> | undefined;
+        const readOptions = (key: string) => {
+          const values = options?.[key];
+          return Array.isArray(values)
+            ? values.filter((item): item is JobFilterOption =>
+                typeof item === 'object' && item !== null &&
+                typeof (item as JobFilterOption).value === 'string' &&
+                typeof (item as JobFilterOption).count === 'number',
+              )
+            : [];
+        };
+        setFilterOptions({
+          types: readOptions('types'),
+          categories: readOptions('categories'),
+          locations: readOptions('locations'),
+          companies: readOptions('companies'),
+          workModes: readOptions('workModes'),
+        });
       } catch (loadError) {
         if (controller.signal.aborted) return;
         setError(
@@ -119,10 +150,10 @@ export default function BrowseJobs({ initialSearch = '' }: { initialSearch?: str
 
     loadJobs();
     return () => controller.abort();
-  }, [reloadKey, submittedSearch]);
+  }, [page, reloadKey, selectedCompany, selectedDepartment, selectedLocation, selectedTypes, selectedWorkModes, sortOrder, submittedSearch]);
 
   const jobTypeOptions = useMemo(() => {
-    const availableTypes = [...new Set(jobs.map((job) => job.type).filter(Boolean))];
+    const availableTypes = filterOptions.types.map(({ value }) => value);
     const commonTypes = COMMON_JOB_TYPES.map((type) =>
       availableTypes.find((available) => available.toLowerCase() === type.toLowerCase()),
     ).filter((type): type is string => Boolean(type));
@@ -135,83 +166,16 @@ export default function BrowseJobs({ initialSearch = '' }: { initialSearch?: str
             !COMMON_JOB_TYPES.some((common) => common.toLowerCase() === type.toLowerCase()),
         )
         .sort((a, b) => a.localeCompare(b)),
-    ].map((value) => ({
-      value,
-      count: jobs.filter((job) => job.type === value).length,
-    }));
-  }, [jobs]);
+    ].map((value) => filterOptions.types.find((option) => option.value === value)!).filter(Boolean);
+  }, [filterOptions.types]);
 
-  const departmentOptions = useMemo(() => {
-    const departments = [...new Set(jobs.map(getDepartment).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b),
-    );
-    return departments.map((value) => ({
-      value,
-      count: jobs.filter((job) => getDepartment(job) === value).length,
-    }));
-  }, [jobs]);
-
-  const workModeOptions = useMemo(() => {
-    const modes = ['Remote', 'Hybrid', 'On-site'].filter((mode) =>
-      jobs.some((job) => getWorkMode(job) === mode),
-    );
-    return modes.map((value) => ({
-      value,
-      count: jobs.filter((job) => getWorkMode(job) === value).length,
-    }));
-  }, [jobs]);
-
-  const locationOptions = useMemo(
-    () => getFilterOptions(jobs.map((job) => job.location)),
-    [jobs],
-  );
-  const companyOptions = useMemo(
-    () => getFilterOptions(jobs.map((job) => job.company)),
-    [jobs],
-  );
-
-  const filteredJobs = useMemo(() => {
-    const filtered = jobs.filter((job) => {
-      const matchesType =
-        selectedTypes.length === 0 ||
-        selectedTypes.some((type) => type.toLowerCase() === job.type.toLowerCase());
-      const matchesWorkMode =
-        selectedWorkModes.length === 0 || selectedWorkModes.includes(getWorkMode(job));
-      const matchesLocation = !selectedLocation || job.location === selectedLocation;
-      const matchesCompany = !selectedCompany || job.company === selectedCompany;
-      const matchesDepartment =
-        !selectedDepartment || getDepartment(job) === selectedDepartment;
-      return (
-        matchesType &&
-        matchesWorkMode &&
-        matchesLocation &&
-        matchesCompany &&
-        matchesDepartment
-      );
-    });
-
-    return filtered.sort((first, second) => {
-      if (sortOrder === 'title') return first.title.localeCompare(second.title);
-      if (!first.createdAt) return second.createdAt ? 1 : 0;
-      if (!second.createdAt) return -1;
-      return Date.parse(second.createdAt) - Date.parse(first.createdAt);
-    });
-  }, [
-    jobs,
-    selectedCompany,
-    selectedDepartment,
-    selectedLocation,
-    selectedTypes,
-    selectedWorkModes,
-    sortOrder,
-  ]);
-
-  const pageCount = Math.ceil(filteredJobs.length / JOBS_PER_PAGE);
-  const currentPage = Math.min(page, Math.max(pageCount, 1));
-  const pageJobs = filteredJobs.slice(
-    (currentPage - 1) * JOBS_PER_PAGE,
-    currentPage * JOBS_PER_PAGE,
-  );
+  const departmentOptions = filterOptions.categories;
+  const workModeOptions = filterOptions.workModes;
+  const locationOptions = filterOptions.locations;
+  const companyOptions = filterOptions.companies;
+  const pageCount = pagination.totalPages;
+  const currentPage = page;
+  const pageJobs = jobs;
   const hasFilters =
     Boolean(submittedSearch || selectedDepartment || selectedLocation || selectedCompany) ||
     selectedTypes.length > 0 ||
@@ -292,7 +256,7 @@ export default function BrowseJobs({ initialSearch = '' }: { initialSearch?: str
           <section aria-labelledby="browse-jobs-heading" className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-0.5">
               <h1 id="browse-jobs-heading" className="text-sm font-semibold text-[#ededf3]">
-                {loading ? 'Finding jobs...' : `Found ${filteredJobs.length.toLocaleString()} Professional Jobs`}
+                {loading ? 'Finding jobs...' : `Found ${pagination.total.toLocaleString()} Professional Jobs`}
               </h1>
               <label className="flex items-center gap-2 text-[11px] text-[#8d8d96]">
                 <span>Sort by:</span>

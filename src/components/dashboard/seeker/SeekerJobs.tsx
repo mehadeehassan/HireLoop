@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import JobSaveButton from '@/components/browse-jobs/JobSaveButton';
 import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
@@ -10,16 +10,18 @@ import { useSeekerDashboardData } from './useSeekerDashboardData';
 import SeekerPageHeader from './SeekerPageHeader';
 
 export default function SeekerJobs({ initialSearch = '' }: { initialSearch?: string }) {
-  const { jobs, loading, error } = useSeekerDashboardData({ includeApplications: false });
   const [search, setSearch] = useState(initialSearch);
   const [page, setPage] = useState(1);
   const pageSize = 8;
-  const filteredJobs = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return jobs.filter((job) => !query || `${job.title} ${job.company} ${job.location} ${job.category}`.toLowerCase().includes(query));
-  }, [jobs, search]);
-  const totalPages = Math.ceil(filteredJobs.length / pageSize);
-  const pageJobs = filteredJobs.slice((page - 1) * pageSize, page * pageSize);
+  const { jobs, jobPagination, loading, error } = useSeekerDashboardData({
+    includeApplications: false,
+    jobSearch: search,
+    jobPage: page,
+    jobLimit: pageSize,
+  });
+  const totalPages = Math.max(1, jobPagination?.totalPages ?? 1);
+  const currentPage = Math.min(page, totalPages);
+  const pageJobs = jobs;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-7">
@@ -57,8 +59,8 @@ export default function SeekerJobs({ initialSearch = '' }: { initialSearch?: str
             ))}
           </div>
           <div className="mt-5 flex items-center justify-between text-[10px] text-[#85858e]">
-            <span>{filteredJobs.length} open {filteredJobs.length === 1 ? 'role' : 'roles'}</span>
-            {totalPages > 1 && <div className="flex gap-2"><button type="button" disabled={page === 1} onClick={() => setPage((value) => value - 1)} className="rounded border border-[#303036] px-3 py-2 disabled:opacity-40">Previous</button><span className="px-2 py-2">{page} / {totalPages}</span><button type="button" disabled={page === totalPages} onClick={() => setPage((value) => value + 1)} className="rounded border border-[#303036] px-3 py-2 disabled:opacity-40">Next</button></div>}
+            <span>{(jobPagination?.total ?? 0).toLocaleString()} open {(jobPagination?.total ?? 0) === 1 ? 'role' : 'roles'}</span>
+            {totalPages > 1 && <div className="flex gap-2"><button type="button" disabled={currentPage <= 1 || loading} onClick={() => setPage(currentPage - 1)} className="rounded border border-[#303036] px-3 py-2 disabled:opacity-40">Previous</button><span className="px-2 py-2">{currentPage} / {totalPages}</span><button type="button" disabled={currentPage >= totalPages || loading} onClick={() => setPage(currentPage + 1)} className="rounded border border-[#303036] px-3 py-2 disabled:opacity-40">Next</button></div>}
           </div>
         </>
       ) : (
