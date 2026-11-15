@@ -5,10 +5,17 @@ import { createHmac, randomUUID } from 'node:crypto';
 const backendUrl = () =>
   (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000').replace(/\/$/, '');
 const serviceTokenLifetimeSeconds = 120;
+export type ServiceActor = {
+  id: string;
+  role: 'seeker' | 'recruiter' | 'admin';
+};
 
-function createBackendJwt(secret: string) {
+function createBackendJwt(secret: string, actor: ServiceActor) {
   if (Buffer.byteLength(secret) < 32) {
     throw new Error('HIRELOOP_JWT_SECRET must be at least 32 bytes.');
+  }
+  if (!actor.id.trim() || !['seeker', 'recruiter', 'admin'].includes(actor.role)) {
+    throw new Error('A valid authenticated actor is required for this backend request.');
   }
 
   const issuedAt = Math.floor(Date.now() / 1000);
@@ -21,6 +28,7 @@ function createBackendJwt(secret: string) {
       iat: issuedAt,
       exp: issuedAt + serviceTokenLifetimeSeconds,
       jti: randomUUID(),
+      actor: { id: actor.id, role: actor.role },
     }),
   ).toString('base64url');
   const signingInput = `${header}.${payload}`;
@@ -29,8 +37,8 @@ function createBackendJwt(secret: string) {
   return `${signingInput}.${signature}`;
 }
 
-function getBackendAuthHeader(secret: string): Record<string, string> {
-  return { Authorization: `Bearer ${createBackendJwt(secret)}` };
+function getBackendAuthHeader(secret: string, actor: ServiceActor): Record<string, string> {
+  return { Authorization: `Bearer ${createBackendJwt(secret, actor)}` };
 }
 
 async function fetchBackend(
@@ -64,10 +72,19 @@ async function fetchBackend(
 
 export async function fetchBackendJobs(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
-  options?: { id?: string; body?: unknown; query?: string; apiSecret?: string },
+  options?: {
+    id?: string;
+    body?: unknown;
+    query?: string;
+    apiSecret?: string;
+    actor?: ServiceActor;
+  },
 ) {
-  if (method !== 'GET' && !options?.apiSecret) {
-    throw new Error('A server-to-server JWT signing secret is required for job changes.');
+  if (options?.apiSecret && !options.actor) {
+    throw new Error('An authenticated actor is required for protected backend requests.');
+  }
+  if (method !== 'GET' && (!options?.apiSecret || !options.actor)) {
+    throw new Error('A server-to-server JWT and authenticated actor are required for job changes.');
   }
 
   const path = options?.id
@@ -79,24 +96,31 @@ export async function fetchBackendJobs(
     `${path}${query}`,
     method,
     options?.body,
-    options?.apiSecret ? getBackendAuthHeader(options.apiSecret) : undefined,
+    options?.apiSecret && options.actor
+      ? getBackendAuthHeader(options.apiSecret, options.actor)
+      : undefined,
   );
 }
 
 export async function submitBackendApplication(
   application: Record<string, unknown>,
   apiSecret: string,
+  actor: ServiceActor,
 ) {
-  return fetchBackend('/applications', 'POST', application, getBackendAuthHeader(apiSecret));
+  return fetchBackend('/applications', 'POST', application, getBackendAuthHeader(apiSecret, actor));
 }
 
-export async function fetchBackendApplications(candidateId: string, apiSecret: string) {
+export async function fetchBackendApplications(
+  candidateId: string,
+  apiSecret: string,
+  actor: ServiceActor,
+) {
   const query = new URLSearchParams({ candidateId }).toString();
   return fetchBackend(
     `/applications?${query}`,
     'GET',
     undefined,
-    getBackendAuthHeader(apiSecret),
+    getBackendAuthHeader(apiSecret, actor),
   );
 }
 
@@ -105,18 +129,20 @@ export async function fetchBackendWithSecret(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   body: Record<string, unknown> | undefined,
   apiSecret: string,
+  actor: ServiceActor,
 ) {
-  return fetchBackend(path, method, body, getBackendAuthHeader(apiSecret));
+  return fetchBackend(path, method, body, getBackendAuthHeader(apiSecret, actor));
 }
 
 export async function fetchBackendResponse(
   path: string,
   method: 'GET' | 'DELETE',
   apiSecret: string,
+  actor: ServiceActor,
 ) {
   return fetch(`${backendUrl()}${path}`, {
     method,
-    headers: getBackendAuthHeader(apiSecret),
+    headers: getBackendAuthHeader(apiSecret, actor),
     cache: 'no-store',
   });
 }
@@ -125,6 +151,7 @@ export async function fetchBackendUsage(
   role: 'seeker' | 'recruiter',
   userId: string,
   apiSecret: string,
+  actor: ServiceActor,
 ) {
   const isSeeker = role === 'seeker';
   const query = new URLSearchParams({
@@ -136,6 +163,6 @@ export async function fetchBackendUsage(
     `${path}?${query}`,
     'GET',
     undefined,
-    getBackendAuthHeader(apiSecret),
+    getBackendAuthHeader(apiSecret, actor),
   );
 }

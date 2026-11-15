@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 type MessageContext = {
   candidateId: string;
   apiSecret: string;
+  actor: { id: string; role: 'seeker' };
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -30,7 +31,11 @@ async function getMessageContext(): Promise<MessageContext | NextResponse> {
     );
   }
 
-  return { candidateId: session.user.id, apiSecret };
+  return {
+    candidateId: session.user.id,
+    apiSecret,
+    actor: { id: session.user.id, role: 'seeker' },
+  };
 }
 
 function isResponse(value: MessageContext | NextResponse): value is NextResponse {
@@ -58,6 +63,7 @@ export async function GET() {
       'GET',
       undefined,
       context.apiSecret,
+      context.actor,
     );
     if (!response.ok) {
       console.error('Messaging backend list request failed', response.status);
@@ -153,6 +159,7 @@ export async function POST(request: Request) {
       'POST',
       { candidateId: context.candidateId, conversationId, body },
       context.apiSecret,
+      context.actor,
     );
     if (!response.ok) {
       console.error('Messaging backend send request failed', response.status);

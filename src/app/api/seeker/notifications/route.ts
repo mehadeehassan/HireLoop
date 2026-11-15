@@ -26,6 +26,7 @@ export async function GET() {
       'GET',
       undefined,
       apiSecret,
+      { id: session.user.id, role: 'seeker' },
     );
     if (!response.ok) {
       console.error('Notification backend request failed', response.status);

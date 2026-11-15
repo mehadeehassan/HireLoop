@@ -45,7 +45,11 @@ export async function POST(
       candidateId: session.user.id,
       jobId,
     };
-    const { response, data } = await submitBackendApplication(application, apiSecret);
+    const { response, data } = await submitBackendApplication(
+      application,
+      apiSecret,
+      { id: session.user.id, role: 'seeker' },
+    );
     const backendRecord = isRecord(data) ? data : null;
     const rawBackendMessage =
       typeof backendRecord?.message === 'string'

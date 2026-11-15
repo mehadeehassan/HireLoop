@@ -38,6 +38,7 @@ export async function GET(request: Request) {
       'GET',
       undefined,
       apiSecret,
+      { id: session.user.id, role: 'recruiter' },
     );
     if (!response.ok) {
       const error = isRecord(data) && typeof data.message === 'string'

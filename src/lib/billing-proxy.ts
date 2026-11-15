@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { auth } from '@/lib/auth';
-import { fetchBackendWithSecret } from '@/lib/job-api';
+import { fetchBackendWithSecret, type ServiceActor } from '@/lib/job-api';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
@@ -11,6 +11,7 @@ export type BillingContext = {
   userId: string;
   role: BillingRole;
   apiSecret: string;
+  actor: ServiceActor;
 };
 
 export async function requireBillingContext(): Promise<BillingContext | NextResponse> {
@@ -32,6 +33,7 @@ export async function requireBillingContext(): Promise<BillingContext | NextResp
     userId: session.user.id,
     role: session.user.role,
     apiSecret,
+    actor: { id: session.user.id, role: session.user.role },
   };
 }
 
@@ -75,5 +77,5 @@ export async function callBillingBackend(
   method: 'GET' | 'POST',
   body?: Record<string, unknown>,
 ) {
-  return fetchBackendWithSecret(path, method, body, context.apiSecret);
+  return fetchBackendWithSecret(path, method, body, context.apiSecret, context.actor);
 }

@@ -17,7 +17,12 @@ export async function GET() {
   }
 
   try {
-    const { response, data } = await fetchBackendUsage('recruiter', session.user.id, apiSecret);
+    const { response, data } = await fetchBackendUsage(
+      'recruiter',
+      session.user.id,
+      apiSecret,
+      { id: session.user.id, role: 'recruiter' },
+    );
     if (!response.ok) {
       console.error('Recruiter job usage request failed', response.status);
       return NextResponse.json(

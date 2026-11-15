@@ -20,7 +20,12 @@ export async function GET() {
   }
 
   try {
-    const { response, data } = await fetchBackendUsage('seeker', session.user.id, apiSecret);
+    const { response, data } = await fetchBackendUsage(
+      'seeker',
+      session.user.id,
+      apiSecret,
+      { id: session.user.id, role: 'seeker' },
+    );
     if (!response.ok) {
       console.error('Seeker application usage request failed', response.status);
       return NextResponse.json(

@@ -39,6 +39,7 @@ export async function GET() {
       'GET',
       undefined,
       apiSecret,
+      { id: session.user.id, role: 'recruiter' },
     );
     if (!response.ok) {
       console.error('Recruiter application backend list request failed', response.status);

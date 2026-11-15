@@ -34,6 +34,7 @@ export async function GET(request: Request) {
       'GET',
       undefined,
       apiSecret,
+      { id: session.user.id, role: 'recruiter' },
     );
     if (!response.ok) {
       return NextResponse.json(
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
   try {
     const { response, data } = await fetchBackendJobs('POST', {
       apiSecret,
+      actor: { id: session.user.id, role: 'recruiter' },
       body: {
         ...body,
         recruiterId: session.user.id,

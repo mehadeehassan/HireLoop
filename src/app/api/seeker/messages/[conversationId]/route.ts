@@ -29,6 +29,7 @@ export async function GET(
       'GET',
       undefined,
       apiSecret,
+      { id: session.user.id, role: 'seeker' },
     );
     if (!response.ok) {
       console.error('Messaging backend thread request failed', response.status);
@@ -101,6 +102,7 @@ export async function PATCH(
       'PATCH',
       { candidateId: session.user.id },
       apiSecret,
+      { id: session.user.id, role: 'seeker' },
     );
     if (!response.ok) {
       console.error('Messaging backend mark-read request failed', response.status);

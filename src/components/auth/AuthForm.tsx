@@ -12,7 +12,7 @@ type AuthFormProps = {
   mode: 'signin' | 'signup';
 };
 
-type UserRole = 'seeker' | 'recruiter' | 'admin';
+type UserRole = 'seeker' | 'recruiter';
 
 function getCallbackUrl() {
   const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl');
@@ -53,7 +53,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     try {
       const result = isSignUp
-        ? await authClient.signUp.email({ email, password, name, role })
+        ? await authClient.signUp.email({
+            email,
+            password,
+            name,
+            registrationRole: role,
+          })
         : await authClient.signIn.email({ email, password });
 
       if (result.error) {
@@ -169,7 +174,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   <legend className="mb-2 block text-xs font-medium text-[#c8c8d0]">
                     Joining HireLoop as
                   </legend>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {(
                       [
                         [
@@ -208,25 +213,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
                           >
                             <rect x="3" y="7" width="18" height="13" rx="2" />
                             <path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7M3 12h18M10 12v2h4v-2" />
-                          </svg>,
-                        ],
-                        [
-                          'admin',
-                          'Admin',
-                          <svg
-                            key="admin"
-                            width="17"
-                            height="17"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.7"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                          >
-                            <path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z" />
-                            <path d="m9 12 2 2 4-4" />
                           </svg>,
                         ],
                       ] as const

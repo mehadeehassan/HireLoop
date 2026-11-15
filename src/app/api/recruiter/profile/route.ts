@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 type RecruiterProfileContext = {
   recruiterId: string;
   apiSecret: string;
+  actor: { id: string; role: 'recruiter' };
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -25,7 +26,11 @@ async function getRecruiterContext(): Promise<RecruiterProfileContext | NextResp
     return NextResponse.json({ error: 'Profile service is not configured.' }, { status: 503 });
   }
 
-  return { recruiterId: session.user.id, apiSecret };
+  return {
+    recruiterId: session.user.id,
+    apiSecret,
+    actor: { id: session.user.id, role: 'recruiter' },
+  };
 }
 
 function isResponse(value: RecruiterProfileContext | NextResponse): value is NextResponse {
@@ -48,8 +53,9 @@ export async function GET() {
         'GET',
         undefined,
         context.apiSecret,
+        context.actor,
       ),
-      fetchBackendUsage('recruiter', context.recruiterId, context.apiSecret),
+      fetchBackendUsage('recruiter', context.recruiterId, context.apiSecret, context.actor),
     ]);
 
     const profilePayload = isRecord(profileResult.data) ? profileResult.data : null;
@@ -110,6 +116,7 @@ export async function PATCH(request: Request) {
       'PATCH',
       { ...value, recruiterId: context.recruiterId },
       context.apiSecret,
+      context.actor,
     );
     if (!response.ok) {
       return NextResponse.json(

@@ -44,6 +44,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { response, data } = await fetchBackendJobs('PATCH', {
       id,
       apiSecret,
+      actor: { id: session.user.id, role: 'recruiter' },
       body: { ...body, recruiterId: session.user.id, updatedAt: new Date() },
     });
     if (!response.ok) {
@@ -74,6 +75,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     const { response, data } = await fetchBackendJobs('DELETE', {
       id,
       apiSecret,
+      actor: { id: session.user.id, role: 'recruiter' },
       body: { recruiterId: session.user.id },
     });
     if (!response.ok) {

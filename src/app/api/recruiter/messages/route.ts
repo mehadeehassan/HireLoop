@@ -26,7 +26,11 @@ async function getRecruiterContext() {
       error: NextResponse.json({ error: 'Messaging is not configured.' }, { status: 503 }),
     };
   }
-  return { recruiterId: session.user.id, apiSecret };
+  return {
+    recruiterId: session.user.id,
+    apiSecret,
+    actor: { id: session.user.id, role: 'recruiter' as const },
+  };
 }
 
 export async function GET(request: Request) {
@@ -46,6 +50,7 @@ export async function GET(request: Request) {
       'GET',
       undefined,
       context.apiSecret,
+      context.actor,
     );
     if (!response.ok) {
       console.error('Recruiter messaging list request failed', response.status);
@@ -142,6 +147,7 @@ export async function POST(request: Request) {
       'POST',
       { recruiterId: context.recruiterId, candidateId, ...(jobId ? { jobId } : {}), body },
       context.apiSecret,
+      context.actor,
     );
     if (!response.ok) {
       console.error('Recruiter message send request failed', response.status);

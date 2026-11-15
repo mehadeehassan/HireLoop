@@ -51,6 +51,7 @@ export async function PATCH(
       'PATCH',
       { recruiterId: session.user.id, status },
       apiSecret,
+      { id: session.user.id, role: 'recruiter' },
     );
     if (!response.ok) {
       if (response.status === 404) {

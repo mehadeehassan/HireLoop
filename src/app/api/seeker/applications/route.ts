@@ -33,7 +33,11 @@ export async function GET() {
   }
 
   try {
-    const { response, data } = await fetchBackendApplications(session.user.id, apiSecret);
+    const { response, data } = await fetchBackendApplications(
+      session.user.id,
+      apiSecret,
+      { id: session.user.id, role: 'seeker' },
+    );
     if (!response.ok) {
       console.error('Application backend list request failed', response.status);
       return NextResponse.json(

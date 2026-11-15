@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 type ResumeContext = {
   candidateId: string;
   apiSecret: string;
+  actor: { id: string; role: 'seeker' };
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -24,7 +25,11 @@ async function getResumeContext(): Promise<ResumeContext | NextResponse> {
     console.error('Seeker resume backend JWT signing secret is not configured');
     return NextResponse.json({ error: 'Resume service is not configured.' }, { status: 503 });
   }
-  return { candidateId: session.user.id, apiSecret };
+  return {
+    candidateId: session.user.id,
+    apiSecret,
+    actor: { id: session.user.id, role: 'seeker' },
+  };
 }
 
 function isResponse(value: ResumeContext | NextResponse): value is NextResponse {
@@ -48,7 +53,12 @@ export async function GET() {
 
   const query = new URLSearchParams({ candidateId: context.candidateId }).toString();
   try {
-    const response = await fetchBackendResponse(`/seeker/resume?${query}`, 'GET', context.apiSecret);
+    const response = await fetchBackendResponse(
+      `/seeker/resume?${query}`,
+      'GET',
+      context.apiSecret,
+      context.actor,
+    );
     if (!response.ok) {
       const error = await getBackendError(response, 'Could not download your resume.');
       return NextResponse.json(
@@ -84,6 +94,7 @@ export async function DELETE() {
       'DELETE',
       undefined,
       context.apiSecret,
+      context.actor,
     );
     if (!response.ok) {
       return NextResponse.json(

@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 type BillingContext = {
   candidateId: string;
   apiSecret: string;
+  actor: { id: string; role: 'seeker' };
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -33,7 +34,11 @@ async function getBillingContext(): Promise<BillingContext | NextResponse> {
     );
   }
 
-  return { candidateId: session.user.id, apiSecret };
+  return {
+    candidateId: session.user.id,
+    apiSecret,
+    actor: { id: session.user.id, role: 'seeker' },
+  };
 }
 
 function isResponse(value: BillingContext | NextResponse): value is NextResponse {
@@ -170,9 +175,9 @@ export async function GET() {
       role: 'seeker',
     }).toString();
     const [overviewResult, paymentResult, plansResult] = await Promise.all([
-      fetchBackendWithSecret(`/billing/me?${query}`, 'GET', undefined, context.apiSecret),
-      fetchBackendWithSecret(`/billing/payments?${query}&page=1&limit=10`, 'GET', undefined, context.apiSecret),
-      fetchBackendWithSecret(`/billing/plans?${query}`, 'GET', undefined, context.apiSecret),
+      fetchBackendWithSecret(`/billing/me?${query}`, 'GET', undefined, context.apiSecret, context.actor),
+      fetchBackendWithSecret(`/billing/payments?${query}&page=1&limit=10`, 'GET', undefined, context.apiSecret, context.actor),
+      fetchBackendWithSecret(`/billing/plans?${query}`, 'GET', undefined, context.apiSecret, context.actor),
     ]);
     if (!overviewResult.response.ok || !paymentResult.response.ok || !plansResult.response.ok) {
       console.error('Billing backend summary request failed', {
@@ -264,6 +269,7 @@ export async function POST(request: Request) {
         'POST',
         { candidateId: context.candidateId, role: 'seeker' },
         context.apiSecret,
+        context.actor,
       );
       if (!response.ok) {
         const error =
@@ -331,6 +337,7 @@ export async function POST(request: Request) {
       'POST',
       body,
       context.apiSecret,
+      context.actor,
     );
     if (!response.ok) {
       console.error('Billing backend session request failed', {

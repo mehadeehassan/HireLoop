@@ -24,6 +24,10 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 Set `BETTER_AUTH_DB_URL` in `.env` to the current MongoDB connection string for an active cluster. If authentication fails with a MongoDB server-selection or DNS error, verify the cluster hostname in Atlas, that the cluster is running, and that your network can resolve and reach it.
 
+Authenticated admin user-management requests go through `PATCH /api/admin/users/:userId`. Direct
+Admin Plugin mutation endpoints are blocked so role and suspension changes cannot bypass safety
+checks, session revocation, or the backend audit record.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

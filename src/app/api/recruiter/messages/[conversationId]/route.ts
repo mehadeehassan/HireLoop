@@ -15,7 +15,11 @@ async function getRecruiterContext() {
   }
   const apiSecret = process.env.HIRELOOP_JWT_SECRET;
   if (!apiSecret) return { error: NextResponse.json({ error: 'Messaging is not configured.' }, { status: 503 }) };
-  return { recruiterId: session.user.id, apiSecret };
+  return {
+    recruiterId: session.user.id,
+    apiSecret,
+    actor: { id: session.user.id, role: 'recruiter' as const },
+  };
 }
 
 export async function GET(
@@ -33,6 +37,7 @@ export async function GET(
       'GET',
       undefined,
       context.apiSecret,
+      context.actor,
     );
     if (!response.ok) {
       console.error('Recruiter message thread request failed', response.status);
@@ -78,6 +83,7 @@ export async function PATCH(
       'PATCH',
       { recruiterId: context.recruiterId },
       context.apiSecret,
+      context.actor,
     );
     if (!response.ok) {
       return NextResponse.json({ error: 'Could not mark this conversation as read.' }, { status: 502 });
