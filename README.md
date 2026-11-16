@@ -32,15 +32,16 @@ checks, session revocation, or the backend audit record.
 
 Password reset and signup email verification use the same server-only Resend sender. Configure
 `RESEND_API_KEY` and `EMAIL_FROM` in the frontend server environment; the sender address must be
-verified in Resend. Keep these values server-only and do not use `NEXT_PUBLIC_` variables. Reset
-links expire after one hour. Signup verification links expire after 15 minutes and lead to sign-in
-after verification (they do not automatically create a session). Existing deployments using
-`RESEND_FROM_EMAIL` continue to work until migrated to `EMAIL_FROM`.
+verified in Resend. Keep these values server-only and do not use `NEXT_PUBLIC_` variables.
+`EMAIL_VERIFICATION_REQUIRED` defaults to `false`: signup still sends a verification email, but
+existing users can sign in without verifying until enforcement is enabled. Reset links expire after
+one hour. Signup verification links expire after 15 minutes and lead to sign-in after verification
+(they do not automatically create a session). Existing deployments using `RESEND_FROM_EMAIL`
+continue to work until migrated to `EMAIL_FROM`.
 
-Set `EMAIL_VERIFICATION_REQUIRED=false` to allow sign-in before email verification. This is the
-default; signup still sends a verification email. Before changing it to `true`, verify every existing
-admin account and ensure the Resend sender domain is verified. With enforcement enabled, unverified
-users cannot sign in until they verify their email.
+Before changing `EMAIL_VERIFICATION_REQUIRED` to `true`, verify every existing admin account, verify
+the Resend sender domain, and decide how to handle existing unverified email/password users. With
+enforcement enabled, unverified users cannot sign in until they verify their email.
 
 Public signup accepts the seeker or recruiter intent; the role is set server-side and never taken
 from an email link. To bootstrap the first admin, create a normal account and run

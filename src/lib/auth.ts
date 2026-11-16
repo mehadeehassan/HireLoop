@@ -46,15 +46,19 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendVerificationEmail: async ({ user, token }) => {
-      const url = createVerificationUrl(token);
-      const safeName = escapeEmailHtml(user.name);
-      const safeUrl = escapeEmailHtml(url);
-      await sendEmail({
-        to: user.email,
-        subject: 'Verify your HireLoop email',
-        text: `Hello ${user.name},\n\nUse this link to verify your HireLoop email. The link expires in 15 minutes.\n\n${url}\n\nIf you did not create a HireLoop account, you can ignore this email.`,
-        html: `<p>Hello ${safeName},</p><p>Use the link below to verify your HireLoop email. The link expires in 15 minutes.</p><p><a href="${safeUrl}">Verify your email</a></p><p>If you did not create a HireLoop account, you can ignore this email.</p>`,
-      });
+      try {
+        const url = createVerificationUrl(token);
+        const safeName = escapeEmailHtml(user.name);
+        const safeUrl = escapeEmailHtml(url);
+        await sendEmail({
+          to: user.email,
+          subject: 'Verify your HireLoop email',
+          text: `Hello ${user.name},\n\nUse this link to verify your HireLoop email. The link expires in 15 minutes.\n\n${url}\n\nIf you did not create a HireLoop account, you can ignore this email.`,
+          html: `<p>Hello ${safeName},</p><p>Use the link below to verify your HireLoop email. The link expires in 15 minutes.</p><p><a href="${safeUrl}">Verify your email</a></p><p>If you did not create a HireLoop account, you can ignore this email.</p>`,
+        });
+      } catch {
+        console.error('Email verification delivery failed.');
+      }
     },
     sendOnSignUp: true,
     sendOnSignIn: true,

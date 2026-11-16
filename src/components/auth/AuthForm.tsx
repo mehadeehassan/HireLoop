@@ -222,10 +222,10 @@ export default function AuthForm({ mode, platform, verificationResult }: AuthFor
                 </p>
                 <h1 className="mt-3 text-2xl font-semibold tracking-tight">Check your email</h1>
                 <p className="mt-3 text-sm leading-6 text-[#c2c2d0]">
-                  If an account needs verification, a link was sent to{' '}
+                  If verification is needed, we will send a link to{' '}
                   <span className="font-semibold text-white">{checkEmailAddress}</span>. Open it to
-                  verify your email, then sign in. If you already have an account, you can request a
-                  fresh link below.
+                  verify your email, then sign in. If you need another link, request a fresh one
+                  below.
                 </p>
                 <button
                   type="button"
