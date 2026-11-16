@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Bell, CircleAlert, Info, RefreshCw, CheckCheck } from 'lucide-react';
+import { toast } from 'sonner';
 import { isAdminNotificationList, type AdminNotification, type AdminNotificationList } from '@/lib/admin-notifications-contract';
 
 async function readJson(response: Response) {
@@ -46,7 +47,7 @@ export default function AdminNotificationMenu() {
     setUnreadCount(Number((payload as { unreadCount: number }).unreadCount));
   }, []);
 
-  const loadList = useCallback(async () => {
+  const loadList = useCallback(async (notify = false) => {
     setLoading(true);
     setError(null);
     try {
@@ -55,7 +56,9 @@ export default function AdminNotificationMenu() {
       setList(payload);
       setUnreadCount(payload.unreadCount);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not load notifications.');
+      const message = reason instanceof Error ? reason.message : 'Could not load notifications.';
+      setError(message);
+      if (notify) toast.error(message);
     } finally { setLoading(false); }
   }, []);
 
@@ -106,7 +109,11 @@ export default function AdminNotificationMenu() {
       await readJson(await fetch('/api/admin/notifications/read-all', { method: 'POST' }));
       setUnreadCount(0);
       setList((value) => value ? { ...value, unreadCount: 0, notifications: value.notifications.map((item) => ({ ...item, read: true })) } : value);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not mark notifications read.'); }
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : 'Could not mark notifications read.';
+      setError(message);
+      toast.error(message);
+    }
   }
 
   async function openNotification(item: AdminNotification) {
@@ -115,14 +122,19 @@ export default function AdminNotificationMenu() {
         await readJson(await fetch(`/api/admin/notifications/${encodeURIComponent(item.id)}/read`, { method: 'PATCH' }));
         setUnreadCount((count) => Math.max(0, count - 1));
         setList((value) => value ? { ...value, notifications: value.notifications.map((entry) => entry.id === item.id ? { ...entry, read: true } : entry) } : value);
-      } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not mark notification read.'); return; }
+      } catch (reason) {
+        const message = reason instanceof Error ? reason.message : 'Could not mark notification read.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
     }
     if (item.link.startsWith('/dashboard/admin')) router.push(item.link);
     setOpen(false);
   }
 
   return <div className="relative">
-    <button ref={buttonRef} type="button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} aria-haspopup="menu" aria-expanded={open} onClick={() => { const next = !open; openRef.current = next; setOpen(next); if (next) void loadList(); }} className="relative flex size-9 items-center justify-center rounded-md text-[#a6a6ae] transition hover:bg-white/[0.06] hover:text-white">
+    <button ref={buttonRef} type="button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} aria-haspopup="menu" aria-expanded={open} onClick={() => { const next = !open; openRef.current = next; setOpen(next); if (next) void loadList(true); }} className="relative flex size-9 items-center justify-center rounded-md text-[#a6a6ae] transition hover:bg-white/[0.06] hover:text-white">
       <Bell aria-hidden="true" className="size-4" />
       {unreadCount > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full border border-[#0d0d10] bg-rose-500 px-1 text-center text-[9px] font-semibold leading-[14px] text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>}
     </button>
@@ -130,7 +142,7 @@ export default function AdminNotificationMenu() {
       <header className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3"><div><h2 className="text-xs font-semibold text-[#ededf2]">Notifications</h2><p className="mt-0.5 text-[10px] text-[#777780]">{unreadCount} unread</p></div><button type="button" disabled={!unreadCount} onClick={() => void markAllRead()} className="inline-flex items-center gap-1.5 text-[10px] text-[#bba8ff] hover:text-white disabled:opacity-40"><CheckCheck aria-hidden="true" className="size-3.5" />Mark all read</button></header>
       <div className="max-h-[min(65vh,460px)] overflow-y-auto" aria-live="polite">
         {loading && <div className="flex items-center justify-center gap-2 px-4 py-8 text-xs text-[#888890]"><RefreshCw aria-hidden="true" className="size-3.5 animate-spin" />Loading notifications…</div>}
-        {!loading && error && <div role="alert" className="space-y-3 p-4 text-xs text-rose-200"><p>{error}</p><button type="button" onClick={() => void loadList()} className="rounded border border-rose-300/20 px-2.5 py-1.5 hover:bg-white/[0.05]">Retry</button></div>}
+        {!loading && error && <div role="alert" className="space-y-3 p-4 text-xs text-rose-200"><p>{error}</p><button type="button" onClick={() => void loadList(true)} className="rounded border border-rose-300/20 px-2.5 py-1.5 hover:bg-white/[0.05]">Retry</button></div>}
         {!loading && !error && list?.notifications.length === 0 && <p className="px-4 py-10 text-center text-xs text-[#85858d]">You’re all caught up.</p>}
         {!loading && !error && list?.notifications.map((item) => <button key={item.id} role="menuitem" type="button" onClick={() => void openNotification(item)} className="flex w-full gap-3 border-b border-white/[0.05] px-4 py-3 text-left transition last:border-0 hover:bg-white/[0.04]"><span className="mt-0.5 shrink-0"><SeverityIcon severity={item.severity} /></span><span className="min-w-0 flex-1"><span className="flex items-start justify-between gap-2"><span className="text-[11px] font-medium text-[#e2e2e8]">{item.title}</span>{!item.read && <span aria-label="Unread" className="mt-1 size-1.5 shrink-0 rounded-full bg-violet-400" />}</span><span className="mt-1 block text-[10px] leading-4 text-[#94949d]">{item.message}</span><span className="mt-1.5 block text-[9px] text-[#696971]">{relativeTime(item.createdAt)}</span></span></button>)}
       </div>

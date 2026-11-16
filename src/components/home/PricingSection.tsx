@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-client";
 
@@ -101,12 +102,14 @@ export default function PricingSection({ planCtaHref: planCtaHrefOverride }: Pri
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
+          const message = error instanceof Error ? error.message : "Pricing is temporarily unavailable.";
           setPricingResult({
             role: pricingRole,
             requestCount: retryCount,
             plans: [],
-            error: error instanceof Error ? error.message : "Pricing is temporarily unavailable.",
+            error: message,
           });
+          toast.error(message);
         }
       })
     return () => controller.abort();

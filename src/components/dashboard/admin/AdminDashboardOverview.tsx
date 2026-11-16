@@ -11,6 +11,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 type AdminDashboardPeriod = '30d' | '90d' | 'all';
 type DashboardSummary = {
@@ -218,7 +219,9 @@ export default function AdminDashboardOverview() {
         setData(payload);
       } catch (loadError) {
         if (controller.signal.aborted) return;
-        setError(loadError instanceof Error ? loadError.message : 'Could not load dashboard statistics.');
+        const message = loadError instanceof Error ? loadError.message : 'Could not load dashboard statistics.';
+        setError(message);
+        toast.error(message);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }

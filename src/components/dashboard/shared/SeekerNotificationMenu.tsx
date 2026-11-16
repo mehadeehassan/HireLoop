@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { SeekerApplication } from '../seeker/seeker-data';
 
@@ -43,7 +44,7 @@ export default function SeekerNotificationMenu() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (notify = false) => {
     setLoading(true);
     setError('');
     try {
@@ -77,8 +78,9 @@ export default function SeekerNotificationMenu() {
       );
       setReadAt(getReadState());
     } catch (loadError) {
-      console.error('Could not load seeker notifications', loadError);
-      setError(loadError instanceof Error ? loadError.message : 'Could not load notifications.');
+      const message = loadError instanceof Error ? loadError.message : 'Could not load notifications.';
+      setError(message);
+      if (notify) toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -113,9 +115,10 @@ export default function SeekerNotificationMenu() {
       for (const item of items) nextState[item.id] = getTimestamp(item);
       localStorage.setItem(readStateKey, JSON.stringify(nextState));
       setReadAt(nextState);
-    } catch (storageError) {
-      console.error('Could not save notification read state', storageError);
-      setError('Notifications loaded, but read status could not be saved on this device.');
+    } catch {
+      const message = 'Notifications loaded, but read status could not be saved on this device.';
+      setError(message);
+      toast.error(message);
     }
   }
 
@@ -131,7 +134,7 @@ export default function SeekerNotificationMenu() {
             setOpen(false);
           } else {
             setOpen(true);
-            void loadNotifications();
+            void loadNotifications(true);
           }
         }}
         className="relative transition hover:text-[#e8ebf3]"

@@ -87,14 +87,18 @@ export default function AuthForm({ mode, platform, verificationResult }: AuthFor
         callbackURL: '/signin?verification=success',
       });
       if (result.error) {
-        setResendError('We could not send a link right now. Please try again later.');
+        const message = 'We could not send a link right now. Please try again later.';
+        setResendError(message);
+        toast.error(message);
         return;
       }
       setResendMessage(
         'If this address has an unverified account, a verification link will be sent shortly.',
       );
     } catch {
-      setResendError('We could not send a link right now. Please try again later.');
+      const message = 'We could not send a link right now. Please try again later.';
+      setResendError(message);
+      toast.error(message);
     } finally {
       setResendCooldown(60);
       setResendLoading(false);

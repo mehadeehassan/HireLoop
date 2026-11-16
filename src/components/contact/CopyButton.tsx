@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -11,7 +12,7 @@ export default function CopyButton({ value, label }: { value: string; label: str
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      // Clipboard API unavailable (e.g. non-HTTPS); fail silently
+      toast.error(`Could not copy ${label}.`);
     }
   }
 

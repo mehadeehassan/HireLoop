@@ -34,7 +34,12 @@ export default function AdminNotificationSettings({ globalSettings, onSaved }: {
         if (!isAdminNotificationPreferences(payload)) throw new Error('Notification preferences response was invalid.');
         if (active) setPreferences(payload);
       })
-      .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Could not load notification preferences.'); })
+      .catch((reason: unknown) => {
+        if (!active) return;
+        const message = reason instanceof Error ? reason.message : 'Could not load notification preferences.';
+        setError(message);
+        toast.error(message);
+      })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
@@ -81,7 +86,7 @@ export default function AdminNotificationSettings({ globalSettings, onSaved }: {
 
   return <div className="space-y-4">
     <div role="note" className="rounded-md border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2.5 text-[11px] leading-5 text-amber-200">Only in-app admin alerts are delivered. Email and push are not configured.</div>
-    {error && <div role="alert" className="flex items-center justify-between rounded-md border border-rose-400/20 bg-rose-400/[0.06] px-3 py-2 text-xs text-rose-200">{error}<button type="button" onClick={() => { setError(null); setLoading(true); fetch('/api/admin/notifications/preferences', { cache: 'no-store' }).then(readPayload).then((payload) => { if (!isAdminNotificationPreferences(payload)) throw new Error('Preferences response was invalid.'); setPreferences(payload); }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not load preferences.')).finally(() => setLoading(false)); }} className="underline">Retry</button></div>}
+    {error && <div role="alert" className="flex items-center justify-between rounded-md border border-rose-400/20 bg-rose-400/[0.06] px-3 py-2 text-xs text-rose-200">{error}<button type="button" onClick={() => { setError(null); setLoading(true); fetch('/api/admin/notifications/preferences', { cache: 'no-store' }).then(readPayload).then((payload) => { if (!isAdminNotificationPreferences(payload)) throw new Error('Preferences response was invalid.'); setPreferences(payload); }).catch((reason) => { const message = reason instanceof Error ? reason.message : 'Could not load preferences.'; setError(message); toast.error(message); }).finally(() => setLoading(false)); }} className="underline">Retry</button></div>}
     <section className={card} aria-busy={loading}>
       <h2 className="text-sm font-semibold text-[#e3e3e9]">My notification preferences</h2>
       <p className="mt-1 text-[10px] text-[#777780]">Choose which in-app alerts this admin account receives.</p>

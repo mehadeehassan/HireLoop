@@ -199,7 +199,9 @@ export default function BillingHistory({
       }
       setPaymentDetails(parsed);
     } catch (loadError) {
-      setDetailsError(loadError instanceof Error ? loadError.message : 'Payment details could not be loaded.');
+      const message = loadError instanceof Error ? loadError.message : 'Payment details could not be loaded.';
+      setDetailsError(message);
+      toast.error(message);
     } finally {
       setDetailsLoading(false);
     }

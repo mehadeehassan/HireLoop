@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { toast } from 'sonner';
 
 type Message = {
   id: string;
@@ -91,8 +92,9 @@ export default function RecruiterApplicationMessage({
       });
     } catch (loadError) {
       if (signal?.aborted) return;
-      console.error('Could not load recruiter applicant conversation', loadError);
-      setError(loadError instanceof Error ? loadError.message : 'Could not load messages.');
+      const message = loadError instanceof Error ? loadError.message : 'Could not load messages.';
+      setError(message);
+      toast.error(message);
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -147,8 +149,9 @@ export default function RecruiterApplicationMessage({
       ]);
       setDraft('');
     } catch (sendError) {
-      console.error('Could not send recruiter message to applicant', sendError);
-      setError(sendError instanceof Error ? sendError.message : 'Could not send this message.');
+      const message = sendError instanceof Error ? sendError.message : 'Could not send this message.';
+      setError(message);
+      toast.error(message);
     } finally {
       setSending(false);
     }

@@ -349,10 +349,12 @@ export default function UserCompaniesManager() {
         setListState({ key: listKey, data: payload });
       } catch (error) {
         if (controller.signal.aborted) return;
+        const message = error instanceof Error ? error.message : 'Could not load companies.';
         setListError({
           key: listKey,
-          message: error instanceof Error ? error.message : 'Could not load companies.',
+          message,
         });
+        toast.error(message);
       }
     }
     void loadCompanies();
@@ -391,10 +393,12 @@ export default function UserCompaniesManager() {
         setDetailState({ id: companyId, data: payload });
       } catch (error) {
         if (controller.signal.aborted) return;
+        const message = error instanceof Error ? error.message : 'Could not load company details.';
         setDetailError({
           id: companyId,
-          message: error instanceof Error ? error.message : 'Could not load company details.',
+          message,
         });
+        toast.error(message);
       }
     }
     void loadCompany();

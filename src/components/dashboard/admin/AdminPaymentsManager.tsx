@@ -635,11 +635,11 @@ export default function AdminPaymentsManager() {
           ) {
             return;
           }
-          setOverviewError(
-            requestError instanceof Error
-              ? requestError.message
-              : 'Could not load the payment overview.',
-          );
+          const message = requestError instanceof Error
+            ? requestError.message
+            : 'Could not load the payment overview.';
+          setOverviewError(message);
+          toast.error(message);
         })
         .finally(() => {
           if (!controller.signal.aborted) setOverviewLoading(false);
@@ -674,11 +674,11 @@ export default function AdminPaymentsManager() {
           ) {
             return;
           }
-          setPaymentsError(
-            requestError instanceof Error
-              ? requestError.message
-              : 'Could not load payments.',
-          );
+          const message = requestError instanceof Error
+            ? requestError.message
+            : 'Could not load payments.';
+          setPaymentsError(message);
+          toast.error(message);
         })
         .finally(() => {
           if (!controller.signal.aborted) setPaymentsLoading(false);
@@ -713,11 +713,11 @@ export default function AdminPaymentsManager() {
           ) {
             return;
           }
-          setSubscriptionsError(
-            requestError instanceof Error
-              ? requestError.message
-              : 'Could not load subscriptions.',
-          );
+          const message = requestError instanceof Error
+            ? requestError.message
+            : 'Could not load subscriptions.';
+          setSubscriptionsError(message);
+          toast.error(message);
         })
         .finally(() => {
           if (!controller.signal.aborted) setSubscriptionsLoading(false);
@@ -753,11 +753,11 @@ export default function AdminPaymentsManager() {
           ) {
             return;
           }
-          setDetailError(
-            requestError instanceof Error
-              ? requestError.message
-              : 'Could not load payment details.',
-          );
+          const message = requestError instanceof Error
+            ? requestError.message
+            : 'Could not load payment details.';
+          setDetailError(message);
+          toast.error(message);
         })
         .finally(() => {
           if (!controller.signal.aborted) setDetailLoading(false);

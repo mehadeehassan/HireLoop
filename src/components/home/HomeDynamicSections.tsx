@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import type { PublicJob } from "@/lib/public-jobs";
 import FeaturedJobsSection from "@/components/home/FeaturedJobsSection";
 import HeroSection from "@/components/home/HeroSection";
@@ -139,11 +140,11 @@ export default function HomeDynamicSections() {
         });
       } catch (loadError) {
         if (controller.signal.aborted) return;
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Job listings could not be loaded. Please try again.",
-        );
+        const message = loadError instanceof Error
+          ? loadError.message
+          : "Job listings could not be loaded. Please try again.";
+        setError(message);
+        toast.error(message);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }

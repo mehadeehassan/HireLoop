@@ -56,7 +56,9 @@ export default function SeekerUpgrade() {
         setHasActiveStripeSubscription(result.hasActiveStripeSubscription);
       })
       .catch((loadError: unknown) => {
-        setError(loadError instanceof Error ? loadError.message : 'Subscription plans could not be loaded.');
+        const message = loadError instanceof Error ? loadError.message : 'Subscription plans could not be loaded.';
+        setError(message);
+        toast.error(message);
       })
       .finally(() => setLoading(false));
   }
@@ -76,7 +78,9 @@ export default function SeekerUpgrade() {
       })
       .catch((loadError: unknown) => {
         if (!controller.signal.aborted) {
-          setError(loadError instanceof Error ? loadError.message : 'Subscription plans could not be loaded.');
+          const message = loadError instanceof Error ? loadError.message : 'Subscription plans could not be loaded.';
+          setError(message);
+          toast.error(message);
         }
       })
       .finally(() => {

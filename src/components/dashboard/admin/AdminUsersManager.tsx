@@ -337,10 +337,12 @@ export default function AdminUsersManager() {
         setListState({ key: listKey, data: payload });
       } catch (error) {
         if (controller.signal.aborted) return;
+        const message = error instanceof Error ? error.message : 'Could not load users.';
         setListError({
           key: listKey,
-          message: error instanceof Error ? error.message : 'Could not load users.',
+          message,
         });
+        toast.error(message);
       }
     }
 
@@ -373,10 +375,12 @@ export default function AdminUsersManager() {
         setStatsState({ key: statsRetry, data: payload });
       } catch (error) {
         if (controller.signal.aborted) return;
+        const message = error instanceof Error ? error.message : 'Could not load user statistics.';
         setStatsError({
           key: statsRetry,
-          message: error instanceof Error ? error.message : 'Could not load user statistics.',
+          message,
         });
+        toast.error(message);
       }
     }
 

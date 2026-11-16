@@ -2,6 +2,7 @@
 
 import { BadgeCheck, Check, CircleAlert, LoaderCircle, Mail, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
 
 type EmailVerificationSettingProps = {
@@ -38,12 +39,16 @@ export default function EmailVerificationSetting({
         callbackURL: '/signin?verification=success',
       });
       if (result.error) {
-        setError('We could not send a verification link right now. Please try again later.');
+        const message = 'We could not send a verification link right now. Please try again later.';
+        setError(message);
+        toast.error(message);
         return;
       }
       setMessage(`If this account needs verification, a link will be sent to ${email}.`);
     } catch {
-      setError('We could not send a verification link right now. Please try again later.');
+      const message = 'We could not send a verification link right now. Please try again later.';
+      setError(message);
+      toast.error(message);
     } finally {
       setCooldown(60);
       setSending(false);

@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import DashboardAvatar from '@/components/dashboard/shared/DashboardAvatar';
 import { formatDisplayDate } from '@/lib/date-format';
 
@@ -353,10 +354,12 @@ export default function AdminCompaniesManager() {
         setListState({ key: listKey, data: payload });
       } catch (error) {
         if (controller.signal.aborted) return;
+        const message = error instanceof Error ? error.message : 'Could not load companies.';
         setListError({
           key: listKey,
-          message: error instanceof Error ? error.message : 'Could not load companies.',
+          message,
         });
+        toast.error(message);
       }
     }
 
@@ -402,10 +405,12 @@ export default function AdminCompaniesManager() {
         setDetailsState({ id: companyId, data: payload });
       } catch (error) {
         if (controller.signal.aborted) return;
+        const message = error instanceof Error ? error.message : 'Could not load company details.';
         setDetailsError({
           id: companyId,
-          message: error instanceof Error ? error.message : 'Could not load company details.',
+          message,
         });
+        toast.error(message);
       }
     }
 

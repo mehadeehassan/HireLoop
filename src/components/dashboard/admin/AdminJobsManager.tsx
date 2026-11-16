@@ -416,7 +416,9 @@ export default function AdminJobsManager() {
         })
         .catch((requestError: unknown) => {
           if (requestError instanceof DOMException && requestError.name === 'AbortError') return;
-          setError(requestError instanceof Error ? requestError.message : 'Could not load jobs.');
+          const message = requestError instanceof Error ? requestError.message : 'Could not load jobs.';
+          setError(message);
+          toast.error(message);
         })
         .finally(() => {
           if (!controller.signal.aborted) setLoading(false);
@@ -448,9 +450,9 @@ export default function AdminJobsManager() {
         })
         .catch((requestError: unknown) => {
           if (requestError instanceof DOMException && requestError.name === 'AbortError') return;
-          setDetailError(
-            requestError instanceof Error ? requestError.message : 'Could not load job details.',
-          );
+          const message = requestError instanceof Error ? requestError.message : 'Could not load job details.';
+          setDetailError(message);
+          toast.error(message);
         })
         .finally(() => {
           if (!controller.signal.aborted) setDetailLoading(false);

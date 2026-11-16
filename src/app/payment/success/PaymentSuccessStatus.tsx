@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
 type Verification = {
@@ -67,7 +68,9 @@ export default function PaymentSuccessStatus() {
           return;
         }
         if (result.paymentStatus === 'cancelled' || result.paymentStatus === 'failed') {
-          setError('The payment was not completed. Your current plan has not changed.');
+          const message = 'The payment was not completed. Your current plan has not changed.';
+          setError(message);
+          toast.error(message);
           return;
         }
         if (attempt >= 19) {
@@ -77,11 +80,11 @@ export default function PaymentSuccessStatus() {
         timer = setTimeout(() => void verify(attempt + 1), 3000);
       } catch (verificationError) {
         if (cancelled) return;
-        setError(
-          verificationError instanceof Error
-            ? verificationError.message
-            : 'Payment verification is unavailable.',
-        );
+        const message = verificationError instanceof Error
+          ? verificationError.message
+          : 'Payment verification is unavailable.';
+        setError(message);
+        toast.error(message);
       }
     }
 

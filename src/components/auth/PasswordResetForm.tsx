@@ -35,12 +35,16 @@ export default function PasswordResetForm(props: PasswordResetFormProps) {
         redirectTo: new URL('/reset-password', window.location.origin).toString(),
       });
       if (result.error) {
-        setError('We could not process your request right now. Please try again later.');
+        const message = 'We could not process your request right now. Please try again later.';
+        setError(message);
+        toast.error(message);
         return;
       }
       setMessage('If an account exists for this email, a password reset link will be sent shortly.');
     } catch {
-      setError('We could not process your request right now. Please try again later.');
+      const message = 'We could not process your request right now. Please try again later.';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -65,13 +69,17 @@ export default function PasswordResetForm(props: PasswordResetFormProps) {
         token: resetToken,
       });
       if (result.error) {
-        setError('This reset link is invalid or has expired. Request a new one to continue.');
+        const message = 'This reset link is invalid or has expired. Request a new one to continue.';
+        setError(message);
+        toast.error(message);
         return;
       }
       setCompleted(true);
       toast.success('Your password has been reset.');
     } catch {
-      setError('This reset link is invalid or has expired. Request a new one to continue.');
+      const message = 'This reset link is invalid or has expired. Request a new one to continue.';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }

@@ -135,7 +135,9 @@ export default function AdminPricingManager() {
     try {
       await fetchData();
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load subscription pricing.');
+      const message = loadError instanceof Error ? loadError.message : 'Could not load subscription pricing.';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -143,7 +145,11 @@ export default function AdminPricingManager() {
 
   useEffect(() => {
     void Promise.resolve().then(fetchData)
-      .catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : 'Could not load subscription pricing.'))
+      .catch((loadError: unknown) => {
+        const message = loadError instanceof Error ? loadError.message : 'Could not load subscription pricing.';
+        setError(message);
+        toast.error(message);
+      })
       .finally(() => setLoading(false));
   }, [fetchData]);
 

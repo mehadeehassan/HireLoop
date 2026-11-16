@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import Image from 'next/image';
 import JobSaveButton from '@/components/browse-jobs/JobSaveButton';
 import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
@@ -73,7 +74,9 @@ export default function SeekerSavedJobs() {
         setJobs(foundJobs);
       } catch (loadError) {
         if (controller.signal.aborted) return;
-        setError(loadError instanceof Error ? loadError.message : 'Could not load saved jobs.');
+        const message = loadError instanceof Error ? loadError.message : 'Could not load saved jobs.';
+        setError(message);
+        toast.error(message);
         setJobs([]);
       } finally {
         if (!controller.signal.aborted) setLoading(false);

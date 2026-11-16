@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
 import type { DashboardRole } from './DashboardTypes';
 
 export type DashboardProfile = {
@@ -49,9 +50,9 @@ export function DashboardProfileProvider({
         plan: typeof data.plan === 'string' ? data.plan : 'Starter',
         image: typeof data.image === 'string' ? data.image : '',
       };
-    } catch (error) {
+    } catch {
       if (controller.signal.aborted) return null;
-      console.error(`Could not load ${role} dashboard profile`, error);
+      toast.error(`Could not load your ${role} profile.`);
       return null;
     }
   }, [role]);

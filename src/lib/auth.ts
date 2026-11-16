@@ -1,9 +1,10 @@
+import { createHireLoopAuthRoleConfig } from '@/lib/auth-role-config';
+import { sendVerificationEmail } from '@/lib/email-verification';
+import { getMongoClient } from '@/lib/mongodb';
+import { sendPasswordResetEmail } from '@/lib/password-reset-email';
 import { mongodbAdapter } from '@better-auth/mongo-adapter';
 import { betterAuth } from 'better-auth';
-import { getMongoClient } from '@/lib/mongodb';
-import { createHireLoopAuthRoleConfig } from '@/lib/auth-role-config';
-import { sendPasswordResetEmail } from '@/lib/password-reset-email';
-import { escapeEmailHtml, sendEmail } from '@/lib/email';
+
 
 const client = getMongoClient();
 const db = client.db('hireloopdb');
@@ -46,19 +47,8 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendVerificationEmail: async ({ user, token }) => {
-      try {
-        const url = createVerificationUrl(token);
-        const safeName = escapeEmailHtml(user.name);
-        const safeUrl = escapeEmailHtml(url);
-        await sendEmail({
-          to: user.email,
-          subject: 'Verify your HireLoop email',
-          text: `Hello ${user.name},\n\nUse this link to verify your HireLoop email. The link expires in 15 minutes.\n\n${url}\n\nIf you did not create a HireLoop account, you can ignore this email.`,
-          html: `<p>Hello ${safeName},</p><p>Use the link below to verify your HireLoop email. The link expires in 15 minutes.</p><p><a href="${safeUrl}">Verify your email</a></p><p>If you did not create a HireLoop account, you can ignore this email.</p>`,
-        });
-      } catch {
-        console.error('Email verification delivery failed.');
-      }
+      const url = createVerificationUrl(token);
+      await sendVerificationEmail(user.email, user.name, url);
     },
     sendOnSignUp: true,
     sendOnSignIn: true,

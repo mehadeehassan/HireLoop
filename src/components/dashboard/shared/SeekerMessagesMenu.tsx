@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { toast } from 'sonner';
 
 type Conversation = {
   id: string;
@@ -54,8 +55,9 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
 
   const conversationLoadingRef = useRef(false);
   const threadLoadingRef = useRef(false);
+  const refreshFailureNotifiedRef = useRef(false);
 
-  const loadConversations = useCallback(async (page = 1) => {
+  const loadConversations = useCallback(async (page = 1, notify = false) => {
     if (conversationLoadingRef.current) return;
     conversationLoadingRef.current = true;
     setLoading(true);
@@ -98,8 +100,9 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
       setConversationPage(currentPage);
       setConversationPagination({ page: currentPage, totalPages, total: Number(payload.pagination.total) });
     } catch (loadError) {
-      console.error('Could not load seeker messages', loadError);
-      setError(loadError instanceof Error ? loadError.message : 'Could not load messages.');
+      const message = loadError instanceof Error ? loadError.message : 'Could not load messages.';
+      setError(message);
+      if (notify) toast.error(message);
     } finally {
       conversationLoadingRef.current = false;
       setLoading(false);
@@ -142,6 +145,7 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
         throw new Error('The messaging service returned an unexpected conversation.');
       }
       setMessages(payload.messages as Message[]);
+      refreshFailureNotifiedRef.current = false;
       if (
         !isRecord(payload.pagination) ||
         !Number.isSafeInteger(payload.pagination.page) ||
@@ -165,8 +169,9 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
       );
       setUnreadCount((current) => Math.max(0, current - conversation.unreadCount));
     } catch (loadError) {
-      console.error('Could not load seeker message thread', loadError);
-      setError(loadError instanceof Error ? loadError.message : 'Could not load this conversation.');
+      const message = loadError instanceof Error ? loadError.message : 'Could not load this conversation.';
+      setError(message);
+      toast.error(message);
     } finally {
       threadLoadingRef.current = false;
       setThreadBusy(false);
@@ -202,23 +207,29 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
           { cache: 'no-store' },
         );
         const payload: unknown = await response.json();
+        if (!response.ok) throw new Error(getErrorMessage(payload, 'Could not refresh this conversation.'));
         if (
-          active &&
-          response.ok &&
-          isRecord(payload) &&
-          Array.isArray(payload.messages) &&
-          payload.messages.every(
+          !isRecord(payload) ||
+          !Array.isArray(payload.messages) ||
+          !payload.messages.every(
             (message) =>
               isRecord(message) &&
               typeof message.id === 'string' &&
               typeof message.senderId === 'string' &&
               typeof message.body === 'string',
           )
-        ) {
+        ) throw new Error('The messaging service returned an unexpected conversation.');
+        if (active) {
           setMessages(payload.messages as Message[]);
+          refreshFailureNotifiedRef.current = false;
         }
       } catch (refreshError) {
-        console.error('Could not refresh seeker conversation', refreshError);
+        if (active) {
+          const message = refreshError instanceof Error ? refreshError.message : 'Could not refresh this conversation.';
+          setError(message);
+          if (!refreshFailureNotifiedRef.current) toast.error(message);
+          refreshFailureNotifiedRef.current = true;
+        }
       } finally {
         threadLoadingRef.current = false;
         if (active) setThreadBusy(false);
@@ -265,8 +276,9 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
       setMessages((current) => [...current, sentMessage]);
       setDraft('');
     } catch (sendError) {
-      console.error('Could not send seeker message', sendError);
-      setError(sendError instanceof Error ? sendError.message : 'Could not send this message.');
+      const message = sendError instanceof Error ? sendError.message : 'Could not send this message.';
+      setError(message);
+      toast.error(message);
     } finally {
       setSending(false);
     }
@@ -285,7 +297,7 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
           } else {
             setOpen(true);
             setSelected(null);
-            void loadConversations();
+            void loadConversations(1, true);
           }
         }}
         className="relative transition hover:text-[#e8ebf3]"
@@ -373,7 +385,7 @@ export default function SeekerMessagesMenu({ userId }: { userId: string }) {
                 </li>
               ))}
             </ul>
-            {conversationPagination && conversationPagination.totalPages > 1 && <div className="flex items-center justify-between border-t border-[#29292f] px-3 py-2 text-[9px] text-[#85858e]"><button type="button" disabled={conversationPage <= 1 || loading} onClick={() => void loadConversations(conversationPage - 1)} className="text-[#aaa2ff] disabled:opacity-40">Previous</button><span>{conversationPagination.total.toLocaleString()} conversations · {conversationPage}/{conversationPagination.totalPages}</span><button type="button" disabled={conversationPage >= conversationPagination.totalPages || loading} onClick={() => void loadConversations(conversationPage + 1)} className="text-[#aaa2ff] disabled:opacity-40">Next</button></div>}
+            {conversationPagination && conversationPagination.totalPages > 1 && <div className="flex items-center justify-between border-t border-[#29292f] px-3 py-2 text-[9px] text-[#85858e]"><button type="button" disabled={conversationPage <= 1 || loading} onClick={() => void loadConversations(conversationPage - 1, true)} className="text-[#aaa2ff] disabled:opacity-40">Previous</button><span>{conversationPagination.total.toLocaleString()} conversations · {conversationPage}/{conversationPagination.totalPages}</span><button type="button" disabled={conversationPage >= conversationPagination.totalPages || loading} onClick={() => void loadConversations(conversationPage + 1, true)} className="text-[#aaa2ff] disabled:opacity-40">Next</button></div>}
             </>
           ) : !error ? (
             <div className="px-4 py-10 text-center">
