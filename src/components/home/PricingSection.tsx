@@ -215,7 +215,7 @@ export default function PricingSection({ planCtaHref: planCtaHrefOverride }: Pri
         ) : loadingPlans ? (
           <div className="grid gap-4 md:grid-cols-3" aria-label="Loading plan prices" aria-busy="true">
             {[0, 1, 2].map((item) => (
-              <div key={item} className="h-64 animate-pulse rounded-[18px] border border-white/10 bg-white/[0.03]" />
+              <div key={item} className="h-64 animate-pulse rounded-[18px] border border-white/10 bg-white/3" />
             ))}
           </div>
         ) : (

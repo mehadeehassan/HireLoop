@@ -104,7 +104,7 @@ function TextField({
         value={value}
         onChange={(event) => onChange(name, event.target.value)}
         placeholder={placeholder}
-        className="mt-1.5 h-10 w-full rounded-md border border-white/[0.08] bg-[#1a1a1d] px-3 text-sm text-white outline-none placeholder:text-[#686870] focus:border-[#8178ff] read-only:cursor-not-allowed read-only:opacity-70"
+        className="mt-1.5 h-10 w-full rounded-md border border-white/8 bg-[#1a1a1d] px-3 text-sm text-white outline-none placeholder:text-[#686870] focus:border-[#8178ff] read-only:cursor-not-allowed read-only:opacity-70"
       />
       <FieldError id={`${name}-error`} error={error} />
     </label>
@@ -356,7 +356,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
 
       {showForm && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4"
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/75 p-4"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && !applying) setShowForm(false);
@@ -366,7 +366,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="job-application-title"
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-white/[0.08] bg-[#111113] p-5 shadow-2xl sm:p-7"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-white/8 bg-[#111113] p-5 shadow-2xl sm:p-7"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -382,7 +382,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                 aria-label="Close application form"
                 disabled={applying}
                 onClick={() => setShowForm(false)}
-                className="flex size-8 shrink-0 items-center justify-center rounded-md border border-white/[0.08] text-lg text-[#aaa] hover:bg-white/5 disabled:opacity-50"
+                className="flex size-8 shrink-0 items-center justify-center rounded-md border border-white/8 text-lg text-[#aaa] hover:bg-white/5 disabled:opacity-50"
               >
                 ×
               </button>
@@ -511,15 +511,15 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                     value={profile.coverLetter}
                     onChange={(event) => updateProfile('coverLetter', event.target.value)}
                     placeholder="Tell the hiring team why you are a good fit."
-                    className="mt-1.5 w-full resize-y rounded-md border border-white/[0.08] bg-[#1a1a1d] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#686870] focus:border-[#8178ff]"
+                    className="mt-1.5 w-full resize-y rounded-md border border-white/8 bg-[#1a1a1d] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#686870] focus:border-[#8178ff]"
                   />
                 </label>
-                <div className="flex justify-end gap-2 border-t border-white/[0.06] pt-4">
+                <div className="flex justify-end gap-2 border-t border-white/6 pt-4">
                   <button
                     type="button"
                     disabled={applying}
                     onClick={() => setShowForm(false)}
-                    className="h-10 rounded-lg border border-white/[0.08] px-4 text-xs text-[#c5c5cc] hover:bg-white/5"
+                    className="h-10 rounded-lg border border-white/8 px-4 text-xs text-[#c5c5cc] hover:bg-white/5"
                   >
                     Cancel
                   </button>

@@ -456,7 +456,7 @@ export default function AdminProfilePanel() {
       <div className={`${cardClass} p-5`} aria-label="Loading profile">
         <div className="space-y-3">
           {[0, 1, 2, 3].map((row) => (
-            <div key={row} className="h-11 animate-pulse rounded bg-white/[0.025]" />
+            <div key={row} className="h-11 animate-pulse rounded bg-white/2.5" />
           ))}
         </div>
       </div>
@@ -506,13 +506,13 @@ export default function AdminProfilePanel() {
                 type="button"
                 onClick={resetForm}
                 disabled={!dirty || savingProfile}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-white/[0.09] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/[0.05] disabled:opacity-45"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-white/9 px-3 text-xs text-[#c3c3ca] transition hover:bg-white/5 disabled:opacity-45"
               >
                 <RotateCcw aria-hidden="true" className="size-3.5" />
                 Reset
               </button>
               {dirty && (
-                <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-400/[0.08] px-2.5 py-1 text-[10px] text-amber-300">
+                <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-400/8 px-2.5 py-1 text-[10px] text-amber-300">
                   <span className="size-1.5 rounded-full bg-amber-300" />
                   Unsaved changes
                 </span>
@@ -520,7 +520,7 @@ export default function AdminProfilePanel() {
             </>
           }
         >
-          <div className="mb-5 flex flex-col gap-4 rounded-md border border-dashed border-white/[0.1] bg-[#0d0d10] px-4 py-4 sm:flex-row sm:items-center">
+          <div className="mb-5 flex flex-col gap-4 rounded-md border border-dashed border-white/10 bg-[#0d0d10] px-4 py-4 sm:flex-row sm:items-center">
             <DashboardAvatar src={form.image} name={form.name} size="lg" />
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-medium text-[#d3d3da]">Profile image</p>
@@ -528,7 +528,7 @@ export default function AdminProfilePanel() {
                 PNG, JPEG, or WebP up to 2 MB. Stored on your Better Auth user record.
               </p>
               <div className="mt-2.5 flex flex-wrap gap-2">
-                <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-white/[0.09] px-2.5 text-[10px] text-[#c3c3ca] transition hover:bg-white/[0.05]">
+                <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-white/9 px-2.5 text-[10px] text-[#c3c3ca] transition hover:bg-white/5">
                   <Camera aria-hidden="true" className="size-3.5" />
                   Upload image
                   <input
@@ -542,7 +542,7 @@ export default function AdminProfilePanel() {
                   <button
                     type="button"
                     onClick={() => updateField('image', null)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-400/20 px-2.5 text-[10px] text-rose-300 transition hover:bg-rose-400/[0.06]"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-400/20 px-2.5 text-[10px] text-rose-300 transition hover:bg-rose-400/6"
                   >
                     <Trash2 aria-hidden="true" className="size-3.5" />
                     Remove
@@ -616,7 +616,7 @@ export default function AdminProfilePanel() {
                   maxLength={500}
                   rows={3}
                   placeholder="A short note about your responsibilities."
-                  className="w-full resize-y rounded-md border border-white/[0.09] bg-[#111114] px-3 py-2.5 text-xs leading-5 text-[#e7e7ec] outline-none transition placeholder:text-[#73737c] focus:border-[#9b71ff]/70"
+                  className="w-full resize-y rounded-md border border-white/9 bg-[#111114] px-3 py-2.5 text-xs leading-5 text-[#e7e7ec] outline-none transition placeholder:text-[#73737c] focus:border-[#9b71ff]/70"
                 />
               </Field>
             </div>
@@ -680,7 +680,7 @@ export default function AdminProfilePanel() {
               <button
                 type="submit"
                 disabled={changingEmail || !newEmail.trim()}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-white/[0.09] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/[0.05] disabled:opacity-45"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-white/9 px-3 text-xs text-[#c3c3ca] transition hover:bg-white/5 disabled:opacity-45"
               >
                 {changingEmail ? (
                   <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
@@ -740,7 +740,7 @@ export default function AdminProfilePanel() {
                   !passwords.next ||
                   !passwords.confirm
                 }
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-white/[0.09] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/[0.05] disabled:opacity-45"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-white/9 px-3 text-xs text-[#c3c3ca] transition hover:bg-white/5 disabled:opacity-45"
               >
                 {changingPassword ? (
                   <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />

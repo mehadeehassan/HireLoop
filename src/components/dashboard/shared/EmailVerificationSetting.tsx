@@ -64,8 +64,8 @@ export default function EmailVerificationSetting({
         aria-hidden="true"
         className={`absolute inset-x-0 top-0 h-px ${
           emailVerified
-            ? 'bg-gradient-to-r from-transparent via-emerald-300/50 to-transparent'
-            : 'bg-gradient-to-r from-transparent via-[#8e86ff]/60 to-transparent'
+            ? 'bg-linear-to-r from-transparent via-emerald-300/50 to-transparent'
+            : 'bg-linear-to-r from-transparent via-[#8e86ff]/60 to-transparent'
         }`}
       />
       <div className="flex items-start gap-3">
@@ -139,7 +139,7 @@ export default function EmailVerificationSetting({
           {message ? (
             <p
               role="status"
-              className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-300/15 bg-emerald-300/[0.06] p-3 text-xs leading-5 text-emerald-200"
+              className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-300/15 bg-emerald-300/6 p-3 text-xs leading-5 text-emerald-200"
             >
               <BadgeCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
               {message}
@@ -148,7 +148,7 @@ export default function EmailVerificationSetting({
           {error ? (
             <p
               role="alert"
-              className="mt-3 flex items-start gap-2 rounded-lg border border-red-300/15 bg-red-300/[0.06] p-3 text-xs leading-5 text-red-200"
+              className="mt-3 flex items-start gap-2 rounded-lg border border-red-300/15 bg-red-300/6 p-3 text-xs leading-5 text-red-200"
             >
               <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
               {error}

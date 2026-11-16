@@ -231,7 +231,7 @@ export default function AuthForm({ mode, platform, verificationResult }: AuthFor
                   type="button"
                   onClick={() => void resendVerificationEmail(checkEmailAddress)}
                   disabled={resendLoading || resendCooldown > 0}
-                  className="mt-5 h-11 w-full rounded-[10px] border border-white/10 bg-white/[0.04] text-sm font-semibold text-white transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-55"
+                  className="mt-5 h-11 w-full rounded-[10px] border border-white/10 bg-white/4 text-sm font-semibold text-white transition hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {resendLoading
                     ? 'Sending...'
@@ -292,7 +292,7 @@ export default function AuthForm({ mode, platform, verificationResult }: AuthFor
             {isSignUp && registrationDisabled ? (
               <div
                 role="status"
-                className="mt-6 rounded-[10px] border border-amber-400/25 bg-amber-400/[0.08] px-4 py-3 text-xs leading-5 text-amber-200"
+                className="mt-6 rounded-[10px] border border-amber-400/25 bg-amber-400/8 px-4 py-3 text-xs leading-5 text-amber-200"
               >
                 New account registration is currently disabled by the platform
                 administrator. Existing accounts can still sign in.
@@ -330,7 +330,7 @@ export default function AuthForm({ mode, platform, verificationResult }: AuthFor
                     className={`group relative flex min-h-20 w-full cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-200 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#8b85ff]/70 focus-within:ring-offset-2 focus-within:ring-offset-[#101014] ${
                       signupIntent === option.value
                         ? 'border-[#8b85ff]/55 bg-[linear-gradient(115deg,rgba(98,88,255,0.17),rgba(29,28,43,0.9)_48%,rgba(23,23,29,0.95))] shadow-[0_8px_28px_rgba(74,65,194,0.12)]'
-                        : 'border-white/[0.09] bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.045]'
+                        : 'border-white/9 bg-white/2.5 hover:border-white/20 hover:bg-white/4.5'
                     } ${option.enabled ? '' : 'cursor-not-allowed opacity-45'}`}
                   >
                     <input
@@ -348,7 +348,7 @@ export default function AuthForm({ mode, platform, verificationResult }: AuthFor
                       className={`flex size-7 shrink-0 items-center justify-center rounded-md ring-1 transition-colors ${
                         signupIntent === option.value
                           ? 'bg-[#7770ff]/15 text-[#aaa5ff] ring-[#9b96ff]/20'
-                          : 'bg-white/[0.045] text-[#a6a7b5] ring-white/[0.07] group-hover:bg-white/[0.07]'
+                          : 'bg-white/4.5 text-[#a6a7b5] ring-white/[0.07] group-hover:bg-white/[0.07]'
                       }`}
                     >
                       <svg
