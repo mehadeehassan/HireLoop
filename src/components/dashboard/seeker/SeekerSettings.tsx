@@ -54,6 +54,8 @@ export default function SeekerSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resumeUpload, setResumeUpload] = useState<ResumeUpload | null>(null);
+  const [resumeSaving, setResumeSaving] = useState(false);
+  const [resumeError, setResumeError] = useState('');
   const avatarInput = useRef<HTMLInputElement>(null);
   const resumeInput = useRef<HTMLInputElement>(null);
   const { errors, validateForm, updateFieldError } = useFormValidation();
@@ -109,8 +111,54 @@ export default function SeekerSettings() {
     }
   }
 
+  async function uploadResume(upload: ResumeUpload) {
+    setResumeSaving(true);
+    setResumeError('');
+    try {
+      const profileResponse = await fetch('/api/seeker/profile', { cache: 'no-store' });
+      if (!profileResponse.ok) throw new Error('Could not load your saved profile.');
+      const savedProfile = (await profileResponse.json()) as Partial<SeekerProfile>;
+
+      const response = await fetch('/api/seeker/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: savedProfile.name || session?.user.name || '',
+          phone: savedProfile.phone || '',
+          location: savedProfile.location || '',
+          experience: savedProfile.experience || '',
+          headline: savedProfile.headline || '',
+          bio: savedProfile.bio || '',
+          skills: savedProfile.skills || '',
+          linkedinUrl: savedProfile.linkedinUrl || '',
+          portfolioUrl: savedProfile.portfolioUrl || '',
+          resumeFile: upload,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not upload your resume.');
+
+      setResumeUpload(null);
+      setProfile((current) => ({
+        ...current,
+        hasResume: true,
+        resumeFileName: upload.name,
+        resumeUrl: '',
+      }));
+      window.dispatchEvent(new Event('seeker-profile-updated'));
+      toast.success('Resume uploaded and saved to your profile.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not upload your resume.';
+      setResumeError(message);
+      toast.error(message);
+    } finally {
+      setResumeSaving(false);
+    }
+  }
+
   async function selectResume(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
     if (file.type !== 'application/pdf' || !file.name.toLowerCase().endsWith('.pdf')) {
       toast.error('Resume must be a PDF file.');
@@ -123,7 +171,9 @@ export default function SeekerSettings() {
       return;
     }
     try {
-      setResumeUpload(await readBase64(file));
+      const upload = await readBase64(file);
+      setResumeUpload(upload);
+      await uploadResume(upload);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not load resume.');
     }
@@ -146,6 +196,8 @@ export default function SeekerSettings() {
       setProfile((current) => ({
         ...current,
         hasResume: current.hasResume || Boolean(resumeUpload) || Boolean(current.resumeUrl),
+        resumeFileName: resumeUpload?.name || current.resumeFileName,
+        resumeUrl: resumeUpload ? '' : current.resumeUrl,
       }));
       window.dispatchEvent(new Event('seeker-profile-updated'));
       toast.success('Profile saved successfully.');
@@ -157,15 +209,25 @@ export default function SeekerSettings() {
   }
 
   async function removeResume() {
+    if (resumeSaving) return;
+    setResumeSaving(true);
     try {
       const response = await fetch('/api/seeker/resume', { method: 'DELETE' });
       if (!response.ok) throw new Error('Could not remove your resume.');
-      setProfile((current) => ({ ...current, hasResume: false, resumeUrl: '' }));
+      setProfile((current) => ({
+        ...current,
+        hasResume: false,
+        resumeFileName: '',
+        resumeUrl: '',
+      }));
       setResumeUpload(null);
+      setResumeError('');
       window.dispatchEvent(new Event('seeker-profile-updated'));
       toast.success('Resume removed.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not remove your resume.');
+    } finally {
+      setResumeSaving(false);
     }
   }
 
@@ -178,86 +240,269 @@ export default function SeekerSettings() {
       <h1 className="text-xl font-semibold text-[#f0f0f3] sm:text-2xl">Settings</h1>
       <p className="mt-1 text-xs text-[#92929b]">Manage your account details and professional profile.</p>
 
-      <form noValidate onSubmit={saveProfile} onChangeCapture={updateFieldError} className="mt-6 grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(260px,.65fr)]">
-        <section className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6">
-          <h2 className="text-sm font-semibold text-[#ededf2]">Profile Information</h2>
-          <div className="mt-5 flex flex-wrap items-center gap-4">
-            <DashboardAvatar src={profile.image} name={profile.name} size="lg" />
-            <div>
-              <button type="button" onClick={() => avatarInput.current?.click()} className="rounded-md border border-[#303036] px-3 py-2 text-[10px] text-[#dedee3] hover:bg-white/5">Change Avatar</button>
-              <input ref={avatarInput} type="file" accept="image/jpeg,image/png,image/gif" onChange={selectAvatar} className="sr-only" />
-              <p className="mt-1.5 text-[9px] text-[#85858e]">JPG, GIF, or PNG. Max size 5 MB.</p>
+      <form
+        noValidate
+        onSubmit={saveProfile}
+        onChangeCapture={updateFieldError}
+        className="mt-6 grid items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,.8fr)]"
+      >
+        <div className="grid min-w-0 content-start gap-4">
+          <section className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6">
+            <h2 className="text-sm font-semibold text-[#ededf2]">Profile Information</h2>
+            <div className="mt-5 flex flex-wrap items-center gap-4">
+              <DashboardAvatar src={profile.image} name={profile.name} size="lg" />
+              <div>
+                <button
+                  type="button"
+                  onClick={() => avatarInput.current?.click()}
+                  className="rounded-md border border-[#303036] px-3 py-2 text-[10px] text-[#dedee3] hover:bg-white/5"
+                >
+                  Change Avatar
+                </button>
+                <input
+                  ref={avatarInput}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif"
+                  onChange={selectAvatar}
+                  className="sr-only"
+                />
+                <p className="mt-1.5 text-[9px] text-[#85858e]">JPG, GIF, or PNG. Max size 5 MB.</p>
+              </div>
             </div>
-          </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label className="text-[10px] text-[#aaaab3]">Full Name
-              <input name="name" required minLength={2} value={profile.name} onChange={(event) => updateField('name', event.target.value)} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? 'seeker-name-error' : undefined} className={inputClass} />
-              <FieldError id="seeker-name-error" error={errors.name} />
-            </label>
-            <label className="text-[10px] text-[#aaaab3]">Email Address
-              <input type="email" value={profile.email} readOnly className={`${inputClass} cursor-not-allowed opacity-70`} />
-              <span className="mt-1 block text-[9px] text-[#777780]">Email is managed by your sign-in account.</span>
-            </label>
-          </div>
-          <div className="mt-5 flex flex-wrap gap-2 border-t border-[#242428] pt-4">
-            <button type="submit" disabled={saving} className="rounded-md bg-white px-4 py-2.5 text-[10px] font-semibold text-[#171719] disabled:opacity-50">{saving ? 'Saving...' : 'Update Profile'}</button>
-          </div>
-        </section>
-
-        <EmailVerificationSetting
-          email={session?.user.email}
-          emailVerified={session?.user.emailVerified}
-        />
-
-        <section id="resume" className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6">
-          <h2 className="text-sm font-semibold text-[#ededf2]">Resume</h2>
-          <p className="mt-1 text-[10px] leading-5 text-[#85858e]">Upload your most recent resume for one-click applications.</p>
-          <div className="mt-4 rounded-lg border border-dashed border-[#35353b] bg-[#101013] p-5 text-center">
-            <span className="mx-auto flex size-9 items-center justify-center rounded-full bg-[#202025] text-[#c8c8d0]" aria-hidden="true">▤</span>
-            <p className="mt-3 truncate text-[10px] font-medium text-[#d9d9df]">{resumeUpload?.name || profile.resumeFileName || (profile.resumeUrl ? 'Resume link saved' : profile.hasResume ? 'Resume uploaded' : 'No resume uploaded')}</p>
-            <p className="mt-1 text-[9px] text-[#777780]">{resumeUpload ? 'Ready to upload when you save your profile' : profile.hasResume ? 'Your resume is available to hiring teams' : 'PDF file, maximum size 5 MB'}</p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <button type="button" onClick={() => resumeInput.current?.click()} className="rounded-md border border-[#303036] px-3 py-2 text-[9px] text-[#dedee3] hover:bg-white/5">{profile.hasResume ? 'Replace' : 'Upload Resume'}</button>
-              <input ref={resumeInput} type="file" accept="application/pdf,.pdf" onChange={selectResume} className="sr-only" />
-              {profile.hasResume && !resumeUpload && profile.resumeFileName && <a href="/api/seeker/resume" className="rounded-md border border-[#303036] px-3 py-2 text-[9px] text-[#dedee3] hover:bg-white/5">Download</a>}
-              {profile.resumeUrl && <a href={profile.resumeUrl} target="_blank" rel="noreferrer" className="rounded-md border border-[#303036] px-3 py-2 text-[9px] text-[#dedee3] hover:bg-white/5">Open Link</a>}
-              {(profile.hasResume || resumeUpload) && <button type="button" onClick={() => void removeResume()} className="rounded-md border border-[#303036] px-3 py-2 text-[9px] text-[#e78b8b] hover:bg-red-500/5">Remove</button>}
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <label className="text-[10px] text-[#aaaab3]">
+                Full Name
+                <input
+                  name="name"
+                  required
+                  minLength={2}
+                  value={profile.name}
+                  onChange={(event) => updateField('name', event.target.value)}
+                  aria-invalid={Boolean(errors.name)}
+                  aria-describedby={errors.name ? 'seeker-name-error' : undefined}
+                  className={inputClass}
+                />
+                <FieldError id="seeker-name-error" error={errors.name} />
+              </label>
+              <label className="text-[10px] text-[#aaaab3]">
+                Email Address
+                <input
+                  type="email"
+                  value={profile.email}
+                  readOnly
+                  className={`${inputClass} cursor-not-allowed opacity-70`}
+                />
+                <span className="mt-1 block text-[9px] text-[#777780]">
+                  Email is managed by your sign-in account.
+                </span>
+              </label>
             </div>
-          </div>
-          {resumeUpload && <p className="mt-2 text-[10px] text-amber-300">Save your profile to upload the selected resume.</p>}
-        </section>
-
-        <section className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6 xl:col-span-1">
-          <h2 className="text-sm font-semibold text-[#ededf2]">Professional Details</h2>
-          <div className="mt-4 grid gap-4">
-            <TextInput label="Professional Headline" value={profile.headline || ''} onChange={(value) => updateField('headline', value)} placeholder="e.g. Senior UX/UI Designer" />
-            <label className="text-[10px] text-[#aaaab3]">Bio
-              <textarea rows={4} maxLength={2000} value={profile.bio || ''} onChange={(event) => updateField('bio', event.target.value)} placeholder="Tell employers about your experience and strengths." className={`${inputClass} h-auto py-3`} />
-            </label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextInput label="Phone" value={profile.phone} onChange={(value) => updateField('phone', value)} />
-              <TextInput label="Location" value={profile.location} onChange={(value) => updateField('location', value)} placeholder="City, Country" />
-              <TextInput label="Experience" value={profile.experience} onChange={(value) => updateField('experience', value)} placeholder="e.g. 5 years" />
-              <TextInput label="LinkedIn URL" value={profile.linkedinUrl} onChange={(value) => updateField('linkedinUrl', value)} placeholder="https://linkedin.com/in/..." />
-              <TextInput label="Portfolio URL" value={profile.portfolioUrl} onChange={(value) => updateField('portfolioUrl', value)} placeholder="https://..." />
-              <TextInput label="Skills (comma separated)" value={profile.skills} onChange={(value) => updateField('skills', value)} placeholder="Figma, Research, Prototyping" />
+            <div className="mt-5 flex flex-wrap gap-2 border-t border-[#242428] pt-4">
+              <button
+                type="submit"
+                disabled={saving || resumeSaving}
+                className="rounded-md bg-white px-4 py-2.5 text-[10px] font-semibold text-[#171719] disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Update Profile'}
+              </button>
             </div>
-          </div>
-          <div className="mt-5 border-t border-[#242428] pt-4">
-            <button type="submit" disabled={saving} className="rounded-md bg-white px-4 py-2.5 text-[10px] font-semibold text-[#171719] disabled:opacity-50">{saving ? 'Saving...' : 'Save Details'}</button>
-          </div>
-        </section>
+          </section>
+
+          <section
+            id="resume"
+            className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6"
+          >
+            <h2 className="text-sm font-semibold text-[#ededf2]">Resume</h2>
+            <p className="mt-1 text-[10px] leading-5 text-[#85858e]">
+              Upload your most recent resume for one-click applications.
+            </p>
+            <div className="mt-4 rounded-lg border border-dashed border-[#35353b] bg-[#101013] p-5 text-center">
+              <span
+                className="mx-auto flex size-9 items-center justify-center rounded-full bg-[#202025] text-[#c8c8d0]"
+                aria-hidden="true"
+              >
+                ▤
+              </span>
+              <p className="mt-3 truncate text-[10px] font-medium text-[#d9d9df]">
+                {resumeUpload?.name ||
+                  profile.resumeFileName ||
+                  (profile.resumeUrl
+                    ? 'Resume link saved'
+                    : profile.hasResume
+                      ? 'Resume uploaded'
+                      : 'No resume uploaded')}
+              </p>
+              <p className="mt-1 text-[9px] text-[#777780]">
+                {resumeUpload
+                  ? resumeSaving
+                    ? 'Saving to your profile...'
+                    : 'Upload did not complete; retry below.'
+                  : profile.hasResume
+                    ? profile.resumeFileName
+                      ? 'Saved to your profile and ready for applications'
+                      : 'Resume link saved to your profile'
+                    : 'PDF file, maximum size 5 MB'}
+              </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => resumeInput.current?.click()}
+                  disabled={resumeSaving}
+                  className="rounded-md border border-[#303036] px-3 py-2 text-[9px] text-[#dedee3] hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {resumeSaving ? 'Uploading...' : profile.hasResume ? 'Replace' : 'Upload Resume'}
+                </button>
+                <input
+                  ref={resumeInput}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={selectResume}
+                  className="sr-only"
+                />
+                {profile.hasResume && !resumeUpload && profile.resumeFileName && (
+                  <a
+                    href="/api/seeker/resume"
+                    className="rounded-md border border-[#303036] px-3 py-2 text-[9px] text-[#dedee3] hover:bg-white/5"
+                  >
+                    Download
+                  </a>
+                )}
+                {profile.resumeUrl && (
+                  <a
+                    href={profile.resumeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md border border-[#303036] px-3 py-2 text-[9px] text-[#dedee3] hover:bg-white/5"
+                  >
+                    Open Link
+                  </a>
+                )}
+                {(profile.hasResume || resumeUpload) && (
+                  <button
+                    type="button"
+                    onClick={() => void removeResume()}
+                    disabled={resumeSaving}
+                    className="rounded-md border border-[#303036] px-3 py-2 text-[9px] text-[#e78b8b] hover:bg-red-500/5 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+            {resumeUpload && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p
+                  role={resumeError ? 'alert' : 'status'}
+                  className={`text-[10px] ${resumeError ? 'text-red-300' : 'text-amber-300'}`}
+                >
+                  {resumeSaving
+                    ? 'Uploading and saving your resume...'
+                    : resumeError || 'Resume is ready to upload.'}
+                </p>
+                {resumeError && (
+                  <button
+                    type="button"
+                    onClick={() => void uploadResume(resumeUpload)}
+                    disabled={resumeSaving}
+                    className="rounded-md border border-[#303036] px-3 py-1.5 text-[10px] text-[#dedee3] hover:bg-white/5 disabled:opacity-50"
+                  >
+                    Retry upload
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <div className="grid min-w-0 content-start gap-4">
+          <EmailVerificationSetting
+            email={session?.user.email}
+            emailVerified={session?.user.emailVerified}
+          />
+          <section className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6">
+            <h2 className="text-sm font-semibold text-[#ededf2]">Professional Details</h2>
+            <p className="mt-1 text-[10px] leading-5 text-[#85858e]">
+              Share a few details to help employers understand your background.
+            </p>
+            <div className="mt-3 grid gap-3">
+              <TextInput
+                label="Professional Headline"
+                value={profile.headline || ''}
+                onChange={(value) => updateField('headline', value)}
+                placeholder="e.g. Senior engineer with 10 years of experience in web development"
+              />
+              <label className="text-[10px] text-[#aaaab3]">
+                Bio
+                <textarea
+                  rows={3}
+                  maxLength={2000}
+                  value={profile.bio || ''}
+                  onChange={(event) => updateField('bio', event.target.value)}
+                  placeholder="Tell employers about your experience and strengths."
+                  className={`${inputClass} h-auto py-2.5`}
+                />
+              </label>
+              <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2">
+                <TextInput
+                  label="Phone"
+                  placeholder='0123456789'
+                  value={profile.phone}
+                  onChange={(value) => updateField('phone', value)}
+                />
+                <TextInput
+                  label="Location"
+                  value={profile.location}
+                  onChange={(value) => updateField('location', value)}
+                  placeholder="City, Country"
+                />
+                <TextInput
+                  label="Experience"
+                  value={profile.experience}
+                  onChange={(value) => updateField('experience', value)}
+                  placeholder="e.g. 5 years"
+                />
+                <TextInput
+                  label="LinkedIn URL"
+                  value={profile.linkedinUrl}
+                  onChange={(value) => updateField('linkedinUrl', value)}
+                  placeholder="https://linkedin.com/in/..."
+                />
+                <TextInput
+                  label="Portfolio URL"
+                  value={profile.portfolioUrl}
+                  onChange={(value) => updateField('portfolioUrl', value)}
+                  placeholder="https://..."
+                />
+                <TextInput
+                  label="Skills (comma separated)"
+                  value={profile.skills}
+                  onChange={(value) => updateField('skills', value)}
+                  placeholder="e.g. JavaScript, React, Node.js"
+                />
+              </div>
+            </div>
+            <div className="mt-5 border-t border-[#242428] pt-4">
+              <button
+                type="submit"
+                disabled={saving || resumeSaving}
+                className="rounded-md bg-white px-4 py-2.5 text-[10px] font-semibold text-[#171719] disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save Details'}
+              </button>
+            </div>
+          </section>
+        </div>
       </form>
     </div>
   );
 }
 
-const inputClass = 'mt-1.5 h-10 w-full rounded-md border border-[#2b2b31] bg-[#0f0f12] px-3 text-xs text-[#ededf2] outline-none placeholder:text-[#686870] focus:border-[#8178ff]';
+const inputClass = 'mt-1 h-10 w-full rounded-md border border-[#2b2b31] bg-[#0f0f12] px-3 text-xs text-[#ededf2] outline-none placeholder:text-[#686870] focus:border-[#8178ff]';
 
 function TextInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
   return (
-    <label className="text-[10px] text-[#aaaab3]">{label}
+    <label className="text-[11px] text-[#aaaab3]">{label}
       <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={inputClass} />
     </label>
   );

@@ -39,7 +39,7 @@ function getRecruiterPlanLabel(plan: string) {
   const labels: Record<string, string> = {
     starter: 'Free',
     free: 'Free',
-    premium: 'Growth',
+    premium: 'Premium',
     growth: 'Growth',
   };
 

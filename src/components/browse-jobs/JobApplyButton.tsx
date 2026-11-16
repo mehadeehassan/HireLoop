@@ -18,6 +18,8 @@ type SeekerProfile = {
   resumeUrl: string;
   portfolioUrl: string;
   coverLetter: string;
+  hasResume?: boolean;
+  resumeFileName?: string;
 };
 
 type ResumeFile = {
@@ -117,6 +119,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
   const [showForm, setShowForm] = useState(false);
   const [profile, setProfile] = useState<SeekerProfile>(emptyProfile);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [usingSavedResume, setUsingSavedResume] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const { errors, validateForm, updateFieldError } = useFormValidation();
   const startedAutoApply = useRef(false);
@@ -136,6 +139,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
         typeof savedProfile === 'object' && savedProfile !== null
           ? (savedProfile as Partial<SeekerProfile>)
           : {};
+      const hasSavedResume = values.hasResume === true && !values.resumeUrl;
 
       setProfile({
         name: values.name || session?.user.name || '',
@@ -145,10 +149,35 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
         experience: values.experience || '',
         skills: values.skills || '',
         linkedinUrl: values.linkedinUrl || '',
-        resumeUrl: values.resumeUrl || '',
+        resumeUrl: hasSavedResume ? '' : values.resumeUrl || '',
         portfolioUrl: values.portfolioUrl || '',
         coverLetter: values.coverLetter || '',
       });
+      setResumeFile(null);
+      setUsingSavedResume(false);
+
+      if (hasSavedResume) {
+        try {
+          const resumeResponse = await fetch('/api/seeker/resume', { cache: 'no-store' });
+          if (!resumeResponse.ok) {
+            throw new Error('Your saved resume could not be loaded.');
+          }
+          const resumeBlob = await resumeResponse.blob();
+          if (resumeBlob.size > maxResumeSize) {
+            throw new Error('Your saved resume is larger than the 5 MB limit.');
+          }
+          const resumeName = values.resumeFileName || 'resume.pdf';
+          setResumeFile(new File([resumeBlob], resumeName, { type: 'application/pdf' }));
+          setUsingSavedResume(true);
+        } catch (error) {
+          console.error('Could not load saved seeker resume for application', error);
+          toast.error(
+            error instanceof Error
+              ? `${error.message} You can select a PDF below instead.`
+              : 'Your saved resume could not be loaded. You can select a PDF below instead.',
+          );
+        }
+      }
     } catch (error) {
       console.error('Could not load seeker profile for application', error);
       setProfile((current) => ({
@@ -262,13 +291,17 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
   }, [isPending, session, openForm]);
 
   function updateProfile(name: keyof SeekerProfile, value: string) {
-    if (name === 'resumeUrl' && value) setResumeFile(null);
+    if (name === 'resumeUrl' && value) {
+      setResumeFile(null);
+      setUsingSavedResume(false);
+    }
     setProfile((current) => ({ ...current, [name]: value }));
   }
 
   function selectResume(file: File | undefined) {
     if (!file) {
       setResumeFile(null);
+      setUsingSavedResume(false);
       return;
     }
 
@@ -282,6 +315,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
     }
 
     setResumeFile(file);
+    setUsingSavedResume(false);
     setProfile((current) => ({ ...current, resumeUrl: '' }));
   }
 
@@ -435,7 +469,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                     placeholder="Paste a resume link or upload a PDF below"
                   />
                   <div className="block text-xs text-[#b8b8c2]">
-                    Or upload resume (PDF, max 5 MB)
+                    Resume attachment (PDF, max 5 MB)
                     <input
                       type="file"
                       accept="application/pdf,.pdf"
@@ -443,9 +477,21 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                       className="mt-1.5 block w-full text-xs text-[#92929b] file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:text-white hover:file:bg-white/15"
                     />
                     {resumeFile && (
-                      <span className="mt-1 block truncate text-[#c5c5cc]">
-                        Selected: {resumeFile.name}
-                      </span>
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-[#6258ff]/20 bg-[#6258ff]/[0.07] px-3 py-2">
+                        <span className="min-w-0 truncate text-[#c5c5cc]">
+                          {usingSavedResume ? 'Saved resume:' : 'Selected:'} {resumeFile.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResumeFile(null);
+                            setUsingSavedResume(false);
+                          }}
+                          className="shrink-0 text-[11px] font-medium text-[#c1bcff] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#aaa5ff]"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     )}
                   </div>
                   <TextField
