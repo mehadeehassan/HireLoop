@@ -19,6 +19,7 @@ import {
 import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import DashboardAvatar from './DashboardAvatar';
+import { formatDisplayDate } from '@/lib/date-format';
 import {
   isManagedCompany,
   isManagedCompanyDetails,
@@ -40,17 +41,6 @@ type ModalState =
 
 function getErrorMessage(value: unknown, fallback: string) {
   return isRecord(value) && typeof value.error === 'string' ? value.error : fallback;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: '2-digit',
-    year: 'numeric',
-  }).format(date);
 }
 
 function getCompanyLogo(company: ManagedCompany) {
@@ -540,7 +530,7 @@ export default function UserCompaniesManager() {
                       )}
                       <span className="inline-flex items-center gap-1">
                         <CalendarDays aria-hidden="true" className="size-3" />
-                        Added {formatDate(company.createdAt)}
+                        Added {formatDisplayDate(company.createdAt)}
                       </span>
                     </div>
                     {company.website && (
@@ -751,7 +741,7 @@ export default function UserCompaniesManager() {
                       <CalendarDays aria-hidden="true" className="size-3.5" />
                       Submitted
                     </div>
-                    <p className="mt-2 text-xs text-[#e5e8f0]">{formatDate(visibleDetail.createdAt)}</p>
+                    <p className="mt-2 text-xs text-[#e5e8f0]">{formatDisplayDate(visibleDetail.createdAt)}</p>
                     <p className="mt-1 text-[10px] text-[#8991a5]">
                       {visibleDetail.jobCount === undefined
                         ? 'Related jobs loading'
@@ -788,7 +778,7 @@ export default function UserCompaniesManager() {
                           <div className="min-w-0">
                             <p className="truncate text-[11px] font-medium text-[#e5e8f0]">{job.title}</p>
                             <p className="mt-1 truncate text-[10px] text-[#8991a5]">
-                              {job.location || 'Location not provided'} · {formatDate(job.createdAt)}
+                              {job.location || 'Location not provided'} · {formatDisplayDate(job.createdAt)}
                             </p>
                           </div>
                           <span className={`w-fit rounded-full px-2 py-1 text-[9px] ${getJobStatusStyle(job.status)}`}>

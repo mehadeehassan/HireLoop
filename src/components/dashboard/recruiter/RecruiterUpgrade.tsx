@@ -4,15 +4,13 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import RecruiterPageHeader from './RecruiterPageHeader';
+import {
+  fetchAvailablePlans,
+  isUpgradePlanWithLimit,
+  type UpgradePlanWithLimit,
+} from '@/lib/billing-plans';
 
-type UpgradePlan = {
-  planName: string;
-  price: number;
-  yearlyPrice: number;
-  currency: string;
-  monthlyJobPostLimit: number | null;
-  features: string[];
-};
+type UpgradePlan = UpgradePlanWithLimit<'monthlyJobPostLimit'>;
 
 type BillingPeriod = 'monthly' | 'yearly';
 
@@ -32,36 +30,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-async function fetchAvailablePlans(signal?: AbortSignal) {
-  const response = await fetch('/api/billing/plans', { cache: 'no-store', signal });
-  const result: unknown = await response.json();
-  if (!response.ok || !isRecord(result) || !Array.isArray(result.plans)) {
-    throw new Error(
-      isRecord(result) && typeof result.error === 'string'
-        ? result.error
-        : 'Subscription plans could not be loaded.',
-    );
-  }
-  const availablePlans = result.plans.filter(
-    (plan): plan is UpgradePlan =>
-      isRecord(plan) &&
-      typeof plan.planName === 'string' &&
-      typeof plan.price === 'number' &&
-      typeof plan.yearlyPrice === 'number' &&
-      typeof plan.currency === 'string' &&
-      /^[a-z]{3}$/i.test(plan.currency) &&
-      Number.isFinite(plan.price) &&
-      Number.isFinite(plan.yearlyPrice) &&
-      (typeof plan.monthlyJobPostLimit === 'number' || plan.monthlyJobPostLimit === null) &&
-      Array.isArray(plan.features) &&
-      plan.features.every((feature) => typeof feature === 'string'),
-  );
-  if (availablePlans.length === 0) throw new Error('No subscription plans are available.');
-  return {
-    plans: availablePlans,
-    currentPlan: typeof result.currentPlan === 'string' ? result.currentPlan : 'Starter',
-    hasActiveStripeSubscription: result.hasActiveStripeSubscription === true,
-  };
+function isRecruiterUpgradePlan(value: unknown): value is UpgradePlan {
+  return isUpgradePlanWithLimit(value, 'monthlyJobPostLimit');
 }
 
 const planRank: Record<string, number> = { Starter: 0, Growth: 1, Premium: 2 };
@@ -80,7 +50,7 @@ export default function RecruiterUpgrade() {
   function retryPlans() {
     setLoading(true);
     setError('');
-    void fetchAvailablePlans()
+    void fetchAvailablePlans(isRecruiterUpgradePlan)
       .then((result) => {
         setPlans(result.plans);
         setCurrentPlan(result.currentPlan);
@@ -98,7 +68,7 @@ export default function RecruiterUpgrade() {
       toast.info('Checkout was cancelled. Your current plan has not changed.');
       window.history.replaceState({}, '', window.location.pathname);
     }
-    fetchAvailablePlans(controller.signal)
+    fetchAvailablePlans(isRecruiterUpgradePlan, controller.signal)
       .then((result) => {
         if (controller.signal.aborted) return;
         setPlans(result.plans);
