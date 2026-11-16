@@ -1,6 +1,16 @@
 'use client';
 
 import {
+  isManagedCompany,
+  isManagedCompanyDetails,
+  isManagedCompanyList,
+  isRecord,
+  type ManagedCompany,
+  type ManagedCompanyDetails,
+  type ManagedCompanyList,
+} from '@/lib/company-contract';
+import { formatDisplayDate } from '@/lib/date-format';
+import {
   ArrowUpRight,
   Building2,
   CalendarDays,
@@ -16,19 +26,9 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import DashboardAvatar from './DashboardAvatar';
-import { formatDisplayDate } from '@/lib/date-format';
-import {
-  isManagedCompany,
-  isManagedCompanyDetails,
-  isManagedCompanyList,
-  isRecord,
-  type ManagedCompany,
-  type ManagedCompanyDetails,
-  type ManagedCompanyList,
-} from '@/lib/company-contract';
 
 const pageSize = 10;
 const allowedLogoTypes = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -44,8 +44,10 @@ function getErrorMessage(value: unknown, fallback: string) {
 }
 
 function getCompanyLogo(company: ManagedCompany) {
-  return company.logo ||
-    (company.hasLogo ? `/api/companies/${encodeURIComponent(company.id)}/logo` : null);
+  return (
+    company.logo ||
+    (company.hasLogo ? `/api/companies/${encodeURIComponent(company.id)}/logo` : null)
+  );
 }
 
 function getJobStatusStyle(status: string | null) {
@@ -132,12 +134,16 @@ function CompanyForm({
       );
       const result: unknown = await response.json();
       if (!response.ok) {
-        throw new Error(getErrorMessage(result, company ? 'Could not update company.' : 'Could not create company.'));
+        throw new Error(
+          getErrorMessage(
+            result,
+            company ? 'Could not update company.' : 'Could not create company.',
+          ),
+        );
       }
 
-      const savedCompany = isRecord(result) && isManagedCompany(result.company)
-        ? result.company
-        : null;
+      const savedCompany =
+        isRecord(result) && isManagedCompany(result.company) ? result.company : null;
       if (!savedCompany) throw new Error('The company service returned invalid data.');
       const duplicate = isRecord(result) && result.duplicate === true;
       toast.success(
@@ -167,7 +173,7 @@ function CompanyForm({
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="e.g. Northstar Labs"
-          className="h-10 w-full rounded-lg border border-white/[0.09] bg-[#0e111a] px-3 text-xs text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
+          className="h-10 w-full rounded-lg border border-white/9 bg-[#0e111a] px-3 text-xs text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
         />
       </label>
 
@@ -179,7 +185,7 @@ function CompanyForm({
             value={industry}
             onChange={(event) => setIndustry(event.target.value)}
             placeholder="Technology"
-            className="h-10 w-full rounded-lg border border-white/[0.09] bg-[#0e111a] px-3 text-xs text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
+            className="h-10 w-full rounded-lg border border-white/9 bg-[#0e111a] px-3 text-xs text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
           />
         </label>
         <label className="block">
@@ -189,7 +195,7 @@ function CompanyForm({
             value={location}
             onChange={(event) => setLocation(event.target.value)}
             placeholder="Dhaka, Bangladesh"
-            className="h-10 w-full rounded-lg border border-white/[0.09] bg-[#0e111a] px-3 text-xs text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
+            className="h-10 w-full rounded-lg border border-white/9 bg-[#0e111a] px-3 text-xs text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
           />
         </label>
       </div>
@@ -197,14 +203,17 @@ function CompanyForm({
       <label className="block">
         <span className="mb-1.5 block text-[11px] font-medium text-[#c7c9d4]">Website</span>
         <span className="relative block">
-          <Globe2 aria-hidden="true" className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#737b91]" />
+          <Globe2
+            aria-hidden="true"
+            className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#737b91]"
+          />
           <input
             type="url"
             maxLength={500}
             value={website}
             onChange={(event) => setWebsite(event.target.value)}
             placeholder="https://example.com"
-            className="h-10 w-full rounded-lg border border-white/[0.09] bg-[#0e111a] pl-9 pr-3 text-xs text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
+            className="h-10 w-full rounded-lg border border-white/9 bg-[#0e111a] pl-9 pr-3 text-xs text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
           />
         </span>
       </label>
@@ -225,14 +234,14 @@ function CompanyForm({
                   setLogoTouched(true);
                 }}
                 placeholder="Paste a logo URL"
-                className="h-9 w-full rounded-lg border border-white/[0.09] bg-[#0e111a] px-3 text-[11px] text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
+                className="h-9 w-full rounded-lg border border-white/9 bg-[#0e111a] px-3 text-[11px] text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
               />
             </label>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => fileInput.current?.click()}
-                className="rounded-md border border-white/[0.09] px-2.5 py-1.5 text-[10px] text-[#d9dce6] transition hover:bg-white/[0.05]"
+                className="rounded-md border border-white/9 px-2.5 py-1.5 text-[10px] text-[#d9dce6] transition hover:bg-white/5"
                 hidden={company?.id.startsWith('legacy_')}
               >
                 Upload image
@@ -276,7 +285,7 @@ function CompanyForm({
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Tell people what your company does."
-          className="w-full resize-y rounded-lg border border-white/[0.09] bg-[#0e111a] px-3 py-2.5 text-xs leading-5 text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
+          className="w-full resize-y rounded-lg border border-white/9 bg-[#0e111a] px-3 py-2.5 text-xs leading-5 text-[#f1f3f8] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/70"
         />
       </label>
 
@@ -285,7 +294,7 @@ function CompanyForm({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="h-9 rounded-lg border border-white/[0.09] px-3.5 text-[11px] text-[#c5c8d3] transition hover:bg-white/[0.05] disabled:opacity-50"
+          className="h-9 rounded-lg border border-white/9 px-3.5 text-[11px] text-[#c5c8d3] transition hover:bg-white/5 disabled:opacity-50"
         >
           Cancel
         </button>
@@ -294,7 +303,14 @@ function CompanyForm({
           disabled={saving}
           className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#7162ff] px-4 text-[11px] font-semibold text-white transition hover:bg-[#8174ff] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saving ? 'Saving…' : <><Check aria-hidden="true" className="size-3.5" />{company ? 'Save changes' : 'Submit company'}</>}
+          {saving ? (
+            'Saving…'
+          ) : (
+            <>
+              <Check aria-hidden="true" className="size-3.5" />
+              {company ? 'Save changes' : 'Submit company'}
+            </>
+          )}
         </button>
       </div>
     </form>
@@ -306,10 +322,15 @@ export default function UserCompaniesManager() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [refreshVersion, setRefreshVersion] = useState(0);
-  const [listState, setListState] = useState<{ key: string; data: ManagedCompanyList } | null>(null);
+  const [listState, setListState] = useState<{ key: string; data: ManagedCompanyList } | null>(
+    null,
+  );
   const [listError, setListError] = useState<{ key: string; message: string } | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
-  const [detailState, setDetailState] = useState<{ id: string; data: ManagedCompanyDetails } | null>(null);
+  const [detailState, setDetailState] = useState<{
+    id: string;
+    data: ManagedCompanyDetails;
+  } | null>(null);
   const [detailError, setDetailError] = useState<{ id: string; message: string } | null>(null);
   const [detailsRetry, setDetailsRetry] = useState(0);
   const formDialog = useRef<HTMLDialogElement>(null);
@@ -341,7 +362,8 @@ export default function UserCompaniesManager() {
         });
         const payload: unknown = await response.json();
         if (!response.ok) throw new Error(getErrorMessage(payload, 'Could not load companies.'));
-        if (!isManagedCompanyList(payload)) throw new Error('The company service returned invalid data.');
+        if (!isManagedCompanyList(payload))
+          throw new Error('The company service returned invalid data.');
         if (page > Math.max(1, payload.pagination.totalPages)) {
           setPage(Math.max(1, payload.pagination.totalPages));
           return;
@@ -386,7 +408,8 @@ export default function UserCompaniesManager() {
           signal: controller.signal,
         });
         const payload: unknown = await response.json();
-        if (!response.ok) throw new Error(getErrorMessage(payload, 'Could not load company details.'));
+        if (!response.ok)
+          throw new Error(getErrorMessage(payload, 'Could not load company details.'));
         if (!isManagedCompanyDetails(payload)) {
           throw new Error('The company service returned invalid details.');
         }
@@ -408,15 +431,14 @@ export default function UserCompaniesManager() {
   const listData = listState?.key === listKey ? listState.data : null;
   const currentListError = listError?.key === listKey ? listError.message : null;
   const listLoading = !listData && !currentListError;
-  const activeDetails = modal?.type === 'details' && detailState?.id === modal.companyId
-    ? detailState.data
-    : null;
-  const activeDetailError = modal?.type === 'details' && detailError?.id === modal.companyId
-    ? detailError.message
-    : null;
-  const visibleDetail = activeDetails?.company ??
+  const activeDetails =
+    modal?.type === 'details' && detailState?.id === modal.companyId ? detailState.data : null;
+  const activeDetailError =
+    modal?.type === 'details' && detailError?.id === modal.companyId ? detailError.message : null;
+  const visibleDetail =
+    activeDetails?.company ??
     (modal?.type === 'details'
-      ? listData?.companies.find((company) => company.id === modal.companyId) ?? null
+      ? (listData?.companies.find((company) => company.id === modal.companyId) ?? null)
       : null);
 
   function openForm(company: ManagedCompany | null) {
@@ -449,7 +471,7 @@ export default function UserCompaniesManager() {
   const totalPages = Math.max(1, listData?.pagination.totalPages || 1);
 
   return (
-    <div className="mx-auto w-full max-w-[1320px] py-5 lg:py-7">
+    <div className="mx-auto w-full max-w-330 py-5 lg:py-7">
       <div className="mb-5 text-[11px] text-[#858da1]">
         Dashboard <span className="px-1.5 text-[#4f5668]">/</span> Companies
       </div>
@@ -475,7 +497,10 @@ export default function UserCompaniesManager() {
       <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#111827]/45">
         <div className="flex flex-col gap-3 border-b border-white/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-sm">
-            <Search aria-hidden="true" className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#788096]" />
+            <Search
+              aria-hidden="true"
+              className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#788096]"
+            />
             <input
               type="search"
               value={searchInput}
@@ -485,12 +510,14 @@ export default function UserCompaniesManager() {
               }}
               maxLength={120}
               placeholder="Search your companies"
-              className="h-9 w-full rounded-lg border border-white/[0.08] bg-[#0e111a] pl-9 pr-3 text-[11px] text-[#e7eaf2] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/60"
+              className="h-9 w-full rounded-lg border border-white/8 bg-[#0e111a] pl-9 pr-3 text-[11px] text-[#e7eaf2] outline-none placeholder:text-[#697185] focus:border-[#8d68ff]/60"
             />
           </div>
           <span className="inline-flex items-center gap-1.5 text-[10px] text-[#9299ad]">
             <Building2 aria-hidden="true" className="size-3.5 text-[#a99aff]" />
-            {listData ? `${listData.pagination.total.toLocaleString()} companies` : 'Your companies'}
+            {listData
+              ? `${listData.pagination.total.toLocaleString()} companies`
+              : 'Your companies'}
           </span>
         </div>
 
@@ -501,19 +528,24 @@ export default function UserCompaniesManager() {
           </div>
         ) : currentListError ? (
           <div className="flex min-h-56 flex-col items-center justify-center px-5 text-center">
-            <p role="alert" className="max-w-md text-xs text-rose-200">{currentListError}</p>
+            <p role="alert" className="max-w-md text-xs text-rose-200">
+              {currentListError}
+            </p>
             <button
               type="button"
               onClick={() => setRefreshVersion((version) => version + 1)}
-              className="mt-3 rounded-lg border border-white/[0.09] px-3 py-2 text-[10px] text-[#d9dce6] transition hover:bg-white/[0.05]"
+              className="mt-3 rounded-lg border border-white/9 px-3 py-2 text-[10px] text-[#d9dce6] transition hover:bg-white/5"
             >
               Try again
             </button>
           </div>
         ) : listData?.companies.length ? (
-          <div className="divide-y divide-white/[0.06]">
+          <div className="divide-y divide-white/6">
             {listData.companies.map((company) => (
-              <article key={company.id} className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+              <article
+                key={company.id}
+                className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:px-5"
+              >
                 <div className="flex min-w-0 flex-1 items-start gap-3">
                   <DashboardAvatar src={getCompanyLogo(company)} name={company.name} size="md" />
                   <div className="min-w-0 flex-1">
@@ -554,7 +586,7 @@ export default function UserCompaniesManager() {
                   <button
                     type="button"
                     onClick={() => openDetails(company)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/9 px-3 text-[10px] font-medium text-[#c9ccda] transition hover:bg-white/[0.05] hover:text-white"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/9 px-3 text-[10px] font-medium text-[#c9ccda] transition hover:bg-white/5 hover:text-white"
                   >
                     Details
                     <ArrowUpRight aria-hidden="true" className="size-3" />
@@ -692,12 +724,21 @@ export default function UserCompaniesManager() {
           <>
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
-                <DashboardAvatar src={getCompanyLogo(visibleDetail)} name={visibleDetail.name} size="lg" />
+                <DashboardAvatar
+                  src={getCompanyLogo(visibleDetail)}
+                  name={visibleDetail.name}
+                  size="lg"
+                />
                 <div className="min-w-0">
-                  <h2 id="company-details-title" className="truncate text-base font-semibold text-[#f1f3f8]">
+                  <h2
+                    id="company-details-title"
+                    className="truncate text-base font-semibold text-[#f1f3f8]"
+                  >
                     {visibleDetail.name}
                   </h2>
-                  <p className="mt-1 text-[10px] text-[#8991a5]">Company information and related jobs</p>
+                  <p className="mt-1 text-[10px] text-[#8991a5]">
+                    Company information and related jobs
+                  </p>
                 </div>
               </div>
               <button
@@ -711,7 +752,10 @@ export default function UserCompaniesManager() {
             </div>
 
             {activeDetailError ? (
-              <div role="alert" className="mt-5 rounded-lg border border-rose-400/15 bg-rose-400/4 p-3 text-xs text-rose-200">
+              <div
+                role="alert"
+                className="mt-5 rounded-lg border border-rose-400/15 bg-rose-400/4 p-3 text-xs text-rose-200"
+              >
                 {activeDetailError}
                 <button
                   type="button"
@@ -745,7 +789,9 @@ export default function UserCompaniesManager() {
                       <CalendarDays aria-hidden="true" className="size-3.5" />
                       Submitted
                     </div>
-                    <p className="mt-2 text-xs text-[#e5e8f0]">{formatDisplayDate(visibleDetail.createdAt)}</p>
+                    <p className="mt-2 text-xs text-[#e5e8f0]">
+                      {formatDisplayDate(visibleDetail.createdAt)}
+                    </p>
                     <p className="mt-1 text-[10px] text-[#8991a5]">
                       {visibleDetail.jobCount === undefined
                         ? 'Related jobs loading'
@@ -775,26 +821,36 @@ export default function UserCompaniesManager() {
                     <h3 className="text-[11px] font-semibold text-[#e5e8f0]">Related job posts</h3>
                     {activeDetails && <span className="text-[10px] text-[#8991a5]">Latest 20</span>}
                   </div>
-                  {activeDetails ? activeDetails.jobs.length ? (
-                    <ul className="space-y-2">
-                      {activeDetails.jobs.map((job) => (
-                        <li key={job.id} className="flex flex-col gap-2 rounded-lg border border-white/6 bg-[#10141f] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <p className="truncate text-[11px] font-medium text-[#e5e8f0]">{job.title}</p>
-                            <p className="mt-1 truncate text-[10px] text-[#8991a5]">
-                              {job.location || 'Location not provided'} · {formatDisplayDate(job.createdAt)}
-                            </p>
-                          </div>
-                          <span className={`w-fit rounded-full px-2 py-1 text-[9px] ${getJobStatusStyle(job.status)}`}>
-                            {job.status || 'Unknown'}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="rounded-lg border border-white/6 bg-[#10141f] px-3 py-4 text-center text-[10px] text-[#8991a5]">
-                      No related job posts.
-                    </p>
+                  {activeDetails ? (
+                    activeDetails.jobs.length ? (
+                      <ul className="space-y-2">
+                        {activeDetails.jobs.map((job) => (
+                          <li
+                            key={job.id}
+                            className="flex flex-col gap-2 rounded-lg border border-white/6 bg-[#10141f] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-[11px] font-medium text-[#e5e8f0]">
+                                {job.title}
+                              </p>
+                              <p className="mt-1 truncate text-[10px] text-[#8991a5]">
+                                {job.location || 'Location not provided'} ·{' '}
+                                {formatDisplayDate(job.createdAt)}
+                              </p>
+                            </div>
+                            <span
+                              className={`w-fit rounded-full px-2 py-1 text-[9px] ${getJobStatusStyle(job.status)}`}
+                            >
+                              {job.status || 'Unknown'}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="rounded-lg border border-white/6 bg-[#10141f] px-3 py-4 text-center text-[10px] text-[#8991a5]">
+                        No related job posts.
+                      </p>
+                    )
                   ) : (
                     <div aria-label="Loading related jobs" className="animate-pulse space-y-2">
                       <div className="h-12 rounded-lg bg-white/4" />

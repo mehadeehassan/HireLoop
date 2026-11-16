@@ -4,7 +4,7 @@ export default function AdminSectionPlaceholder({
   title: string;
 }) {
   return (
-    <div className="mx-auto w-full max-w-[1440px] py-5 lg:py-7">
+    <div className="mx-auto w-full max-w-360 py-5 lg:py-7">
       <div className="mb-5 text-[11px] text-[#85858d]">
         Admin <span className="px-1.5 text-[#4f4f56]">/</span> {title}
       </div>

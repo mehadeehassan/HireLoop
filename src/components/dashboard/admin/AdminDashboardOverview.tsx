@@ -183,7 +183,7 @@ function LoadingCards() {
         <div
           key={metric.key}
           aria-hidden="true"
-          className="h-[116px] animate-pulse rounded-xl border border-white/[0.07] bg-[#131316]"
+          className="h-29 animate-pulse rounded-xl border border-white/[0.07] bg-[#131316]"
         />
       ))}
     </div>
@@ -234,7 +234,7 @@ export default function AdminDashboardOverview() {
   const allCountsAreZero = data && Object.values(data.summary).every((value) => value === 0);
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] py-5 lg:py-7">
+    <div className="mx-auto w-full max-w-360 py-5 lg:py-7">
       <div className="mb-5 text-[11px] text-[#85858d]">
         Admin <span className="px-1.5 text-[#4f4f56]">/</span> Dashboard Overview
       </div>
@@ -261,7 +261,7 @@ export default function AdminDashboardOverview() {
               setError('');
               setPeriod(event.target.value as AdminDashboardPeriod);
             }}
-            className="h-9 rounded-md border border-white/[0.09] bg-[#17171b] px-3 text-xs text-[#d3d3d9] outline-none focus:border-[#9b71ff]/70"
+            className="h-9 rounded-md border border-white/9 bg-[#17171b] px-3 text-xs text-[#d3d3d9] outline-none focus:border-[#9b71ff]/70"
           >
             {Object.entries(periodLabels).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
@@ -282,7 +282,7 @@ export default function AdminDashboardOverview() {
       {error && (
         <div
           role="alert"
-          className="mb-5 flex flex-col gap-3 rounded-lg border border-rose-400/20 bg-rose-400/[0.06] p-4 text-sm text-rose-200 sm:flex-row sm:items-center sm:justify-between"
+          className="mb-5 flex flex-col gap-3 rounded-lg border border-rose-400/20 bg-rose-400/6 p-4 text-sm text-rose-200 sm:flex-row sm:items-center sm:justify-between"
         >
           <p>{error}</p>
           <button
@@ -314,7 +314,7 @@ export default function AdminDashboardOverview() {
             {metrics.map(({ label, key, icon: Icon }) => (
               <article
                 key={key}
-                className="min-h-[116px] rounded-xl border border-white/[0.07] bg-[#131316] p-4 transition-colors hover:border-white/[0.12]"
+                className="min-h-29 rounded-xl border border-white/[0.07] bg-[#131316] p-4 transition-colors hover:border-white/12"
               >
                 <div className="mb-3 flex items-start justify-between">
                   <span className="flex size-8 items-center justify-center rounded-md bg-[#252529] text-[#d2d2d8]">
@@ -358,9 +358,9 @@ export default function AdminDashboardOverview() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] border-collapse text-left">
+                <table className="w-full min-w-190 border-collapse text-left">
                   <thead>
-                    <tr className="border-b border-white/[0.06] bg-white/[0.015] text-[9px] font-medium uppercase tracking-[0.08em] text-[#77777f]">
+                    <tr className="border-b border-white/6 bg-white/1.5 text-[9px] font-medium uppercase tracking-[0.08em] text-[#77777f]">
                       <th scope="col" className="px-4 py-3 font-medium sm:px-5">User / Recruiter</th>
                       <th scope="col" className="px-3 py-3 font-medium">Plan Type</th>
                       <th scope="col" className="px-3 py-3 font-medium">Transaction ID</th>
@@ -377,10 +377,10 @@ export default function AdminDashboardOverview() {
                       return (
                         <tr
                           key={transaction.id}
-                          className="border-b border-white/[0.055] last:border-0 transition-colors hover:bg-white/[0.02]"
+                          className="border-b border-white/5.5 last:border-0 transition-colors hover:bg-white/2"
                         >
                           <td className="px-4 py-3.5 sm:px-5">
-                            <p className="max-w-[210px] truncate text-[11px] font-medium text-[#e2e2e7]">
+                            <p className="max-w-52.5 truncate text-[11px] font-medium text-[#e2e2e7]">
                               {account}
                             </p>
                             <p className="mt-0.5 text-[10px] text-[#85858d]">

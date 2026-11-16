@@ -428,7 +428,7 @@ export default function RecruiterMessagesMenu({ recruiterId }: { recruiterId: st
                 ) : messages.length ? (
                   messages.map((message) => (
                     <div key={message.id} className={`max-w-[85%] rounded-lg px-3 py-2 ${message.senderId === recruiterId ? 'ml-auto bg-[#5148b8] text-white' : 'bg-[#222228] text-[#e2e2e8]'}`}>
-                      <p className="whitespace-pre-wrap break-words text-[10px] leading-5">{message.body}</p>
+                      <p className="whitespace-pre-wrap wrap-break-word text-[10px] leading-5">{message.body}</p>
                       <time className="mt-1 block text-right text-[8px] opacity-65">{formatTime(message.createdAt)}</time>
                     </div>
                   ))

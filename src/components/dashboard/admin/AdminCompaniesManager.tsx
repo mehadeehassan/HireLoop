@@ -210,21 +210,21 @@ function CompanyRow({
       : `${company.locations.length} job locations`;
 
   return (
-    <tr className="border-b border-white/[0.055] last:border-0 transition-colors hover:bg-white/[0.02]">
+    <tr className="border-b border-white/5.5 last:border-0 transition-colors hover:bg-white/2">
       <td className="px-4 py-3.5 sm:px-5">
-        <div className="flex min-w-[170px] items-center gap-2.5">
+        <div className="flex min-w-42.5 items-center gap-2.5">
           <DashboardAvatar src={getCompanyLogo(company)} name={company.name} size="sm" />
           <button
             type="button"
             onClick={() => onSelect(company)}
-            className="max-w-[200px] truncate text-left text-[11px] font-medium text-[#e2e2e7] transition hover:text-[#c2aaff]"
+            className="max-w-50 truncate text-left text-[11px] font-medium text-[#e2e2e7] transition hover:text-[#c2aaff]"
           >
             {company.name}
           </button>
         </div>
       </td>
       <td className="px-3 py-3.5 text-[10px] text-[#a2a2aa]">{company.industry || '—'}</td>
-      <td className="max-w-[170px] px-3 py-3.5 text-[10px] text-[#a2a2aa]">
+      <td className="max-w-42.5 px-3 py-3.5 text-[10px] text-[#a2a2aa]">
         <span className="block truncate" title={company.locations.join(', ')}>
           {locationSummary}
         </span>
@@ -236,7 +236,7 @@ function CompanyRow({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(event) => event.stopPropagation()}
-            className="inline-flex max-w-[130px] items-center gap-1 text-[10px] text-[#b49aff] transition hover:text-white"
+            className="inline-flex max-w-32.5 items-center gap-1 text-[10px] text-[#b49aff] transition hover:text-white"
           >
             <span className="truncate">{new URL(website).hostname}</span>
             <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
@@ -246,7 +246,7 @@ function CompanyRow({
         )}
       </td>
       <td className="px-3 py-3.5">
-        <div className="max-w-[140px] truncate text-[10px] text-[#c6c6ce]">
+        <div className="max-w-35 truncate text-[10px] text-[#c6c6ce]">
           {company.createdByName || 'Former account'}
           {company.creatorCount > 1 ? (
             <span className="ml-1 text-[#77777f]">+{company.creatorCount - 1}</span>
@@ -256,7 +256,7 @@ function CompanyRow({
       <td className="px-3 py-3.5">
         <span className={`inline-flex rounded-full border px-2 py-1 text-[9px] ${
           company.createdByRole === 'seeker'
-            ? 'border-white/[0.08] bg-white/[0.06] text-[#c6c6ce]'
+            ? 'border-white/8 bg-white/6 text-[#c6c6ce]'
             : 'border-[#9b71ff]/20 bg-[#8d68ff]/10 text-[#c2aaff]'
         }`}>
           {company.createdByRole[0].toUpperCase() + company.createdByRole.slice(1)}
@@ -272,7 +272,7 @@ function CompanyRow({
         <button
           type="button"
           onClick={() => onSelect(company)}
-          className="inline-flex h-8 items-center rounded-lg border border-white/[0.08] px-2.5 text-[10px] font-medium text-[#c8c8d0] transition hover:border-[#9b71ff]/30 hover:bg-[#8d68ff]/10 hover:text-white"
+          className="inline-flex h-8 items-center rounded-lg border border-white/8 px-2.5 text-[10px] font-medium text-[#c8c8d0] transition hover:border-[#9b71ff]/30 hover:bg-[#8d68ff]/10 hover:text-white"
         >
           View
         </button>
@@ -470,7 +470,7 @@ export default function AdminCompaniesManager() {
   const detailWebsite = getSafeWebsite(selectedCompanyDetails?.website ?? null);
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] py-5 lg:py-7">
+    <div className="mx-auto w-full max-w-360 py-5 lg:py-7">
       <div className="mb-5 text-[11px] text-[#85858d]">
         Admin <span className="px-1.5 text-[#4f4f56]">/</span> Companies
       </div>
@@ -484,7 +484,7 @@ export default function AdminCompaniesManager() {
             Seeker and recruiter submissions, plus legacy recruiter profiles and job listings.
           </p>
         </div>
-        <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.025] px-3 py-2 text-[10px] text-[#a2a2aa]">
+        <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/[0.07] bg-white/2.5 px-3 py-2 text-[10px] text-[#a2a2aa]">
           <Building2 aria-hidden="true" className="size-3.5 text-[#b49aff]" />
           {listData ? `${listData.pagination.total.toLocaleString()} companies` : 'Companies'}
         </div>
@@ -502,7 +502,7 @@ export default function AdminCompaniesManager() {
                 onChange={(event) => setSearchInput(event.target.value)}
                 maxLength={120}
                 placeholder="Search company name"
-                className="h-9 w-full rounded-lg border border-white/[0.08] bg-[#0e0e11] pl-9 pr-3 text-[11px] text-[#e7e7ec] outline-none placeholder:text-[#66666e] focus:border-[#9b71ff]/60"
+                className="h-9 w-full rounded-lg border border-white/8 bg-[#0e0e11] pl-9 pr-3 text-[11px] text-[#e7e7ec] outline-none placeholder:text-[#66666e] focus:border-[#9b71ff]/60"
               />
             </span>
           </label>
@@ -517,7 +517,7 @@ export default function AdminCompaniesManager() {
               }}
               maxLength={120}
               placeholder="Filter industry"
-              className="h-9 w-full rounded-lg border border-white/[0.08] bg-[#0e0e11] px-3 text-[11px] text-[#e7e7ec] outline-none placeholder:text-[#66666e] focus:border-[#9b71ff]/60"
+              className="h-9 w-full rounded-lg border border-white/8 bg-[#0e0e11] px-3 text-[11px] text-[#e7e7ec] outline-none placeholder:text-[#66666e] focus:border-[#9b71ff]/60"
             />
           </label>
           <label className="block">
@@ -531,7 +531,7 @@ export default function AdminCompaniesManager() {
               }}
               maxLength={120}
               placeholder="Filter location"
-              className="h-9 w-full rounded-lg border border-white/[0.08] bg-[#0e0e11] px-3 text-[11px] text-[#e7e7ec] outline-none placeholder:text-[#66666e] focus:border-[#9b71ff]/60"
+              className="h-9 w-full rounded-lg border border-white/8 bg-[#0e0e11] px-3 text-[11px] text-[#e7e7ec] outline-none placeholder:text-[#66666e] focus:border-[#9b71ff]/60"
             />
           </label>
           <label className="block">
@@ -545,7 +545,7 @@ export default function AdminCompaniesManager() {
                 }
                 setPage(1);
               }}
-              className="h-9 w-full rounded-lg border border-white/[0.08] bg-[#0e0e11] px-3 text-[11px] text-[#e7e7ec] outline-none focus:border-[#9b71ff]/60"
+              className="h-9 w-full rounded-lg border border-white/8 bg-[#0e0e11] px-3 text-[11px] text-[#e7e7ec] outline-none focus:border-[#9b71ff]/60"
             >
               <option value="all">All roles</option>
               <option value="seeker">Seeker</option>
@@ -561,7 +561,7 @@ export default function AdminCompaniesManager() {
                 if (value) setSortBy(value.value);
                 setPage(1);
               }}
-              className="h-9 w-full rounded-lg border border-white/[0.08] bg-[#0e0e11] px-3 text-[11px] text-[#e7e7ec] outline-none focus:border-[#9b71ff]/60"
+              className="h-9 w-full rounded-lg border border-white/8 bg-[#0e0e11] px-3 text-[11px] text-[#e7e7ec] outline-none focus:border-[#9b71ff]/60"
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -572,7 +572,7 @@ export default function AdminCompaniesManager() {
             type="button"
             onClick={() => setSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc')}
             aria-label={`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`}
-            className="inline-flex h-9 items-center justify-center gap-2 self-end rounded-lg border border-white/[0.08] bg-[#0e0e11] px-3 text-[10px] text-[#c8c8d0] transition hover:border-[#9b71ff]/35 hover:text-white"
+            className="inline-flex h-9 items-center justify-center gap-2 self-end rounded-lg border border-white/8 bg-[#0e0e11] px-3 text-[10px] text-[#c8c8d0] transition hover:border-[#9b71ff]/35 hover:text-white"
           >
             {sortDirection === 'asc'
               ? <ArrowUp aria-hidden="true" className="size-3.5 text-[#b49aff]" />
@@ -584,7 +584,7 @@ export default function AdminCompaniesManager() {
         {listLoading ? (
           <div aria-label="Loading companies" className="animate-pulse space-y-3 p-5">
             {Array.from({ length: 5 }, (_, index) => (
-              <div key={index} className="h-12 rounded-lg bg-white/[0.04]" />
+              <div key={index} className="h-12 rounded-lg bg-white/4" />
             ))}
           </div>
         ) : currentListError ? (
@@ -595,7 +595,7 @@ export default function AdminCompaniesManager() {
             <button
               type="button"
               onClick={() => setRefreshVersion((version) => version + 1)}
-              className="mt-4 rounded-lg border border-white/[0.09] px-3 py-2 text-[10px] text-[#d0d0d7] transition hover:bg-white/[0.05]"
+              className="mt-4 rounded-lg border border-white/9 px-3 py-2 text-[10px] text-[#d0d0d7] transition hover:bg-white/5"
             >
               Try again
             </button>
@@ -603,7 +603,7 @@ export default function AdminCompaniesManager() {
         ) : listData ? (
           listData.companies.length === 0 ? (
             <div className="flex flex-col items-center px-5 py-14 text-center">
-              <span className="flex size-11 items-center justify-center rounded-full border border-white/[0.07] bg-white/[0.03]">
+              <span className="flex size-11 items-center justify-center rounded-full border border-white/[0.07] bg-white/3">
                 <Building2 aria-hidden="true" className="size-5 text-[#85858d]" />
               </span>
               <h2 className="mt-3 text-sm font-medium text-[#e5e5ea]">
@@ -620,7 +620,7 @@ export default function AdminCompaniesManager() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="mt-4 rounded-lg border border-white/[0.09] px-3 py-2 text-[10px] text-[#d0d0d7] transition hover:bg-white/[0.05]"
+                  className="mt-4 rounded-lg border border-white/9 px-3 py-2 text-[10px] text-[#d0d0d7] transition hover:bg-white/5"
                 >
                   Clear filters
                 </button>
@@ -657,7 +657,7 @@ export default function AdminCompaniesManager() {
                           {company.createdByRole}
                         </span>
                       </div>
-                      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-white/[0.06] pt-3">
+                      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-white/6 pt-3">
                         <div className="min-w-0">
                           <p className="text-[9px] text-[#77777f]">Submitted by</p>
                           <p className="mt-1 truncate text-[10px] text-[#c6c6ce]">
@@ -689,7 +689,7 @@ export default function AdminCompaniesManager() {
                         <button
                           type="button"
                           onClick={() => openDetails(company)}
-                          className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-[10px] text-[#d0d0d7] transition hover:bg-white/[0.05]"
+                          className="rounded-lg border border-white/8 px-2.5 py-1.5 text-[10px] text-[#d0d0d7] transition hover:bg-white/5"
                         >
                           Details
                         </button>
@@ -699,8 +699,8 @@ export default function AdminCompaniesManager() {
                 })}
               </div>
               <div className="hidden overflow-x-auto lg:block">
-                <table className="w-full min-w-[1040px] text-left">
-                  <thead className="border-b border-white/[0.07] bg-white/[0.015] text-[10px] text-[#77777f]">
+                <table className="w-full min-w-260 text-left">
+                  <thead className="border-b border-white/[0.07] bg-white/1.5 text-[10px] text-[#77777f]">
                     <tr>
                       <th scope="col" className="px-4 py-3 sm:px-5">
                         <SortButton label="Company" field="name" currentSort={sortBy} direction={sortDirection} onSort={changeSort} />
@@ -746,7 +746,7 @@ export default function AdminCompaniesManager() {
                         if (value) setPageSize(value);
                         setPage(1);
                       }}
-                      className="h-7 rounded-md border border-white/[0.08] bg-[#0e0e11] px-1.5 text-[10px] text-[#c8c8d0]"
+                      className="h-7 rounded-md border border-white/8 bg-[#0e0e11] px-1.5 text-[10px] text-[#c8c8d0]"
                     >
                       {pageSizeOptions.map((size) => (
                         <option key={size} value={size}>{size}</option>
@@ -759,7 +759,7 @@ export default function AdminCompaniesManager() {
                     type="button"
                     disabled={page <= 1}
                     onClick={() => setPage((value) => Math.max(1, value - 1))}
-                    className="inline-flex h-8 items-center gap-1 rounded-md border border-white/[0.09] px-2.5 text-[10px] text-[#c8c8cf] transition hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="inline-flex h-8 items-center gap-1 rounded-md border border-white/9 px-2.5 text-[10px] text-[#c8c8cf] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronLeft aria-hidden="true" className="size-3.5" />
                     Previous
@@ -771,7 +771,7 @@ export default function AdminCompaniesManager() {
                     type="button"
                     disabled={page >= totalPages}
                     onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
-                    className="inline-flex h-8 items-center gap-1 rounded-md border border-white/[0.09] px-2.5 text-[10px] text-[#c8c8cf] transition hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="inline-flex h-8 items-center gap-1 rounded-md border border-white/9 px-2.5 text-[10px] text-[#c8c8cf] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Next
                     <ChevronRight aria-hidden="true" className="size-3.5" />
@@ -788,7 +788,7 @@ export default function AdminCompaniesManager() {
           ref={detailsDialog}
           aria-modal="true"
           aria-labelledby="admin-company-details-title"
-          className="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-white/[0.1] bg-[#17171b] p-5 text-[#e7e7ec] shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm sm:p-6"
+          className="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#17171b] p-5 text-[#e7e7ec] shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm sm:p-6"
           onCancel={(event) => {
             event.preventDefault();
             closeDetails();
@@ -815,14 +815,14 @@ export default function AdminCompaniesManager() {
               type="button"
               aria-label="Close company details"
               onClick={closeDetails}
-              className="rounded-lg p-2 text-[#85858d] transition hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b71ff]/70"
+              className="rounded-lg p-2 text-[#85858d] transition hover:bg-white/6 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b71ff]/70"
             >
               <X aria-hidden="true" className="size-4" />
             </button>
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+            <div className="rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
               <div className="flex items-center gap-2 text-[10px] text-[#85858d]">
                 <Users aria-hidden="true" className="size-3.5" />
                 Submitted by
@@ -841,7 +841,7 @@ export default function AdminCompaniesManager() {
                 <p className="mt-2 text-[10px] text-[#85858d]">Loading submitter details…</p>
               )}
             </div>
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+            <div className="rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
               <div className="flex items-center gap-2 text-[10px] text-[#85858d]">
                 <BriefcaseBusiness aria-hidden="true" className="size-3.5" />
                 Related jobs
@@ -858,25 +858,25 @@ export default function AdminCompaniesManager() {
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+            <div className="rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
               <p className="text-[10px] text-[#85858d]">Industry</p>
               <p className="mt-1.5 text-xs text-[#e5e5ea]">{selectedCompanyDetails.industry || 'Not provided'}</p>
             </div>
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+            <div className="rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
               <div className="flex items-center gap-2 text-[10px] text-[#85858d]">
                 <CalendarDays aria-hidden="true" className="size-3.5" />
                 First seen
               </div>
               <p className="mt-1.5 text-xs text-[#e5e5ea]">{formatDisplayDate(selectedCompanyDetails.createdAt)}</p>
             </div>
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+            <div className="rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
               <div className="flex items-center gap-2 text-[10px] text-[#85858d]">
                 <CalendarDays aria-hidden="true" className="size-3.5" />
                 Last updated
               </div>
               <p className="mt-1.5 text-xs text-[#e5e5ea]">{formatDisplayDate(selectedCompanyDetails.updatedAt)}</p>
             </div>
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+            <div className="rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
               <div className="flex items-center gap-2 text-[10px] text-[#85858d]">
                 <MapPin aria-hidden="true" className="size-3.5" />
                 Job locations
@@ -887,7 +887,7 @@ export default function AdminCompaniesManager() {
                   : 'Not provided'}
               </p>
             </div>
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+            <div className="rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
               <div className="flex items-center gap-2 text-[10px] text-[#85858d]">
                 <Globe2 aria-hidden="true" className="size-3.5" />
                 Website
@@ -908,7 +908,7 @@ export default function AdminCompaniesManager() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+          <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/2.5 p-3.5">
             <p className="text-[10px] text-[#85858d]">Company description</p>
             <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[#c6c6ce]">
               {selectedCompanyDetails.description || 'No description provided.'}
@@ -924,11 +924,11 @@ export default function AdminCompaniesManager() {
             </div>
             {detailsLoading ? (
               <div aria-label="Loading related jobs" className="animate-pulse space-y-2">
-                <div className="h-12 rounded-lg bg-white/[0.04]" />
-                <div className="h-12 rounded-lg bg-white/[0.04]" />
+                <div className="h-12 rounded-lg bg-white/4" />
+                <div className="h-12 rounded-lg bg-white/4" />
               </div>
             ) : activeDetailsError ? (
-              <div role="alert" className="rounded-lg border border-rose-400/15 bg-rose-400/[0.04] p-3">
+              <div role="alert" className="rounded-lg border border-rose-400/15 bg-rose-400/4 p-3">
                 <p className="text-[10px] text-rose-200">{activeDetailsError}</p>
                 <button
                   type="button"
@@ -946,7 +946,7 @@ export default function AdminCompaniesManager() {
                 {activeDetails.jobs.map((job) => (
                   <li
                     key={job.id}
-                    className="flex flex-col gap-2 rounded-lg border border-white/[0.06] bg-[#101013] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-2 rounded-lg border border-white/6 bg-[#101013] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-[11px] font-medium text-[#e5e5ea]">{job.title}</p>
@@ -961,7 +961,7 @@ export default function AdminCompaniesManager() {
                 ))}
               </ul>
             ) : (
-              <p className="rounded-lg border border-white/[0.06] bg-[#101013] px-3 py-4 text-center text-[10px] text-[#85858d]">
+              <p className="rounded-lg border border-white/6 bg-[#101013] px-3 py-4 text-center text-[10px] text-[#85858d]">
                 No related job posts.
               </p>
             )}

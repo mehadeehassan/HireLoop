@@ -184,7 +184,7 @@ export default function SeekerUpgrade() {
       <div className="grid gap-4 lg:grid-cols-3">
         {loading
           ? [0, 1, 2].map((item) => (
-              <div key={item} className="h-[420px] animate-pulse rounded-xl border border-[#26262b] bg-[#131316]" />
+              <div key={item} className="h-105 animate-pulse rounded-xl border border-[#26262b] bg-[#131316]" />
             ))
           : orderedPlans.map((plan) => {
           const isCurrentPlan = currentPlan.toLowerCase() === plan.planName.toLowerCase();

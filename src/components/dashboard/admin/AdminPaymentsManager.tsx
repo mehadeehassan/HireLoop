@@ -379,7 +379,7 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
   return (
     <div
       role="alert"
-      className="flex items-start gap-2 rounded-md border border-rose-400/20 bg-rose-400/[0.06] px-3 py-2.5 text-xs text-rose-200"
+      className="flex items-start gap-2 rounded-md border border-rose-400/20 bg-rose-400/6 px-3 py-2.5 text-xs text-rose-200"
     >
       <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
       <span>{message}</span>
@@ -405,7 +405,7 @@ function EmptyState({
 }) {
   return (
     <div className="flex min-h-64 flex-col items-center justify-center px-5 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.025]">
+      <span className="flex size-12 items-center justify-center rounded-full border border-white/8 bg-white/2.5">
         <Icon aria-hidden="true" className="size-5 text-[#767680]" />
       </span>
       <h3 className="mt-4 text-sm font-medium text-[#d4d4db]">{title}</h3>
@@ -418,7 +418,7 @@ function TableSkeleton() {
   return (
     <div className="space-y-3 p-5" aria-label="Loading records">
       {[0, 1, 2, 3, 4].map((row) => (
-        <div key={row} className="h-11 animate-pulse rounded bg-white/[0.025]" />
+        <div key={row} className="h-11 animate-pulse rounded bg-white/2.5" />
       ))}
     </div>
   );
@@ -459,7 +459,7 @@ function TablePagination({
           aria-label="Previous page"
           disabled={page <= 1 || loading}
           onClick={() => onPageChange(Math.max(1, page - 1))}
-          className="flex size-7 items-center justify-center rounded border border-white/[0.08] text-[#aaaab3] transition hover:bg-white/[0.05] disabled:opacity-35"
+          className="flex size-7 items-center justify-center rounded border border-white/8 text-[#aaaab3] transition hover:bg-white/5 disabled:opacity-35"
         >
           <ChevronLeft aria-hidden="true" className="size-3.5" />
         </button>
@@ -468,7 +468,7 @@ function TablePagination({
           aria-label="Next page"
           disabled={page >= totalPages || loading}
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-          className="flex size-7 items-center justify-center rounded border border-white/[0.08] text-[#aaaab3] transition hover:bg-white/[0.05] disabled:opacity-35"
+          className="flex size-7 items-center justify-center rounded border border-white/8 text-[#aaaab3] transition hover:bg-white/5 disabled:opacity-35"
         >
           <ChevronRight aria-hidden="true" className="size-3.5" />
         </button>
@@ -493,7 +493,7 @@ function DetailValue({
       <p className="text-[10px] uppercase tracking-[0.08em] text-[#777780]">{label}</p>
       <div className="mt-1 flex items-start gap-2">
         <p
-          className={`min-w-0 break-words text-xs text-[#d3d3da] ${
+          className={`min-w-0 wrap-break-word text-xs text-[#d3d3da] ${
             mono ? 'font-mono text-[10px]' : ''
           }`}
         >
@@ -504,7 +504,7 @@ function DetailValue({
             type="button"
             aria-label={`Copy ${label}`}
             onClick={() => void copyText(copyValue)}
-            className="flex size-5 shrink-0 items-center justify-center rounded text-[#85858d] transition hover:bg-white/[0.06] hover:text-white"
+            className="flex size-5 shrink-0 items-center justify-center rounded text-[#85858d] transition hover:bg-white/6 hover:text-white"
           >
             <Copy aria-hidden="true" className="size-3" />
           </button>
@@ -848,7 +848,7 @@ export default function AdminPaymentsManager() {
     subscriptionsData?.subscriptions.length === 0;
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-6">
+    <div className="mx-auto max-w-375 space-y-6">
       <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[#a889ff]">
@@ -865,7 +865,7 @@ export default function AdminPaymentsManager() {
         <button
           type="button"
           onClick={() => setRefreshVersion((value) => value + 1)}
-          className="inline-flex h-9 items-center gap-2 self-start rounded-md border border-white/[0.09] bg-[#111114] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/[0.05] sm:self-auto"
+          className="inline-flex h-9 items-center gap-2 self-start rounded-md border border-white/9 bg-[#111114] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/5 sm:self-auto"
         >
           <RefreshCw
             aria-hidden="true"
@@ -1029,7 +1029,7 @@ export default function AdminPaymentsManager() {
               type="button"
               onClick={clearPaymentFilters}
               disabled={!paymentHasFilters}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-[10px] text-[#9999a2] transition hover:bg-white/[0.04] hover:text-white disabled:opacity-40"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-[10px] text-[#9999a2] transition hover:bg-white/4 hover:text-white disabled:opacity-40"
             >
               <RotateCcw aria-hidden="true" className="size-3" />
               Clear filters
@@ -1066,7 +1066,7 @@ export default function AdminPaymentsManager() {
         ) : paymentsData ? (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1250px] border-collapse text-left">
+              <table className="w-full min-w-312.5 border-collapse text-left">
                 <thead>
                   <tr className="border-b border-white/[0.07] text-[9px] uppercase tracking-[0.08em] text-[#777780]">
                     <th className="px-4 py-3 font-medium sm:px-5">Payment</th>
@@ -1127,9 +1127,9 @@ export default function AdminPaymentsManager() {
                   {paymentsData.payments.map((payment) => (
                     <tr
                       key={payment.id}
-                      className="border-b border-white/[0.05] transition-colors last:border-0 hover:bg-white/[0.018]"
+                      className="border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.018]"
                     >
-                      <td className="max-w-[170px] px-4 py-3.5 sm:px-5">
+                      <td className="max-w-42.5 px-4 py-3.5 sm:px-5">
                         <button
                           type="button"
                           onClick={() => openDetail(payment)}
@@ -1142,7 +1142,7 @@ export default function AdminPaymentsManager() {
                           {payment.currency}
                         </p>
                       </td>
-                      <td className="max-w-[190px] px-3 py-3.5">
+                      <td className="max-w-47.5 px-3 py-3.5">
                         <span className="block truncate text-[10px] font-medium text-[#d4d4db]">
                           {payment.user.name || 'Unknown user'}
                         </span>
@@ -1176,7 +1176,7 @@ export default function AdminPaymentsManager() {
                       <td className="px-3 py-3.5 text-[10px] uppercase text-[#a8a8b0]">
                         {payment.paymentMethod || '—'}
                       </td>
-                      <td className="max-w-[150px] px-3 py-3.5">
+                      <td className="max-w-37.5 px-3 py-3.5">
                         <button
                           type="button"
                           onClick={() => void copyText(payment.invoiceReference || payment.id)}
@@ -1315,7 +1315,7 @@ export default function AdminPaymentsManager() {
               type="button"
               onClick={clearSubscriptionFilters}
               disabled={!subscriptionHasFilters}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-[10px] text-[#9999a2] transition hover:bg-white/[0.04] hover:text-white disabled:opacity-40"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-[10px] text-[#9999a2] transition hover:bg-white/4 hover:text-white disabled:opacity-40"
             >
               <RotateCcw aria-hidden="true" className="size-3" />
               Clear filters
@@ -1347,7 +1347,7 @@ export default function AdminPaymentsManager() {
         ) : subscriptionsData ? (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1050px] border-collapse text-left">
+              <table className="w-full min-w-262.5 border-collapse text-left">
                 <thead>
                   <tr className="border-b border-white/[0.07] text-[9px] uppercase tracking-[0.08em] text-[#777780]">
                     <th className="px-4 py-3 font-medium sm:px-5">User</th>
@@ -1424,7 +1424,7 @@ export default function AdminPaymentsManager() {
 
       {detail && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-3 backdrop-blur-[2px] sm:p-6"
+          className="fixed inset-0 z-70 flex items-center justify-center bg-black/75 p-3 backdrop-blur-[2px] sm:p-6"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeDetail();
           }}
@@ -1433,7 +1433,7 @@ export default function AdminPaymentsManager() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="admin-payment-detail-title"
-            className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-white/[0.1] bg-[#111114] shadow-2xl shadow-black/50"
+            className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-white/10 bg-[#111114] shadow-2xl shadow-black/50"
           >
             <header className="flex items-start justify-between gap-4 border-b border-white/[0.07] px-4 py-4 sm:px-6">
               <div className="min-w-0">
@@ -1459,7 +1459,7 @@ export default function AdminPaymentsManager() {
                   type="button"
                   aria-label="Close payment details"
                   onClick={closeDetail}
-                  className="flex size-8 items-center justify-center rounded-md text-[#9999a2] transition hover:bg-white/[0.06] hover:text-white"
+                  className="flex size-8 items-center justify-center rounded-md text-[#9999a2] transition hover:bg-white/6 hover:text-white"
                 >
                   <X aria-hidden="true" className="size-4" />
                 </button>
@@ -1549,8 +1549,8 @@ function SubscriptionRow({ subscription }: { subscription: AdminSubscription }) 
       : 0;
 
   return (
-    <tr className="border-b border-white/[0.05] transition-colors last:border-0 hover:bg-white/[0.018]">
-      <td className="max-w-[210px] px-4 py-3.5 sm:px-5">
+    <tr className="border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.018]">
+      <td className="max-w-52.5 px-4 py-3.5 sm:px-5">
         <span className="block truncate text-[10px] font-medium text-[#d4d4db]">
           {subscription.user.name || 'Unknown user'}
         </span>
@@ -1576,7 +1576,7 @@ function SubscriptionRow({ subscription }: { subscription: AdminSubscription }) 
         {subscription.expiryDate ? formatDisplayDate(subscription.expiryDate) : 'No expiry'}
       </td>
       <td className="px-3 py-3.5">
-        <div className="min-w-[110px]">
+        <div className="min-w-27.5">
           <div className="flex items-center justify-between gap-2 text-[10px] text-[#a8a8b0]">
             <span>
               {subscription.used.toLocaleString()} /{' '}
@@ -1584,7 +1584,7 @@ function SubscriptionRow({ subscription }: { subscription: AdminSubscription }) 
             </span>
             <span>{Math.round(usagePercent)}%</span>
           </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/6">
             <div
               className="h-full rounded-full bg-[#9b71ff]"
               style={{ width: `${usagePercent}%` }}

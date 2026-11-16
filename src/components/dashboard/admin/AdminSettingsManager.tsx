@@ -309,7 +309,7 @@ function Toggle({
       className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
         checked
           ? 'border-emerald-400/30 bg-emerald-400/25'
-          : 'border-white/[0.12] bg-white/[0.06]'
+          : 'border-white/12 bg-white/6'
       } disabled:cursor-not-allowed disabled:opacity-50`}
     >
       <span
@@ -347,7 +347,7 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
   return (
     <div
       role="alert"
-      className="flex items-start gap-2 rounded-md border border-rose-400/20 bg-rose-400/[0.06] px-3 py-2.5 text-xs text-rose-200"
+      className="flex items-start gap-2 rounded-md border border-rose-400/20 bg-rose-400/6 px-3 py-2.5 text-xs text-rose-200"
     >
       <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
       <span>{message}</span>
@@ -375,7 +375,7 @@ function ConfirmDialog({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-3 backdrop-blur-[2px] sm:p-6"
+      className="fixed inset-0 z-70 flex items-center justify-center bg-black/75 p-3 backdrop-blur-[2px] sm:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) onCancel();
       }}
@@ -384,7 +384,7 @@ function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="admin-settings-confirm-title"
-        className="w-full max-w-md rounded-xl border border-white/[0.1] bg-[#111114] p-5 shadow-2xl shadow-black/50"
+        className="w-full max-w-md rounded-xl border border-white/10 bg-[#111114] p-5 shadow-2xl shadow-black/50"
       >
         <div className="flex items-start gap-3">
           <span
@@ -411,7 +411,7 @@ function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="inline-flex h-9 items-center rounded-md border border-white/[0.09] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/[0.05] disabled:opacity-50"
+            className="inline-flex h-9 items-center rounded-md border border-white/9 px-3 text-xs text-[#c3c3ca] transition hover:bg-white/5 disabled:opacity-50"
           >
             Cancel
           </button>
@@ -440,7 +440,7 @@ function TableSkeleton() {
   return (
     <div className="space-y-3 p-5" aria-label="Loading records">
       {[0, 1, 2, 3, 4].map((row) => (
-        <div key={row} className="h-11 animate-pulse rounded bg-white/[0.025]" />
+        <div key={row} className="h-11 animate-pulse rounded bg-white/2.5" />
       ))}
     </div>
   );
@@ -479,7 +479,7 @@ function AuditPagination({
           aria-label="Previous page"
           disabled={page <= 1 || loading}
           onClick={() => onPageChange(Math.max(1, page - 1))}
-          className="flex size-7 items-center justify-center rounded border border-white/[0.08] text-[#aaaab3] transition hover:bg-white/[0.05] disabled:opacity-35"
+          className="flex size-7 items-center justify-center rounded border border-white/8 text-[#aaaab3] transition hover:bg-white/5 disabled:opacity-35"
         >
           <ChevronLeft aria-hidden="true" className="size-3.5" />
         </button>
@@ -488,7 +488,7 @@ function AuditPagination({
           aria-label="Next page"
           disabled={page >= totalPages || loading}
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-          className="flex size-7 items-center justify-center rounded border border-white/[0.08] text-[#aaaab3] transition hover:bg-white/[0.05] disabled:opacity-35"
+          className="flex size-7 items-center justify-center rounded border border-white/8 text-[#aaaab3] transition hover:bg-white/5 disabled:opacity-35"
         >
           <ChevronRight aria-hidden="true" className="size-3.5" />
         </button>
@@ -800,7 +800,7 @@ export default function AdminSettingsManager() {
   const planLimits = data?.planLimits ?? null;
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-6">
+    <div className="mx-auto max-w-375 space-y-6">
       <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[#a889ff]">
@@ -816,7 +816,7 @@ export default function AdminSettingsManager() {
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
           {brandingDirty && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-400/[0.08] px-2.5 py-1 text-[10px] text-amber-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-400/8 px-2.5 py-1 text-[10px] text-amber-300">
               <span className="size-1.5 rounded-full bg-amber-300" />
               Unsaved changes
             </span>
@@ -824,7 +824,7 @@ export default function AdminSettingsManager() {
           <button
             type="button"
             onClick={requestRefresh}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-white/[0.09] bg-[#111114] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/[0.05]"
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-white/9 bg-[#111114] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/5"
           >
             <RefreshCw
               aria-hidden="true"
@@ -908,7 +908,7 @@ export default function AdminSettingsManager() {
                   type="button"
                   onClick={resetBranding}
                   disabled={!brandingDirty || savingBranding}
-                  className="inline-flex h-9 items-center gap-2 rounded-md border border-white/[0.09] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/[0.05] disabled:opacity-45"
+                  className="inline-flex h-9 items-center gap-2 rounded-md border border-white/9 px-3 text-xs text-[#c3c3ca] transition hover:bg-white/5 disabled:opacity-45"
                 >
                   <RotateCcw aria-hidden="true" className="size-3.5" />
                   Reset
@@ -970,7 +970,7 @@ export default function AdminSettingsManager() {
                     onChange={(event) => updateBranding('description', event.target.value)}
                     maxLength={500}
                     rows={3}
-                    className="w-full resize-y rounded-md border border-white/[0.09] bg-[#111114] px-3 py-2.5 text-xs leading-5 text-[#e7e7ec] outline-none transition placeholder:text-[#73737c] focus:border-[#9b71ff]/70"
+                    className="w-full resize-y rounded-md border border-white/9 bg-[#111114] px-3 py-2.5 text-xs leading-5 text-[#e7e7ec] outline-none transition placeholder:text-[#73737c] focus:border-[#9b71ff]/70"
                   />
                 </Field>
               </div>
@@ -998,21 +998,21 @@ export default function AdminSettingsManager() {
             description="PNG, JPEG, or WebP up to 1 MB. Stored as a data URL in MongoDB using the existing upload path."
             icon={ImageIcon}
           >
-            <div className="flex flex-col items-center gap-4 rounded-md border border-dashed border-white/[0.1] bg-[#0d0d10] px-4 py-6">
+            <div className="flex flex-col items-center gap-4 rounded-md border border-dashed border-white/10 bg-[#0d0d10] px-4 py-6">
               {branding.logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={branding.logo}
                   alt="Platform logo preview"
-                  className="max-h-24 max-w-[220px] object-contain"
+                  className="max-h-24 max-w-55 object-contain"
                 />
               ) : (
-                <span className="flex size-16 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.025] text-[#767680]">
+                <span className="flex size-16 items-center justify-center rounded-lg border border-white/8 bg-white/2.5 text-[#767680]">
                   <ImageIcon aria-hidden="true" className="size-6" />
                 </span>
               )}
               <div className="flex flex-wrap justify-center gap-2">
-                <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-white/[0.09] px-3 text-xs text-[#c3c3ca] transition hover:bg-white/[0.05]">
+                <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-white/9 px-3 text-xs text-[#c3c3ca] transition hover:bg-white/5">
                   <Upload aria-hidden="true" className="size-3.5" />
                   Upload logo
                   <input
@@ -1026,7 +1026,7 @@ export default function AdminSettingsManager() {
                   <button
                     type="button"
                     onClick={() => updateBranding('logo', null)}
-                    className="inline-flex h-9 items-center gap-2 rounded-md border border-rose-400/20 px-3 text-xs text-rose-300 transition hover:bg-rose-400/[0.06]"
+                    className="inline-flex h-9 items-center gap-2 rounded-md border border-rose-400/20 px-3 text-xs text-rose-300 transition hover:bg-rose-400/6"
                   >
                     Remove
                   </button>
@@ -1041,7 +1041,7 @@ export default function AdminSettingsManager() {
         </div>
       ) : activeTab === 'controls' && controls ? (
         <div className="space-y-4">
-          <div className="flex items-start gap-2 rounded-md border border-sky-400/20 bg-sky-400/[0.05] px-3 py-2.5 text-[11px] leading-5 text-sky-200">
+          <div className="flex items-start gap-2 rounded-md border border-sky-400/20 bg-sky-400/5 px-3 py-2.5 text-[11px] leading-5 text-sky-200">
             <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
             <p>
               These switches are enforced by the backend, not just hidden in the UI.
@@ -1055,7 +1055,7 @@ export default function AdminSettingsManager() {
             description="Impactful marketplace switches. Each change asks for confirmation and is written to the audit log."
             icon={SlidersHorizontal}
           >
-            <div className="divide-y divide-white/[0.06]">
+            <div className="divide-y divide-white/6">
               {(Object.keys(controlLabels) as ControlKey[]).map((key) => {
                 const item = controlLabels[key];
                 const enabled = controls[key];
@@ -1191,7 +1191,7 @@ export default function AdminSettingsManager() {
         </div>
       ) : activeTab === 'plans' && planLimits ? (
         <div className="space-y-4">
-          <div className="flex items-start gap-2 rounded-md border border-sky-400/20 bg-sky-400/[0.05] px-3 py-2.5 text-[11px] leading-5 text-sky-200">
+          <div className="flex items-start gap-2 rounded-md border border-sky-400/20 bg-sky-400/5 px-3 py-2.5 text-[11px] leading-5 text-sky-200">
             <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
             <p>
               Limits are read from the backend <code className="font-mono">plans</code>{' '}
@@ -1212,7 +1212,7 @@ export default function AdminSettingsManager() {
               icon={CreditCard}
             >
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[560px] border-collapse text-left">
+                <table className="w-full min-w-140 border-collapse text-left">
                   <thead>
                     <tr className="border-b border-white/[0.07] text-[9px] uppercase tracking-[0.08em] text-[#777780]">
                       <th className="px-2 py-2.5 font-medium">Plan</th>
@@ -1233,7 +1233,7 @@ export default function AdminSettingsManager() {
                       return (
                         <tr
                           key={key}
-                          className="border-b border-white/[0.05] last:border-0"
+                          className="border-b border-white/5 last:border-0"
                         >
                           <td className="px-2 py-3">
                             <Badge
@@ -1291,7 +1291,7 @@ export default function AdminSettingsManager() {
                                 type="button"
                                 onClick={() => requestPlanLimitSave(limit)}
                                 disabled={!changed || saving}
-                                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/[0.09] px-2.5 text-[10px] text-[#c3c3ca] transition hover:bg-white/[0.05] disabled:opacity-40"
+                                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/9 px-2.5 text-[10px] text-[#c3c3ca] transition hover:bg-white/5 disabled:opacity-40"
                               >
                                 {saving ? (
                                   <LoaderCircle
@@ -1374,7 +1374,7 @@ export default function AdminSettingsManager() {
             <TableSkeleton />
           ) : auditData && auditData.logs.length === 0 ? (
             <div className="flex min-h-64 flex-col items-center justify-center px-5 text-center">
-              <span className="flex size-12 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.025]">
+              <span className="flex size-12 items-center justify-center rounded-full border border-white/8 bg-white/2.5">
                 <History aria-hidden="true" className="size-5 text-[#767680]" />
               </span>
               <h3 className="mt-4 text-sm font-medium text-[#d4d4db]">No audit records</h3>
@@ -1386,7 +1386,7 @@ export default function AdminSettingsManager() {
           ) : auditData ? (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1000px] border-collapse text-left">
+                <table className="w-full min-w-250 border-collapse text-left">
                   <thead>
                     <tr className="border-b border-white/[0.07] text-[9px] uppercase tracking-[0.08em] text-[#777780]">
                       <th className="px-4 py-3 font-medium sm:px-5">When</th>
@@ -1401,12 +1401,12 @@ export default function AdminSettingsManager() {
                     {auditData.logs.map((log) => (
                       <tr
                         key={log.id}
-                        className="border-b border-white/[0.05] transition-colors last:border-0 hover:bg-white/[0.018]"
+                        className="border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.018]"
                       >
                         <td className="whitespace-nowrap px-4 py-3.5 text-[10px] text-[#96969e] sm:px-5">
                           {formatDateTime(log.createdAt)}
                         </td>
-                        <td className="max-w-[190px] px-3 py-3.5">
+                        <td className="max-w-47.5 px-3 py-3.5">
                           <span className="block truncate text-[10px] font-medium text-[#d4d4db]">
                             {log.actorName || 'Unknown admin'}
                           </span>
@@ -1419,7 +1419,7 @@ export default function AdminSettingsManager() {
                             {log.action.replace('platform_settings.', '').replace('.', ' ')}
                           </Badge>
                         </td>
-                        <td className="max-w-[240px] px-3 py-3.5">
+                        <td className="max-w-60 px-3 py-3.5">
                           <span
                             className="block truncate font-mono text-[9px] text-[#a8a8b0]"
                             title={log.field}
@@ -1427,12 +1427,12 @@ export default function AdminSettingsManager() {
                             {log.field}
                           </span>
                         </td>
-                        <td className="max-w-[190px] px-3 py-3.5">
+                        <td className="max-w-47.5 px-3 py-3.5">
                           <span className="block truncate text-[10px] text-[#96969e]" title={formatAuditValue(log.previousValue)}>
                             {formatAuditValue(log.previousValue)}
                           </span>
                         </td>
-                        <td className="max-w-[190px] px-3 py-3.5">
+                        <td className="max-w-47.5 px-3 py-3.5">
                           <span className="block truncate text-[10px] text-[#d4d4db]" title={formatAuditValue(log.newValue)}>
                             {formatAuditValue(log.newValue)}
                           </span>
