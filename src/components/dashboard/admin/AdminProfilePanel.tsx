@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { isAccountActive } from '@/lib/admin-user-policy';
 import { authClient, useSession } from '@/lib/auth-client';
 import DashboardAvatar from '@/components/dashboard/shared/DashboardAvatar';
+import EmailVerificationSetting from '@/components/dashboard/shared/EmailVerificationSetting';
 
 type ProfileForm = {
   name: string;
@@ -653,18 +654,16 @@ export default function AdminProfilePanel() {
               </dd>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-md border border-white/[0.07] bg-[#0d0d10] px-3 py-2.5">
-              <dt className="text-[11px] text-[#d3d3da]">Email verification</dt>
-              <dd>
-                <Badge tone={user.emailVerified ? 'success' : 'warning'}>
-                  {user.emailVerified ? 'Verified' : 'Unverified'}
-                </Badge>
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-md border border-white/[0.07] bg-[#0d0d10] px-3 py-2.5">
               <dt className="text-[11px] text-[#d3d3da]">Member since</dt>
               <dd className="text-[11px] text-[#c3c3ca]">{formatDateTime(user.createdAt)}</dd>
             </div>
           </dl>
+          <div className="mt-4">
+            <EmailVerificationSetting
+              email={user.email}
+              emailVerified={user.emailVerified === true}
+            />
+          </div>
           <p className="mt-3 flex items-start gap-1.5 text-[10px] leading-4 text-[#73737c]">
             <Lock aria-hidden="true" className="mt-0.5 size-3 shrink-0" />
             Role, permissions, and account status can only be changed by platform

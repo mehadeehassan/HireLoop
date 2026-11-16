@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import DashboardAvatar from '@/components/dashboard/shared/DashboardAvatar';
+import EmailVerificationSetting from '@/components/dashboard/shared/EmailVerificationSetting';
 import { useSession } from '@/lib/auth-client';
 import { FieldError, useFormValidation } from '@/components/form/useFormValidation';
 import type { SeekerProfile } from './seeker-data';
@@ -203,6 +204,11 @@ export default function SeekerSettings() {
             <button type="submit" disabled={saving} className="rounded-md bg-white px-4 py-2.5 text-[10px] font-semibold text-[#171719] disabled:opacity-50">{saving ? 'Saving...' : 'Update Profile'}</button>
           </div>
         </section>
+
+        <EmailVerificationSetting
+          email={session?.user.email}
+          emailVerified={session?.user.emailVerified}
+        />
 
         <section id="resume" className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6">
           <h2 className="text-sm font-semibold text-[#ededf2]">Resume</h2>

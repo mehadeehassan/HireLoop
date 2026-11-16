@@ -3,8 +3,11 @@
 import { FormEvent, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import DashboardAvatar from '@/components/dashboard/shared/DashboardAvatar';
+import EmailVerificationSetting from '@/components/dashboard/shared/EmailVerificationSetting';
+import { useSession } from '@/lib/auth-client';
 
 export default function RecruiterSettings() {
+  const { data: session } = useSession();
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [applicationAlerts, setApplicationAlerts] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -240,6 +243,10 @@ export default function RecruiterSettings() {
           onChange={setApplicationAlerts}
         />
       </section>
+      <EmailVerificationSetting
+        email={session?.user.email}
+        emailVerified={session?.user.emailVerified}
+      />
     </div>
   );
 }
