@@ -206,7 +206,7 @@ export default function RecruiterUpgrade() {
       <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-3">
         {loading
           ? [0, 1, 2].map((item) => (
-              <div key={item} className="h-[440px] animate-pulse rounded-xl border border-[#252d43] bg-[#111827]/70" />
+              <div key={item} className="h-110 animate-pulse rounded-xl border border-[#252d43] bg-[#111827]/70" />
             ))
           : orderedPlans.map((plan) => {
           const isCurrentPlan = currentPlan.toLowerCase() === plan.planName.toLowerCase();
