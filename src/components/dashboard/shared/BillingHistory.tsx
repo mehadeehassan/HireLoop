@@ -12,6 +12,8 @@ export type BillingInvoiceRow = {
   number: string;
   date: string;
   plan: string;
+  type?: 'tokens' | 'subscription';
+  quantity?: number | null;
   amountMinor: number;
   currency: string;
   status: string;
@@ -321,7 +323,7 @@ export default function BillingHistory({
                     className="grid grid-cols-[.8fr_1fr_.8fr_1.4fr_1fr_.7fr_1.1fr] items-center gap-3 px-5 py-4 text-[10px] transition-colors hover:bg-white/[0.018]"
                   >
                     <time className="text-[#c7c7ce]">{formatDate(invoice.date)}</time>
-                    <span className="truncate text-[#e1e1e7]">{invoice.plan || 'Subscription'}</span>
+                    <span className="truncate text-[#e1e1e7]">{invoice.type === 'tokens' ? `Tokens ×${invoice.quantity ?? 0}` : invoice.plan || 'Subscription'}</span>
                     <span className="text-[#c7c7ce]">{formatMoney(invoice.amountMinor, invoice.currency)}</span>
                     <button
                       type="button"

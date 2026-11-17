@@ -1157,7 +1157,7 @@ export default function AdminPaymentsManager() {
                       </td>
                       <td className="px-3 py-3.5">
                         <Pill className={getPlanStyle(payment.plan)}>
-                          {payment.plan || '—'}
+                          {payment.type === 'tokens' ? `Tokens ×${payment.quantity ?? 0}` : payment.plan || '—'}
                         </Pill>
                       </td>
                       <td className="px-3 py-3.5">

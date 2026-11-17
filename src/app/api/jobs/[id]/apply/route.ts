@@ -95,6 +95,7 @@ export async function POST(
                 ? backendRecord.message
                 : 'You have reached your monthly application limit.',
             upgradeRequired: true,
+            canBuyTokens: backendRecord.canBuyTokens === true,
             upgradeUrl: '/dashboard/seeker/upgrade?reason=monthly_limit_reached',
             plan: backendRecord.plan,
             used: backendRecord.used,

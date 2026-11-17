@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { toast } from 'sonner';
 import { useSession } from '@/lib/auth-client';
 import { FieldError, useFormValidation } from '@/components/form/useFormValidation';
+import MonthlyLimitDialog from '@/components/dashboard/shared/MonthlyLimitDialog';
 
 type SeekerProfile = {
   name: string;
@@ -116,6 +117,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
   const { data: session, isPending } = useSession();
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [limitDialog, setLimitDialog] = useState<boolean | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [profile, setProfile] = useState<SeekerProfile>(emptyProfile);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -212,6 +214,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                 error?: unknown;
                 message?: unknown;
                 upgradeRequired?: unknown;
+                canBuyTokens?: unknown;
                 alreadyApplied?: unknown;
                 warning?: unknown;
                 backendStatus?: unknown;
@@ -227,7 +230,8 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
                 ? payload.message
                 : 'You have reached your monthly application limit.',
             );
-            router.push('/dashboard/seeker/upgrade?reason=monthly_limit_reached');
+            if (payload.canBuyTokens === true) setLimitDialog(true);
+            else router.push('/dashboard/seeker/upgrade?reason=monthly_limit_reached');
             return;
           }
           if (payload.alreadyApplied === true) {
@@ -345,6 +349,7 @@ export default function JobApplyButton({ jobId }: { jobId: string }) {
 
   return (
     <>
+      {limitDialog !== null && <MonthlyLimitDialog role="seeker" canBuyTokens={limitDialog} onClose={() => setLimitDialog(null)} />}
       <button
         type="button"
         onClick={() => void openForm()}

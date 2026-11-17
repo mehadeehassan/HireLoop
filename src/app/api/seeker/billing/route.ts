@@ -88,6 +88,7 @@ function sanitizeBillingSummary(value: Record<string, unknown>) {
           remainingCount: Number.isInteger(subscriptionValue.remainingCount)
             ? subscriptionValue.remainingCount
             : 0,
+          extraTokens: Number.isInteger(subscriptionValue.extraTokens) ? subscriptionValue.extraTokens : 0,
           nextResetDate:
             typeof subscriptionValue.nextResetDate === 'string'
               ? subscriptionValue.nextResetDate
@@ -137,6 +138,8 @@ function sanitizeBillingSummary(value: Record<string, unknown>) {
           number: typeof invoice.number === 'string' ? invoice.number : invoice.id,
           date: typeof invoice.date === 'string' ? invoice.date : '',
           plan: typeof invoice.plan === 'string' ? invoice.plan : '',
+          type: invoice.type === 'tokens' ? 'tokens' : 'subscription',
+          quantity: Number.isInteger(invoice.quantity) ? invoice.quantity : null,
           amountMinor: invoice.amountMinor,
           currency:
             typeof invoice.currency === 'string' ? invoice.currency.toUpperCase() : 'USD',
@@ -221,6 +224,7 @@ export async function GET() {
         monthlyLimit: overview.monthlyLimit,
         usedCount: overview.usedCount,
         remainingCount: overview.remainingCount,
+        extraTokens: overview.extraTokens,
         nextResetDate: overview.nextResetDate,
         features: overview.features,
       },

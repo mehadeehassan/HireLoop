@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import BillingHistory, { type BillingInvoiceRow } from '@/components/dashboard/shared/BillingHistory';
 import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
 import RecruiterPageHeader from './RecruiterPageHeader';
+import ExtraTokensCard from '@/components/dashboard/shared/ExtraTokensCard';
 
 type PaymentMethod = {
   id: string;
@@ -24,6 +26,7 @@ type RecruiterBillingSummary = {
   monthlyLimit: number;
   usedCount: number;
   remainingCount: number;
+  extraTokens: number;
   nextResetDate: string | null;
   billingInterval: string;
   price: number;
@@ -49,6 +52,7 @@ const initialSummary: RecruiterBillingSummary = {
   monthlyLimit: 0,
   usedCount: 0,
   remainingCount: 0,
+  extraTokens: 0,
   nextResetDate: null,
   billingInterval: 'month',
   price: 0,
@@ -134,6 +138,7 @@ function parseOverview(value: unknown): RecruiterBillingSummary {
     monthlyLimit: value.monthlyLimit,
     usedCount: value.usedCount,
     remainingCount: value.remainingCount,
+    extraTokens: Number.isInteger(value.extraTokens) ? value.extraTokens as number : 0,
     nextResetDate: typeof value.nextResetDate === 'string' ? value.nextResetDate : null,
     billingInterval: typeof value.billingInterval === 'string' ? value.billingInterval : 'month',
     price: value.price,
@@ -204,6 +209,7 @@ function parsePlans(value: unknown): BillingPlan[] {
 }
 
 export default function RecruiterBilling() {
+  const searchParams = useSearchParams();
   const [summary, setSummary] = useState(initialSummary);
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [invoices, setInvoices] = useState<BillingInvoiceRow[]>([]);
@@ -369,6 +375,7 @@ export default function RecruiterBilling() {
           </button>
         </div>
       )}
+      {searchParams.get('token_checkout') === 'cancelled' && <p role="status" className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-300">Payment cancelled</p>}
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_.8fr]">
         <section className="rounded-xl border border-[#252d43] bg-[#111827]/70 p-5 sm:p-6">
@@ -424,7 +431,7 @@ export default function RecruiterBilling() {
               <div>
                 <h3 className="text-[10px] font-medium text-[#d7dbea]">Monthly job posts</h3>
                 <p className="mt-1 text-[9px] text-[#9ba4b7]">
-                  {summary.usedCount} used · {summary.remainingCount} remaining
+                  {summary.usedCount} used · {summary.remainingCount} Remaining this month · Extra tokens: {summary.extraTokens}
                 </p>
               </div>
               <p className="text-xs font-semibold text-white">
@@ -453,6 +460,8 @@ export default function RecruiterBilling() {
             </button>
           </div>
         </section>
+
+        <ExtraTokensCard role="recruiter" />
 
         <section className="rounded-xl border border-[#252d43] bg-[#111827]/70 p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">

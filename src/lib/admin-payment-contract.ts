@@ -9,6 +9,8 @@ export type AdminPayment = {
   user: AdminPaymentUser;
   role: string | null;
   plan: string | null;
+  type?: 'tokens' | 'subscription';
+  quantity?: number | null;
   amount: number | null;
   amountMinor: number | null;
   currency: string;
@@ -142,6 +144,8 @@ export function isAdminPayment(value: unknown): value is AdminPayment {
     isAdminPaymentUser(value.user) &&
     isNullableString(value.role) &&
     isNullableString(value.plan) &&
+    (value.type === undefined || value.type === 'tokens' || value.type === 'subscription') &&
+    (value.quantity === undefined || value.quantity === null || isNonNegativeInteger(value.quantity)) &&
     (value.amount === null || isFiniteNonNegativeNumber(value.amount)) &&
     (value.amountMinor === null || isNonNegativeInteger(value.amountMinor)) &&
     typeof value.currency === 'string' &&

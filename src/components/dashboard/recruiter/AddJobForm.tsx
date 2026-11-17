@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { recruiterJobCategories, type RecruiterJob } from './recruiter-data';
 import { FieldError, useFormValidation } from '@/components/form/useFormValidation';
+import MonthlyLimitDialog from '@/components/dashboard/shared/MonthlyLimitDialog';
 
 const fields =
   'h-11 w-full rounded-md border border-[#252d43] bg-[#171e31] px-3 text-[12px] text-[#edf0f7] outline-none placeholder:text-[#737b91] focus:border-[#6258ff]';
@@ -33,6 +34,7 @@ export default function AddJobForm({
 }) {
   const router = useRouter();
   const [jobType, setJobType] = useState(initialJob?.type || 'Full-time');
+  const [limitDialog, setLimitDialog] = useState<boolean | null>(null);
   const [remote, setRemote] = useState(
     initialJob?.remote ?? initialJob?.location?.includes('Remote') ?? true,
   );
@@ -116,7 +118,7 @@ export default function AddJobForm({
         const result: unknown = await response.json();
         const error =
           typeof result === 'object' && result !== null
-            ? (result as { error?: unknown; message?: unknown; upgradeRequired?: unknown })
+            ? (result as { error?: unknown; message?: unknown; upgradeRequired?: unknown; canBuyTokens?: unknown })
             : {};
         if (error.error === 'MONTHLY_LIMIT_REACHED' && error.upgradeRequired === true) {
           toast.info(
@@ -124,7 +126,8 @@ export default function AddJobForm({
               ? error.message
               : 'You have reached your monthly job posting limit.',
           );
-          router.push('/dashboard/recruiter/upgrade?reason=monthly_limit_reached');
+          if (error.canBuyTokens === true) setLimitDialog(true);
+          else router.push('/dashboard/recruiter/upgrade?reason=monthly_limit_reached');
           return;
         }
       }
@@ -161,6 +164,8 @@ export default function AddJobForm({
   }
 
   return (
+    <>
+    {limitDialog !== null && <MonthlyLimitDialog role="recruiter" canBuyTokens={limitDialog} onClose={() => setLimitDialog(null)} />}
     <form
       noValidate
       onSubmit={handleSubmit}
@@ -343,6 +348,7 @@ export default function AddJobForm({
         {!submitting && <span aria-hidden="true">→</span>}
       </button>
     </form>
+    </>
   );
 }
 

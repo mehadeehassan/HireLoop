@@ -36,6 +36,7 @@ export async function GET() {
       monthlyLimit: Number.isInteger(data.monthlyLimit) ? data.monthlyLimit : 0,
       usedCount: Number.isInteger(data.usedCount) ? data.usedCount : 0,
       remainingCount: Number.isInteger(data.remainingCount) ? data.remainingCount : 0,
+      extraTokens: Number.isInteger(data.extraTokens) ? data.extraTokens : 0,
       nextResetDate: typeof data.nextResetDate === 'string' ? data.nextResetDate : null,
       billingInterval: typeof data.billingInterval === 'string' ? data.billingInterval : 'month',
       price: typeof data.price === 'number' ? data.price : 0,

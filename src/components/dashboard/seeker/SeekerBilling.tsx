@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
 import BillingHistory, { type BillingInvoiceRow } from '@/components/dashboard/shared/BillingHistory';
 import type { SeekerProfile } from './seeker-data';
 import SeekerPageHeader from './SeekerPageHeader';
+import ExtraTokensCard from '@/components/dashboard/shared/ExtraTokensCard';
 
 type PaymentMethod = {
   id: string;
@@ -30,6 +32,7 @@ type BillingSummary = {
     monthlyLimit: number;
     usedCount: number;
     remainingCount: number;
+    extraTokens: number;
     nextResetDate: string;
     features: string[];
   } | null;
@@ -135,6 +138,7 @@ function parseBillingSummary(value: unknown): BillingSummary {
       monthlyLimit: value.subscription.monthlyLimit,
       usedCount: value.subscription.usedCount,
       remainingCount: value.subscription.remainingCount,
+          extraTokens: typeof value.subscription.extraTokens === 'number' ? value.subscription.extraTokens : 0,
       nextResetDate: value.subscription.nextResetDate,
       features: value.subscription.features,
     };
@@ -209,6 +213,7 @@ function statusStyle(status: string) {
 }
 
 export default function SeekerBilling() {
+  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<SeekerProfile | null>(null);
   const [billing, setBilling] = useState(emptyBilling);
   const [loading, setLoading] = useState(true);
@@ -419,6 +424,7 @@ export default function SeekerBilling() {
           {profileError}
         </p>
       )}
+      {searchParams.get('token_checkout') === 'cancelled' && <p role="status" className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-300">Payment cancelled</p>}
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_.8fr]">
         <section className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6">
@@ -467,7 +473,7 @@ export default function SeekerBilling() {
               <div>
                 <h3 className="text-[10px] font-medium text-[#d9d9df]">Monthly applications</h3>
                 <p className="mt-1 text-[9px] text-[#85858e]">
-                  {subscription?.usedCount ?? 0} used · {subscription?.remainingCount ?? 0} remaining
+                  {subscription?.usedCount ?? 0} used · {subscription?.remainingCount ?? 0} Remaining this month · Extra tokens: {subscription?.extraTokens ?? 0}
                 </p>
               </div>
               <p className="text-xs font-semibold text-white">
@@ -501,6 +507,8 @@ export default function SeekerBilling() {
             </button>
           </div>
         </section>
+
+        <ExtraTokensCard role="seeker" />
 
         <section className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">

@@ -3,20 +3,20 @@
 import type { FormEvent } from "react";
 
 type HeroSectionProps = {
-  newJobsThisMonth: number;
   query: string;
   location: string;
   popularSearches: string[];
+  totalJobsPosted: number | null;
   onQueryChange: (value: string) => void;
   onLocationChange: (value: string) => void;
   onSearch: (query: string, location: string) => void;
 };
 
 export default function HeroSection({
-  newJobsThisMonth,
   query,
   location,
   popularSearches,
+  totalJobsPosted,
   onQueryChange,
   onLocationChange,
   onSearch,
@@ -64,8 +64,10 @@ export default function HeroSection({
               </svg>
             </span>
             <p className="whitespace-nowrap font-mono text-[9px] uppercase leading-none tracking-[0.04em] text-[#777987]">
-              <span className="mr-1 font-bold text-white">{newJobsThisMonth.toLocaleString()}+</span>
-              new jobs this month
+              <span className="mr-1 font-bold text-white">
+                {totalJobsPosted?.toLocaleString() ?? "—"}
+              </span>
+              total jobs posted from top companies
             </p>
           </div>
         </div>

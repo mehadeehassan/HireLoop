@@ -1,5 +1,5 @@
 import { fetchBackendJobs } from "@/lib/job-api";
-import { getJobCreatedAt, toPublicJob, type PublicJob } from "@/lib/public-jobs";
+import { toPublicJob, type PublicJob } from "@/lib/public-jobs";
 import { NextResponse } from "next/server";
 import { withRequestPerformance } from "@/lib/request-performance";
 
@@ -106,33 +106,30 @@ async function handleGET(request: Request) {
       return NextResponse.json({ error: "Job listings are temporarily unavailable." }, { status: 502 });
     }
 
+    const totalJobsPosted = payload?.totalJobsPosted;
+    const hasTotalJobsPosted =
+      typeof totalJobsPosted === "number" &&
+      Number.isSafeInteger(totalJobsPosted) &&
+      totalJobsPosted >= 0;
+    if (ids.length === 0 && !hasTotalJobsPosted) {
+      console.error("Public job listing backend returned an invalid total job count");
+      return NextResponse.json({ error: "Job listings are temporarily unavailable." }, { status: 502 });
+    }
+
     const publicJobs = jobs
       .map((value) => toPublicJob(value))
       .filter((job): job is PublicJob => job !== null);
-    const backendMonthlyCount = payload?.newJobsThisMonth;
-    const now = new Date();
-    const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
-    const nextMonthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
-    const newJobsThisMonth = Number.isSafeInteger(backendMonthlyCount) && Number(backendMonthlyCount) >= 0
-      ? Number(backendMonthlyCount)
-      : jobs.filter((value) => {
-      const job = asRecord(value);
-      if (!job || !toPublicJob(job)) return false;
-
-      const createdAt = getJobCreatedAt(job)?.getTime();
-      return createdAt !== undefined && createdAt >= monthStart && createdAt < nextMonthStart;
-      }).length;
 
     return NextResponse.json({
       jobs: publicJobs,
-      newJobsThisMonth,
+      ...(hasTotalJobsPosted ? { totalJobsPosted } : {}),
       ...(payload?.pagination && typeof payload.pagination === 'object'
         ? { pagination: payload.pagination }
         : {}),
       ...(isFilterOptions(payload?.filterOptions)
         ? { filterOptions: payload.filterOptions }
         : {}),
-    } satisfies { jobs: PublicJob[]; newJobsThisMonth: number });
+    } satisfies { jobs: PublicJob[] });
   } catch (error) {
     console.error("Could not load public job listings", error);
     return NextResponse.json({ error: "Job listings are temporarily unavailable." }, { status: 502 });

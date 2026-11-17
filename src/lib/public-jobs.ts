@@ -27,7 +27,7 @@ export type PublicJob = {
 
 export type PublicJobsResponse = {
   jobs: PublicJob[];
-  newJobsThisMonth: number;
+  totalJobsPosted?: number;
   pagination?: { page: number; limit: number; total: number; totalPages: number };
 };
 

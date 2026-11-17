@@ -4,6 +4,7 @@ import { isAdminAuditLogsList, type AdminAuditLogsList } from '@/lib/admin-setti
 import { Check, CircleAlert, History, LoaderCircle, Plus, Tag } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
+import AdminTokenPricingPanel from './AdminTokenPricingPanel';
 
 type Role = 'seeker' | 'recruiter';
 type Plan = 'Starter' | 'Growth' | 'Premium';
@@ -383,6 +384,7 @@ export default function AdminPricingManager() {
 
   return (
     <div className="space-y-4">
+      <AdminTokenPricingPanel />
       <section className="flex items-start gap-2 rounded-md border border-sky-400/20 bg-sky-400/5 px-3 py-2.5 text-[11px] leading-5 text-sky-200">
         <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
         <p>

@@ -11,6 +11,7 @@ type Verification = {
   role: 'seeker' | 'recruiter';
   subscription: { plan: string; expiryDate: string | null } | null;
 };
+type TokenVerification = { tokensAdded: number; extraTokens: number };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -19,20 +20,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export default function PaymentSuccessStatus() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
+  const tokenSessionId = searchParams.get('token_session_id');
   const [verification, setVerification] = useState<Verification | null>(null);
+  const [tokenVerification, setTokenVerification] = useState<TokenVerification | null>(null);
   const [error, setError] = useState('');
   const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    if (!sessionId) return;
-    const checkoutSessionId = sessionId;
+    if (!sessionId && !tokenSessionId) return;
+    const checkoutSessionId = tokenSessionId || sessionId || '';
+    const isTokenCheckout = Boolean(tokenSessionId);
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     async function verify(attempt: number) {
       try {
         const response = await fetch(
-          `/api/billing/checkout-session/${encodeURIComponent(checkoutSessionId)}`,
+          `/api/billing/${isTokenCheckout ? 'token-checkout' : 'checkout-session'}/${encodeURIComponent(checkoutSessionId)}`,
           { cache: 'no-store' },
         );
         const result: unknown = await response.json();
@@ -44,7 +48,18 @@ export default function PaymentSuccessStatus() {
           );
         }
         if (cancelled) return;
+        if (isTokenCheckout && Number.isInteger(result.tokensAdded) && Number.isInteger(result.extraTokens)) {
+          if (result.paymentStatus === 'succeeded' && (result.tokensAdded as number) > 0) {
+            setTokenVerification({ tokensAdded: result.tokensAdded as number, extraTokens: result.extraTokens as number });
+            return;
+          }
+          if (result.paymentStatus === 'cancelled' || result.paymentStatus === 'failed') {
+            setError('Payment cancelled');
+            return;
+          }
+        }
         if (
+          !isTokenCheckout &&
           result.paymentStatus === 'succeeded' &&
           result.subscriptionActivated === true &&
           (result.role === 'seeker' || result.role === 'recruiter')
@@ -68,7 +83,7 @@ export default function PaymentSuccessStatus() {
           return;
         }
         if (result.paymentStatus === 'cancelled' || result.paymentStatus === 'failed') {
-          const message = 'The payment was not completed. Your current plan has not changed.';
+          const message = isTokenCheckout ? 'Payment cancelled' : 'The payment was not completed. Your current plan has not changed.';
           setError(message);
           toast.error(message);
           return;
@@ -93,11 +108,11 @@ export default function PaymentSuccessStatus() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [sessionId]);
+  }, [sessionId, tokenSessionId]);
 
   const visibleError =
     error ||
-    (!sessionId
+    (!sessionId && !tokenSessionId
       ? 'The Checkout session is missing. Return to your dashboard and check your billing status.'
       : '');
   const dashboardUrl =
@@ -106,7 +121,15 @@ export default function PaymentSuccessStatus() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#08080b] px-4 py-12 text-white">
       <section className="w-full max-w-lg rounded-2xl border border-[#29292f] bg-[#131316] p-7 text-center shadow-[0_24px_100px_rgba(0,0,0,.4)] sm:p-10">
-        {verification ? (
+        {tokenVerification ? (
+          <>
+            <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-500/15 text-3xl text-emerald-400" aria-hidden="true">✓</div>
+            <p className="mt-6 text-[10px] font-semibold uppercase tracking-[.2em] text-emerald-300">Payment confirmed</p>
+            <h1 className="mt-3 text-2xl font-semibold">{tokenVerification.tokensAdded} tokens added</h1>
+            <p className="mt-3 text-sm leading-6 text-[#a2a2ab]">Your extra token balance is now {tokenVerification.extraTokens}.</p>
+            <Link href="/dashboard" className="mt-8 inline-flex h-11 items-center justify-center rounded-md bg-[#6258ff] px-6 text-xs font-semibold hover:bg-[#7168ff]">Return to dashboard</Link>
+          </>
+        ) : verification ? (
           <>
             <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-500/15 text-3xl text-emerald-400" aria-hidden="true">
               ✓
@@ -145,11 +168,11 @@ export default function PaymentSuccessStatus() {
           <>
             <div className="mx-auto size-11 animate-spin rounded-full border-2 border-white/10 border-t-[#8178ff]" aria-hidden="true" />
             <h1 className="mt-6 text-2xl font-semibold">
-              {timedOut ? 'Confirmation is taking longer than usual' : 'Confirming your payment'}
+              {timedOut ? 'Confirmation is taking longer than usual' : tokenSessionId ? 'Processing...' : 'Confirming your payment'}
             </h1>
             <p className="mt-3 text-sm leading-6 text-[#a2a2ab]">
               {timedOut
-                ? 'Your payment provider is processing the confirmation. Your plan will update as soon as the verified confirmation arrives. You can safely check your billing page.'
+                ? tokenSessionId ? 'Your verified token credit is still processing. You can safely check your billing page again shortly.' : 'Your payment provider is processing the confirmation. Your plan will update as soon as the verified confirmation arrives. You can safely check your billing page.'
                 : 'We are waiting for secure confirmation from Stripe. This may take a few moments.'}
             </p>
             {timedOut && (

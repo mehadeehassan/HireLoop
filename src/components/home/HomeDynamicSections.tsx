@@ -49,13 +49,13 @@ function isPublicJob(value: unknown): value is PublicJob {
 
 export default function HomeDynamicSections() {
   const [jobs, setJobs] = useState<PublicJob[]>([]);
-  const [newJobsThisMonth, setNewJobsThisMonth] = useState(0);
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [submittedLocation, setSubmittedLocation] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalJobsPosted, setTotalJobsPosted] = useState<number | null>(null);
   const [filterOptions, setFilterOptions] = useState<HomeFilterOptions>({
     types: [],
     companies: [],
@@ -90,9 +90,9 @@ export default function HomeDynamicSections() {
         const payload: unknown = await response.json();
         const result = payload as {
           jobs?: unknown;
-          newJobsThisMonth?: unknown;
           pagination?: unknown;
           filterOptions?: unknown;
+          totalJobsPosted?: unknown;
         };
         const pagination =
           typeof result.pagination === "object" && result.pagination !== null
@@ -115,12 +115,12 @@ export default function HomeDynamicSections() {
         if (
           !Array.isArray(result.jobs) ||
           !result.jobs.every(isPublicJob) ||
-          typeof result.newJobsThisMonth !== "number" ||
-          !Number.isInteger(result.newJobsThisMonth) ||
-          result.newJobsThisMonth < 0 ||
           !pagination ||
           typeof pagination.totalPages !== "number" ||
-          !options
+          !options ||
+          typeof result.totalJobsPosted !== "number" ||
+          !Number.isSafeInteger(result.totalJobsPosted) ||
+          result.totalJobsPosted < 0
         ) {
           throw new Error("The job service returned an unexpected response.");
         }
@@ -131,8 +131,8 @@ export default function HomeDynamicSections() {
           return;
         }
         setJobs(result.jobs);
-        setNewJobsThisMonth(result.newJobsThisMonth);
         setTotalPages(safeTotalPages);
+        setTotalJobsPosted(result.totalJobsPosted);
         setFilterOptions({
           types: readOptions("types"),
           companies: readOptions("companies"),
@@ -181,10 +181,10 @@ export default function HomeDynamicSections() {
   return (
     <>
       <HeroSection
-        newJobsThisMonth={newJobsThisMonth}
         query={submittedQuery}
         location={submittedLocation}
         popularSearches={popularSearches}
+        totalJobsPosted={totalJobsPosted}
         onQueryChange={setQuery}
         onLocationChange={setLocation}
         onSearch={applySearch}

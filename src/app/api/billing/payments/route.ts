@@ -40,6 +40,8 @@ export async function GET(request: Request) {
         ? data.payments.filter(isRecord).map((payment) => ({
             paymentId: typeof payment.paymentId === 'string' ? payment.paymentId : '',
             plan: typeof payment.plan === 'string' ? payment.plan : 'Subscription',
+            type: payment.type === 'tokens' ? 'tokens' : 'subscription',
+            quantity: Number.isInteger(payment.quantity) ? payment.quantity : null,
             amountMinor: Number.isInteger(payment.amountMinor) ? payment.amountMinor : 0,
             currency: typeof payment.currency === 'string' ? payment.currency.toUpperCase() : 'USD',
             paymentStatus: typeof payment.paymentStatus === 'string' ? payment.paymentStatus : 'unknown',
@@ -61,6 +63,8 @@ export async function GET(request: Request) {
         number: typeof invoice.number === 'string' ? invoice.number : 'Invoice',
         date: typeof invoice.date === 'string' ? invoice.date : '',
         plan: typeof invoice.plan === 'string' ? invoice.plan : 'Subscription',
+        type: invoice.type === 'tokens' ? 'tokens' : 'subscription',
+        quantity: Number.isInteger(invoice.quantity) ? invoice.quantity : null,
         amountMinor: Number.isInteger(invoice.amountMinor) ? invoice.amountMinor : 0,
         currency: typeof invoice.currency === 'string' ? invoice.currency.toUpperCase() : 'USD',
         status: typeof invoice.status === 'string' ? invoice.status : 'unknown',
