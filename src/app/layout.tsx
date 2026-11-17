@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter, Instrument_Sans } from "next/font/google";
 import { Toaster } from "sonner";
+import UserStateCleanup from "@/components/shared/UserStateCleanup";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${instrumentSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <UserStateCleanup />
         <div>{children}</div>
         <Toaster
           theme="dark"

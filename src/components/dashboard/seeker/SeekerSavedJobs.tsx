@@ -9,7 +9,7 @@ import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
 import type { PublicJob } from '@/lib/public-jobs';
 import { getJobApplyHref } from '@/lib/job-routes';
 import { getTimeAgo, isPublicJob } from './seeker-data';
-import { useSavedJobIds } from './useSavedJobIds';
+import { useSavedJobIds } from '@/lib/seeker-jobs';
 import SeekerMetricCard from './SeekerMetricCard';
 import SeekerPageHeader from './SeekerPageHeader';
 

@@ -10,6 +10,7 @@ import DashboardAvatar from './DashboardAvatar';
 import DashboardIcon from './DashboardIcon';
 import SidebarNavigation from './SidebarNavigation';
 import SidebarProfileCard from './SidebarProfileCard';
+import { clearHireLoopBrowserState } from '@/lib/user-storage';
 
 export default function DashboardSidebar({
   role,
@@ -27,6 +28,7 @@ export default function DashboardSidebar({
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
+          clearHireLoopBrowserState();
           router.replace('/');
           router.refresh();
         },

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { clearHireLoopBrowserState } from '@/lib/user-storage';
 
 const NAV_LINKS = [
   { label: 'Browse Jobs', href: '/browse-jobs', bold: true },
@@ -94,6 +95,7 @@ export default function HomeNavbar() {
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
+          clearHireLoopBrowserState();
           setProfileOpen(false);
           setMenuOpen(false);
           router.replace('/');

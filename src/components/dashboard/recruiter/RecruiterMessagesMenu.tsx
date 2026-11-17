@@ -508,11 +508,11 @@ export default function RecruiterMessagesMenu({ recruiterId }: { recruiterId: st
                     </li>
                   ))}
                 </ul>
-              ) : !searching && search.trim().length >= 2 ? (
-                <p className="py-8 text-center text-[10px] text-[#85858e]">No seekers found. Search by their name.</p>
-              ) : (
+              ) : !searching && !error && search.trim().length >= 2 ? (
+                <p className="py-8 text-center text-[10px] text-[#85858e]">No applicants found. You can only message applicants to your jobs.</p>
+              ) : !error ? (
                 <p className="py-8 text-center text-[10px] text-[#85858e]">Search for a seeker to start a conversation.</p>
-              )}
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -553,7 +553,7 @@ export default function RecruiterMessagesMenu({ recruiterId }: { recruiterId: st
           ) : !error ? (
             <div className="px-4 py-10 text-center">
               <p className="text-[10px] font-medium text-[#d9d9df]">No conversations yet</p>
-              <p className="mt-1 text-[9px] leading-5 text-[#85858e]">Start a message with any seeker by name.</p>
+              <p className="mt-1 text-[9px] leading-5 text-[#85858e]">Start a message with an applicant to one of your jobs.</p>
             </div>
           ) : null}
         </section>

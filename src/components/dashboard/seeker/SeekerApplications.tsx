@@ -9,17 +9,16 @@ import { useSeekerDashboardData } from './useSeekerDashboardData';
 import { getTimeAgo, type SeekerApplication } from './seeker-data';
 import SeekerMetricCard from './SeekerMetricCard';
 import SeekerPageHeader from './SeekerPageHeader';
+import { useSession } from '@/lib/auth-client';
+import { getUserStorageKey } from '@/lib/user-storage';
 
 const pageSize = 5;
-const archivedApplicationsKey = 'hireloop:archived-applications';
-const archivedApplicationsEvent = 'hireloop:archived-applications-change';
-
 function isStatusArchived(status: string) {
   return /rejected|withdrawn|archived|closed/i.test(status);
 }
 
-function readArchivedApplicationIds() {
-  const parsed: unknown = JSON.parse(localStorage.getItem(archivedApplicationsKey) || '[]');
+function readArchivedApplicationIds(key: string) {
+  const parsed: unknown = JSON.parse(localStorage.getItem(key) || '[]');
   if (!Array.isArray(parsed) || !parsed.every((id): id is string => typeof id === 'string')) {
     throw new Error('Archived application data is invalid.');
   }
@@ -35,17 +34,38 @@ function statusStyle(status: string) {
 }
 
 export default function SeekerApplications() {
+  const { data: session } = useSession();
+  const userId = session?.user.role === 'seeker' ? session.user.id : null;
+  const archivedApplicationsKey = userId
+    ? getUserStorageKey(userId, 'archived-applications')
+    : null;
+  const archivedApplicationsEvent = userId
+    ? `${getUserStorageKey(userId, 'archived-applications')}-change`
+    : null;
   const { applications, loading, error } = useSeekerDashboardData({ includeJobs: false });
   const [tab, setTab] = useState<'Active' | 'Archived'>('Active');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [archivedIds, setArchivedIds] = useState<string[]>([]);
+  const [archivedState, setArchivedState] = useState<{ userId: string | null; ids: string[] }>({
+    userId: null,
+    ids: [],
+  });
+  const archivedIds = useMemo(
+    () => (archivedState.userId === userId ? archivedState.ids : []),
+    [archivedState, userId],
+  );
   const [selectedApplication, setSelectedApplication] = useState<SeekerApplication | null>(null);
 
   useEffect(() => {
+    const storageKey = archivedApplicationsKey || '';
+    const eventName = archivedApplicationsEvent || '';
+    if (!storageKey || !eventName) return;
     function syncArchivedApplications() {
       try {
-        setArchivedIds(readArchivedApplicationIds());
+        setArchivedState({
+          userId,
+          ids: readArchivedApplicationIds(storageKey),
+        });
       } catch (archiveError) {
         console.error('Could not read archived seeker applications', archiveError);
         toast.error('Your locally archived applications could not be loaded.');
@@ -53,13 +73,13 @@ export default function SeekerApplications() {
     }
 
     syncArchivedApplications();
-    window.addEventListener(archivedApplicationsEvent, syncArchivedApplications);
+    window.addEventListener(eventName, syncArchivedApplications);
     window.addEventListener('storage', syncArchivedApplications);
     return () => {
-      window.removeEventListener(archivedApplicationsEvent, syncArchivedApplications);
+      window.removeEventListener(eventName, syncArchivedApplications);
       window.removeEventListener('storage', syncArchivedApplications);
     };
-  }, []);
+  }, [archivedApplicationsEvent, archivedApplicationsKey, userId]);
 
   const visibleApplications = useMemo(() => applications.filter((application) => {
     const archived =
@@ -78,14 +98,15 @@ export default function SeekerApplications() {
   const pageItems = visibleApplications.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   function setApplicationArchived(application: SeekerApplication, archived: boolean) {
+    if (!archivedApplicationsKey || !archivedApplicationsEvent) return;
     try {
-      const nextIds = new Set(readArchivedApplicationIds());
+      const nextIds = new Set(readArchivedApplicationIds(archivedApplicationsKey));
       if (archived) nextIds.add(application.id);
       else nextIds.delete(application.id);
 
       const updatedIds = [...nextIds];
       localStorage.setItem(archivedApplicationsKey, JSON.stringify(updatedIds));
-      setArchivedIds(updatedIds);
+      setArchivedState({ userId, ids: updatedIds });
       window.dispatchEvent(new Event(archivedApplicationsEvent));
       setTab(archived ? 'Archived' : 'Active');
       setPage(1);

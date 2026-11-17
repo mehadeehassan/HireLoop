@@ -182,7 +182,9 @@ export async function POST(request: Request) {
       const backendMessage =
         isRecord(data) && typeof data.message === 'string' ? data.message : '';
       const targetNotFound =
-        backendMessage === 'Seeker not found' || backendMessage === 'Application not found';
+        backendMessage === 'Job not found' ||
+        backendMessage === 'Seeker not found' ||
+        backendMessage === 'Application not found';
       return NextResponse.json(
         {
           error:

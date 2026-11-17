@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useSession } from '@/lib/auth-client';
-import { useSavedJobIds } from './useSavedJobIds';
+import { useSavedJobIds } from '@/lib/seeker-jobs';
 import { useSeekerDashboardData } from './useSeekerDashboardData';
 import { getTimeAgo } from './seeker-data';
 import SeekerMetricCard from './SeekerMetricCard';

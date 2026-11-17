@@ -84,6 +84,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## UI conventions and local-only state
 
+- User-owned data stays server-side. Any user-specific browser storage must be keyed by user ID and cleared on sign-out or account change.
 - Plan labels are display-only: recruiter `Starter` -> `Free` and `Premium` -> `Growth`; seeker shows `Starter Tier`, `Growth Tier`, or `Premium Tier`. Missing plan defaults to `Starter`.
 - Saved jobs (`src/lib/seeker-jobs.ts`), archived applications (`hireloop:archived-applications`), and seeker notification read markers (`hireloop:seeker-notification-read`) are browser-local and do not sync. Admin notification read state is backend-persisted per admin.
 - Job apply links go through `getJobApplyHref` in `src/lib/job-routes.ts`.

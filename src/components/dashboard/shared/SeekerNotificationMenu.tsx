@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SeekerApplication } from '../seeker/seeker-data';
+import { useSession } from '@/lib/auth-client';
+import { getUserStorageKey } from '@/lib/user-storage';
 
-const readStateKey = 'hireloop:seeker-notification-read';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -26,8 +27,8 @@ function timeAgo(value: string) {
   return days < 7 ? `${days}d ago` : new Date(timestamp).toLocaleDateString();
 }
 
-function getReadState() {
-  const raw = localStorage.getItem(readStateKey);
+function getReadState(key: string) {
+  const raw = localStorage.getItem(key);
   const parsed: unknown = raw ? JSON.parse(raw) : {};
   if (!isRecord(parsed)) throw new Error('Notification read state is invalid.');
   return Object.fromEntries(
@@ -38,13 +39,21 @@ function getReadState() {
 }
 
 export default function SeekerNotificationMenu() {
+  const { data: session } = useSession();
+  const userId = session?.user.role === 'seeker' ? session.user.id : null;
+  const readStateKey = userId
+    ? getUserStorageKey(userId, 'seeker-notification-read')
+    : null;
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<SeekerApplication[]>([]);
   const [readAt, setReadAt] = useState<Record<string, number>>({});
+  const [dataUserId, setDataUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const currentUserId = useRef(userId);
 
   const loadNotifications = useCallback(async (notify = false) => {
+    if (!userId || !readStateKey) return;
     setLoading(true);
     setError('');
     try {
@@ -69,6 +78,7 @@ export default function SeekerNotificationMenu() {
             )
           : null;
       if (!notifications) throw new Error('The notification service returned an unexpected response.');
+      if (currentUserId.current !== userId) return;
 
       setItems(
         notifications
@@ -76,15 +86,18 @@ export default function SeekerNotificationMenu() {
           .sort((first, second) => getTimestamp(second) - getTimestamp(first))
           .slice(0, 20),
       );
-      setReadAt(getReadState());
+      setReadAt(getReadState(readStateKey));
+      setDataUserId(userId);
     } catch (loadError) {
+      if (currentUserId.current !== userId) return;
       const message = loadError instanceof Error ? loadError.message : 'Could not load notifications.';
       setError(message);
+      setDataUserId(userId);
       if (notify) toast.error(message);
     } finally {
-      setLoading(false);
+      if (currentUserId.current === userId) setLoading(false);
     }
-  }, []);
+  }, [readStateKey, userId]);
 
   useEffect(() => {
     if (!open) return;
@@ -100,19 +113,28 @@ export default function SeekerNotificationMenu() {
   }, [loadNotifications, open]);
 
   const unreadCount = useMemo(
-    () => items.filter((item) => getTimestamp(item) > (readAt[item.id] || 0)).length,
-    [items, readAt],
+    () => (dataUserId === userId ? items : []).filter(
+      (item) => getTimestamp(item) > (dataUserId === userId ? readAt[item.id] || 0 : 0),
+    ).length,
+    [dataUserId, items, readAt, userId],
   );
 
   useEffect(() => {
+    currentUserId.current = userId;
     const timer = window.setTimeout(() => void loadNotifications(), 0);
     return () => window.clearTimeout(timer);
-  }, [loadNotifications]);
+  }, [loadNotifications, userId]);
+
+  const visibleItems = dataUserId === userId ? items : [];
+  const visibleReadAt = dataUserId === userId ? readAt : {};
+  const visibleLoading = Boolean(userId) && (dataUserId !== userId || loading);
+  const visibleError = dataUserId === userId ? error : '';
 
   function markAllRead() {
+    if (!readStateKey) return;
     try {
       const nextState = { ...readAt };
-      for (const item of items) nextState[item.id] = getTimestamp(item);
+      for (const item of visibleItems) nextState[item.id] = getTimestamp(item);
       localStorage.setItem(readStateKey, JSON.stringify(nextState));
       setReadAt(nextState);
     } catch {
@@ -159,14 +181,14 @@ export default function SeekerNotificationMenu() {
               Mark all read
             </button>
           </div>
-          {error && <p role="alert" className="m-3 rounded-md bg-red-500/5 p-2.5 text-[10px] leading-5 text-red-300">{error}</p>}
-          {loading ? (
+          {visibleError && <p role="alert" className="m-3 rounded-md bg-red-500/5 p-2.5 text-[10px] leading-5 text-red-300">{visibleError}</p>}
+          {visibleLoading ? (
             <div className="space-y-2 p-4">{[0, 1, 2].map((row) => <div key={row} className="h-12 animate-pulse rounded bg-white/5" />)}</div>
-          ) : items.length ? (
+          ) : visibleItems.length ? (
             <ul className="max-h-80 divide-y divide-[#242428] overflow-y-auto">
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const timestamp = getTimestamp(item);
-                const unread = timestamp > (readAt[item.id] || 0);
+                const unread = timestamp > (visibleReadAt[item.id] || 0);
                 return (
                   <li key={item.id}>
                     <Link href="/dashboard/seeker/applied" onClick={() => { markAllRead(); setOpen(false); }} className="flex gap-3 px-4 py-3 hover:bg-white/[0.035]">

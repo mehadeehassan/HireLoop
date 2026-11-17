@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { authClient, useSession } from '@/lib/auth-client';
 import DashboardAvatar from '@/components/dashboard/shared/DashboardAvatar';
+import { clearHireLoopBrowserState } from '@/lib/user-storage';
 
 const navigation = [
   { label: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
@@ -120,6 +121,7 @@ export default function AdminSidebar({ pathname }: { pathname: string }) {
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
+          clearHireLoopBrowserState();
           router.replace('/');
           router.refresh();
         },
