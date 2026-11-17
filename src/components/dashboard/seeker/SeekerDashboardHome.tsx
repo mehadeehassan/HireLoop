@@ -8,10 +8,13 @@ import { useSeekerDashboardData } from './useSeekerDashboardData';
 import { getTimeAgo } from './seeker-data';
 import SeekerMetricCard from './SeekerMetricCard';
 import SeekerPageHeader from './SeekerPageHeader';
+import useQuotaUsage from '@/components/dashboard/shared/useQuotaUsage';
+import QuotaUsage from '@/components/dashboard/shared/QuotaUsage';
 
 export default function SeekerDashboardHome() {
   const { data: session } = useSession();
   const { applications, loading, error } = useSeekerDashboardData({ includeJobs: false });
+  const quota = useQuotaUsage('seeker');
   const { jobIds } = useSavedJobIds();
   const interviews = applications.filter((application) =>
     /interview/i.test(application.status),
@@ -61,6 +64,10 @@ export default function SeekerDashboardHome() {
         <SeekerMetricCard label="Interviews Scheduled" value={loading ? '—' : interviews} icon="calendar" tone="text-amber-400" />
         <SeekerMetricCard label="Offers Received" value={loading ? '—' : offers} icon="offer" tone="text-emerald-400" />
       </section>
+
+      <div className="mt-5">
+        <QuotaUsage role="seeker" remaining={quota.usage?.remaining ?? null} limit={quota.usage?.limit ?? null} extraTokens={quota.usage?.extraTokens} loading={quota.loading} error={quota.error} />
+      </div>
 
       <section className="mt-7">
         <div className="mb-3 flex items-center justify-between gap-3">

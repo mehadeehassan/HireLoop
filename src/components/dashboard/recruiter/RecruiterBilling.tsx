@@ -8,6 +8,9 @@ import BillingHistory, { type BillingInvoiceRow } from '@/components/dashboard/s
 import DashboardIcon from '@/components/dashboard/shared/DashboardIcon';
 import RecruiterPageHeader from './RecruiterPageHeader';
 import ExtraTokensCard from '@/components/dashboard/shared/ExtraTokensCard';
+import QuotaUsage from '@/components/dashboard/shared/QuotaUsage';
+import useQuotaUsage from '@/components/dashboard/shared/useQuotaUsage';
+import { getQuotaState } from '@/lib/quota';
 
 type PaymentMethod = {
   id: string;
@@ -23,10 +26,6 @@ type RecruiterBillingSummary = {
   status: string;
   startDate: string | null;
   expiryDate: string | null;
-  monthlyLimit: number;
-  usedCount: number;
-  remainingCount: number;
-  extraTokens: number;
   nextResetDate: string | null;
   billingInterval: string;
   price: number;
@@ -49,10 +48,6 @@ const initialSummary: RecruiterBillingSummary = {
   status: 'active',
   startDate: null,
   expiryDate: null,
-  monthlyLimit: 0,
-  usedCount: 0,
-  remainingCount: 0,
-  extraTokens: 0,
   nextResetDate: null,
   billingInterval: 'month',
   price: 0,
@@ -98,9 +93,6 @@ function parseOverview(value: unknown): RecruiterBillingSummary {
     !isRecord(value) ||
     typeof value.currentPlan !== 'string' ||
     typeof value.status !== 'string' ||
-    typeof value.monthlyLimit !== 'number' ||
-    typeof value.usedCount !== 'number' ||
-    typeof value.remainingCount !== 'number' ||
     typeof value.price !== 'number' ||
     typeof value.currency !== 'string' ||
     !Array.isArray(value.features) ||
@@ -135,10 +127,6 @@ function parseOverview(value: unknown): RecruiterBillingSummary {
     status: value.status,
     startDate: typeof value.startDate === 'string' ? value.startDate : null,
     expiryDate: typeof value.expiryDate === 'string' ? value.expiryDate : null,
-    monthlyLimit: value.monthlyLimit,
-    usedCount: value.usedCount,
-    remainingCount: value.remainingCount,
-    extraTokens: Number.isInteger(value.extraTokens) ? value.extraTokens as number : 0,
     nextResetDate: typeof value.nextResetDate === 'string' ? value.nextResetDate : null,
     billingInterval: typeof value.billingInterval === 'string' ? value.billingInterval : 'month',
     price: value.price,
@@ -210,6 +198,7 @@ function parsePlans(value: unknown): BillingPlan[] {
 
 export default function RecruiterBilling() {
   const searchParams = useSearchParams();
+  const { usage, loading: quotaLoading, error: quotaError } = useQuotaUsage('recruiter');
   const [summary, setSummary] = useState(initialSummary);
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [invoices, setInvoices] = useState<BillingInvoiceRow[]>([]);
@@ -350,14 +339,9 @@ export default function RecruiterBilling() {
     }
   }
 
-  const usagePercent = summary.monthlyLimit
-    ? Math.min(100, (summary.usedCount / summary.monthlyLimit) * 100)
-    : 0;
+  const quotaState = getQuotaState(usage?.remaining, usage?.limit);
   const currentPlanFeatures =
     plans.find((plan) => plan.planName === summary.currentPlan)?.features || summary.features;
-  const monthlyJobLimit =
-    plans.find((plan) => plan.planName === summary.currentPlan)?.monthlyJobPostLimit ??
-    summary.monthlyLimit;
 
   return (
     <div id="billing-print-area" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -377,7 +361,7 @@ export default function RecruiterBilling() {
       )}
       {searchParams.get('token_checkout') === 'cancelled' && <p role="status" className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-300">Payment cancelled</p>}
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_.8fr]">
+      <div className="grid items-start gap-4 xl:grid-cols-[1.2fr_.8fr]">
         <section className="rounded-xl border border-[#252d43] bg-[#111827]/70 p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -426,24 +410,9 @@ export default function RecruiterBilling() {
             ))}
           </ul>
 
-          <div className="mt-5 rounded-lg border border-[#252d43] bg-[#0f1724] p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-[10px] font-medium text-[#d7dbea]">Monthly job posts</h3>
-                <p className="mt-1 text-[9px] text-[#9ba4b7]">
-                  {summary.usedCount} used · {summary.remainingCount} Remaining this month · Extra tokens: {summary.extraTokens}
-                </p>
-              </div>
-              <p className="text-xs font-semibold text-white">
-                {monthlyJobLimit} <span className="text-[9px] font-normal text-[#9ba4b7]">total</span>
-              </p>
-            </div>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-[#6258ff] transition-[width]" style={{ width: `${usagePercent}%` }} />
-            </div>
-            {summary.nextResetDate && (
-              <p className="mt-2 text-[9px] text-[#9ba4b7]">Usage resets {formatDate(summary.nextResetDate)}</p>
-            )}
+          <div className="mt-5">
+            <QuotaUsage role="recruiter" remaining={usage?.remaining ?? null} limit={usage?.limit ?? null} extraTokens={usage?.extraTokens} loading={quotaLoading} error={quotaError} />
+            {summary.nextResetDate && <p className="mt-2 text-[9px] text-[#9ba4b7]">Usage resets {formatDate(summary.nextResetDate)}</p>}
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
@@ -461,9 +430,7 @@ export default function RecruiterBilling() {
           </div>
         </section>
 
-        <ExtraTokensCard role="recruiter" />
-
-        <section className="rounded-xl border border-[#252d43] bg-[#111827]/70 p-5 sm:p-6">
+        <section className="self-start rounded-xl border border-[#252d43] bg-[#111827]/70 p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-white">Payment Method</h2>
             <span className="text-[8px] uppercase tracking-wide text-[#9ba4b7]">Secure by Stripe</span>
@@ -472,11 +439,14 @@ export default function RecruiterBilling() {
             <ul className="mt-5 space-y-3">
               {summary.paymentMethods.map((method) => (
                 <li key={method.id} className="relative overflow-hidden rounded-lg border border-[#303a55] bg-[radial-gradient(ellipse_at_top_right,_#2c2860,_#171827_55%,_#10131c)] p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex min-w-0 items-center justify-between gap-3">
                     <span className="flex size-7 items-center justify-center rounded bg-white/10 text-[#d7dbea]" aria-hidden="true">
                       <DashboardIcon name="wallet" className="size-4" />
                     </span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-white">{method.brand}</span>
+                    <div className="flex min-w-0 flex-col items-end gap-1">
+                      <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-white">{method.brand}</span>
+                      {method.isDefault && <span className="rounded bg-white/10 px-2 py-1 text-[8px] font-medium uppercase tracking-wide text-white" aria-label="Default payment method">Default</span>}
+                    </div>
                   </div>
                   <p className="mt-5 text-sm tracking-[0.18em] text-white">•••• •••• •••• {method.last4}</p>
                   <div className="mt-3 flex items-end justify-between gap-3">
@@ -493,11 +463,6 @@ export default function RecruiterBilling() {
                       </p>
                     </div>
                   </div>
-                  {method.isDefault && (
-                    <span className="absolute left-3 top-3 rounded bg-white/10 px-2 py-1 text-[8px] uppercase text-white">
-                      Default
-                    </span>
-                  )}
                 </li>
               ))}
             </ul>
@@ -520,6 +485,8 @@ export default function RecruiterBilling() {
           </button>
         </section>
       </div>
+
+      {quotaState === 'exhausted' && <div className="mt-4"><ExtraTokensCard role="recruiter" /></div>}
 
       <BillingHistory invoices={invoices} loading={loading} error={error} />
 

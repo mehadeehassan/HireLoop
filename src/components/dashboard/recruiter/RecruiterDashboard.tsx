@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { RecruiterJob } from './recruiter-data';
 import { useDashboardProfile } from '@/components/dashboard/shared/DashboardProfileContext';
+import useQuotaUsage from '@/components/dashboard/shared/useQuotaUsage';
+import QuotaUsage from '@/components/dashboard/shared/QuotaUsage';
 
 type JobsResponse = {
   jobs: Array<Pick<RecruiterJob, 'id'> & { status?: string }>;
@@ -44,6 +46,7 @@ function isApplication(value: unknown): value is Application {
 
 export default function RecruiterDashboard() {
   const profile = useDashboardProfile();
+  const quota = useQuotaUsage('recruiter');
   const [jobs, setJobs] = useState<JobsResponse['jobs']>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [dashboardError, setDashboardError] = useState(false);
@@ -127,6 +130,10 @@ export default function RecruiterDashboard() {
           />
         ))}
       </section>
+
+      <div className="mt-5">
+        <QuotaUsage role="recruiter" remaining={quota.usage?.remaining ?? null} limit={quota.usage?.limit ?? null} extraTokens={quota.usage?.extraTokens} loading={quota.loading} error={quota.error} />
+      </div>
 
       <section className="mt-6 overflow-hidden rounded-lg border border-white/[0.07] bg-[#111827]/45">
         <div className="flex h-13 items-center justify-between border-b border-white/[0.07] px-4 sm:px-5">

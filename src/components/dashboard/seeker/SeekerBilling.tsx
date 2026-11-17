@@ -9,6 +9,9 @@ import BillingHistory, { type BillingInvoiceRow } from '@/components/dashboard/s
 import type { SeekerProfile } from './seeker-data';
 import SeekerPageHeader from './SeekerPageHeader';
 import ExtraTokensCard from '@/components/dashboard/shared/ExtraTokensCard';
+import QuotaUsage from '@/components/dashboard/shared/QuotaUsage';
+import useQuotaUsage from '@/components/dashboard/shared/useQuotaUsage';
+import { getQuotaState } from '@/lib/quota';
 
 type PaymentMethod = {
   id: string;
@@ -29,10 +32,6 @@ type BillingSummary = {
     status: string;
     startDate: string;
     expiryDate: string;
-    monthlyLimit: number;
-    usedCount: number;
-    remainingCount: number;
-    extraTokens: number;
     nextResetDate: string;
     features: string[];
   } | null;
@@ -117,9 +116,6 @@ function parseBillingSummary(value: unknown): BillingSummary {
       typeof value.subscription.status !== 'string' ||
       typeof value.subscription.startDate !== 'string' ||
       typeof value.subscription.expiryDate !== 'string' ||
-      typeof value.subscription.monthlyLimit !== 'number' ||
-      typeof value.subscription.usedCount !== 'number' ||
-      typeof value.subscription.remainingCount !== 'number' ||
       typeof value.subscription.nextResetDate !== 'string' ||
       !Array.isArray(value.subscription.features) ||
       !value.subscription.features.every((feature) => typeof feature === 'string')
@@ -135,10 +131,6 @@ function parseBillingSummary(value: unknown): BillingSummary {
       status: value.subscription.status,
       startDate: value.subscription.startDate,
       expiryDate: value.subscription.expiryDate,
-      monthlyLimit: value.subscription.monthlyLimit,
-      usedCount: value.subscription.usedCount,
-      remainingCount: value.subscription.remainingCount,
-          extraTokens: typeof value.subscription.extraTokens === 'number' ? value.subscription.extraTokens : 0,
       nextResetDate: value.subscription.nextResetDate,
       features: value.subscription.features,
     };
@@ -214,6 +206,7 @@ function statusStyle(status: string) {
 
 export default function SeekerBilling() {
   const searchParams = useSearchParams();
+  const { usage, loading: quotaLoading, error: quotaError } = useQuotaUsage('seeker');
   const [profile, setProfile] = useState<SeekerProfile | null>(null);
   const [billing, setBilling] = useState(emptyBilling);
   const [loading, setLoading] = useState(true);
@@ -408,9 +401,7 @@ export default function SeekerBilling() {
       : currentPlan === 'Starter'
         ? '$0.00'
         : 'Managed by billing';
-  const usagePercent = subscription?.monthlyLimit
-    ? Math.min(100, (subscription.usedCount / subscription.monthlyLimit) * 100)
-    : 0;
+  const quotaState = getQuotaState(usage?.remaining, usage?.limit);
 
   return (
     <div id="billing-print-area" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-7">
@@ -426,7 +417,7 @@ export default function SeekerBilling() {
       )}
       {searchParams.get('token_checkout') === 'cancelled' && <p role="status" className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-300">Payment cancelled</p>}
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_.8fr]">
+      <div className="grid items-start gap-4 xl:grid-cols-[1.2fr_.8fr]">
         <section className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -468,29 +459,9 @@ export default function SeekerBilling() {
             ))}
           </ul>
 
-          <div className="mt-5 rounded-lg border border-[#26262b] bg-[#101013] p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-[10px] font-medium text-[#d9d9df]">Monthly applications</h3>
-                <p className="mt-1 text-[9px] text-[#85858e]">
-                  {subscription?.usedCount ?? 0} used · {subscription?.remainingCount ?? 0} Remaining this month · Extra tokens: {subscription?.extraTokens ?? 0}
-                </p>
-              </div>
-              <p className="text-xs font-semibold text-white">
-                {subscription?.monthlyLimit ?? 0} <span className="text-[9px] font-normal text-[#85858e]">total</span>
-              </p>
-            </div>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-[#8178ff] transition-[width]"
-                style={{ width: `${usagePercent}%` }}
-              />
-            </div>
-            {subscription?.nextResetDate && (
-              <p className="mt-2 text-[9px] text-[#85858e]">
-                Usage resets {formatDate(subscription.nextResetDate)}
-              </p>
-            )}
+          <div className="mt-5">
+            <QuotaUsage role="seeker" remaining={usage?.remaining ?? null} limit={usage?.limit ?? null} extraTokens={usage?.extraTokens} loading={quotaLoading} error={quotaError} />
+            {subscription?.nextResetDate && <p className="mt-2 text-[9px] text-[#85858e]">Usage resets {formatDate(subscription.nextResetDate)}</p>}
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
@@ -508,9 +479,7 @@ export default function SeekerBilling() {
           </div>
         </section>
 
-        <ExtraTokensCard role="seeker" />
-
-        <section className="rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6">
+        <section className="self-start rounded-xl border border-[#26262b] bg-[#131316] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-[#ededf2]">Payment Method</h2>
             <span className="text-[8px] uppercase tracking-wide text-[#777780]">Secure by Stripe</span>
@@ -519,9 +488,12 @@ export default function SeekerBilling() {
             <ul className="mt-5 space-y-3">
               {billing.paymentMethods.map((method) => (
                 <li key={method.id} className="relative overflow-hidden rounded-lg border border-[#34303f] bg-[radial-gradient(ellipse_at_top_right,_#3a1450,_#17131f_55%,_#101013)] p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="flex size-7 items-center justify-center rounded bg-amber-300/90 text-[9px] font-bold text-amber-950" aria-hidden="true">▦</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-white">{method.brand}</span>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded bg-amber-300/90 text-[9px] font-bold text-amber-950" aria-hidden="true">▦</span>
+                    <div className="flex min-w-0 flex-col items-end gap-1">
+                      <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-white">{method.brand}</span>
+                      {method.isDefault && <span className="rounded bg-white/10 px-2 py-1 text-[8px] font-medium uppercase tracking-wide text-white" aria-label="Default payment method">Default</span>}
+                    </div>
                   </div>
                   <p className="mt-5 text-sm tracking-[0.18em] text-white">•••• •••• •••• {method.last4}</p>
                   <div className="mt-3 flex items-end justify-between gap-3">
@@ -538,11 +510,6 @@ export default function SeekerBilling() {
                       </p>
                     </div>
                   </div>
-                  {method.isDefault && (
-                    <span className="absolute left-3 top-3 rounded bg-white/10 px-2 py-1 text-[8px] uppercase text-white">
-                      Default
-                    </span>
-                  )}
                 </li>
               ))}
             </ul>
@@ -574,6 +541,8 @@ export default function SeekerBilling() {
           </button>
         </section>
       </div>
+
+      {quotaState === 'exhausted' && <div className="mt-4"><ExtraTokensCard role="seeker" /></div>}
 
       <BillingHistory invoices={billing.invoices} loading={loading} error={billingError} />
 
