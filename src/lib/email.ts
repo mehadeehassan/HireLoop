@@ -1,4 +1,5 @@
 import 'server-only';
+import nodemailer, { type Transporter } from 'nodemailer';
 
 type SendEmailInput = {
   to: string;
@@ -24,31 +25,46 @@ export function escapeEmailHtml(value: string) {
   });
 }
 
-export async function sendEmail({ to, subject, text, html }: SendEmailInput) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL;
-  if (!apiKey || !from) {
-    throw new Error('Email delivery is not configured.');
+let transporter: Transporter | undefined;
+
+function getTransporter() {
+  if (transporter) return transporter;
+
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) {
+    console.error('Email delivery is not configured: SMTP_USER and SMTP_PASS are required.');
+    return undefined;
   }
 
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ from, to: [to], subject, text, html }),
+  const port = Number(process.env.SMTP_PORT || 465);
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port,
+    secure: port === 465 || process.env.SMTP_SECURE === 'true',
+    auth: { user, pass },
   });
+  return transporter;
+}
 
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Resend rejected the API key (HTTP 401). Check RESEND_API_KEY.');
+export async function sendEmail({ to, subject, text, html }: SendEmailInput) {
+  const from = process.env.EMAIL_FROM;
+  const mailer = getTransporter();
+  if (!mailer || !from) {
+    if (mailer && !from) console.error('Email delivery is not configured: EMAIL_FROM is required.');
+    return;
+  }
+
+  try {
+    await mailer.sendMail({ from, to, subject, text, html });
+  } catch (error) {
+    const code = typeof error === 'object' && error !== null && 'code' in error
+      ? String(error.code)
+      : undefined;
+    if (code === 'EAUTH') {
+      console.error('SMTP authentication failed. Check SMTP_USER and SMTP_PASS.');
+    } else {
+      console.error('Email delivery failed.', code ? `SMTP error code: ${code}.` : '');
     }
-    if (response.status === 403 && /@resend\.dev(?:[>\s]|$)/i.test(from)) {
-      throw new Error(
-        'Resend rejected the test email. The onboarding@resend.dev sender can only deliver to the Resend account owner email.',
-      );
-    }
-    throw new Error(`Resend rejected email delivery (HTTP ${response.status}).`);
   }
 }

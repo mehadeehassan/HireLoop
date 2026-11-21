@@ -40,7 +40,7 @@ quotas, billing, and data.
 | Framework | Next.js 16 (App Router) with `cacheComponents`, `partialPrefetching`, and the React Compiler |
 | Language | TypeScript |
 | Authentication | Better Auth with the MongoDB adapter (email/password and Google) |
-| Email | Resend (password reset and signup verification), server-side only |
+| Email | SMTP (password reset and signup verification), server-side only |
 | Payments | Stripe-hosted pages, driven by the backend |
 | Backend | Express + MongoDB service in `../hireloop-server` |
 
@@ -77,8 +77,11 @@ never paste its values into chats or tickets.
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Yes | Google sign-in. |
 | `HIRELOOP_JWT_SECRET` | Yes | At least 32 bytes. Must be identical in the backend. Server-only. |
 | `NEXT_PUBLIC_API_BASE_URL` | No | Backend URL. Defaults to `http://localhost:5000`. |
-| `RESEND_API_KEY` | For email | Server-only. Never use a `NEXT_PUBLIC_` prefix. |
-| `EMAIL_FROM` | For email | Sender address, verified in Resend. (`RESEND_FROM_EMAIL` still works until migrated.) |
+| `SMTP_HOST` | For email | Server-only. Defaults to `smtp.gmail.com`. |
+| `SMTP_PORT` | For email | Server-only. Defaults to `465`. |
+| `SMTP_SECURE` | No | Server-only. Defaults to `true` when `SMTP_PORT` is `465`. |
+| `SMTP_USER` / `SMTP_PASS` | For email | Server-only Gmail address and App Password. Never use a `NEXT_PUBLIC_` prefix. |
+| `EMAIL_FROM` | For email | Server-only sender, for example `"HireLoop <your-gmail@gmail.com>"`; with Gmail, the address must match `SMTP_USER`. |
 | `EMAIL_VERIFICATION_REQUIRED` | No | `true` or `false`. Defaults to `false`. See below. |
 
 Rules:
@@ -162,8 +165,8 @@ action in the admin audit collection. It is a command, not an HTTP endpoint.
   sign-up.
 - Registration can be switched off per role by an admin (Platform Controls). Turning a role off
   blocks only new sign-ups for that role; existing users can still sign in.
-- **Password reset** and **signup verification** use the same server-only Resend sender.
-  `RESEND_API_KEY` and `EMAIL_FROM` stay on the server. The sender address must be verified in Resend.
+- **Password reset** and **signup verification** use the same server-only SMTP sender.
+  `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and `EMAIL_FROM` stay on the server. For Gmail, use an App Password and make the `EMAIL_FROM` address match `SMTP_USER`.
   Reset links expire after one hour. Verification links expire after 15 minutes and lead to the
   sign-in page afterwards (they do not create a session automatically).
 - `EMAIL_VERIFICATION_REQUIRED` defaults to `false`: sign-up still sends a verification email, but
@@ -172,8 +175,7 @@ action in the admin audit collection. It is a command, not an HTTP endpoint.
 Before setting `EMAIL_VERIFICATION_REQUIRED=true`:
 
 1. Verify every existing admin account, or they will be locked out.
-2. Verify your sending domain in Resend (the shared `onboarding@resend.dev` sender only delivers to
-   your own Resend account email).
+2. Confirm SMTP delivery works for a real non-owner recipient.
 3. Decide how to handle existing unverified email/password users.
 
 With enforcement on, unverified users cannot sign in until they verify.
@@ -254,7 +256,7 @@ Admin notification read state is different: it is stored on the server per admin
 | All requests return 401 | `HIRELOOP_JWT_SECRET` differs between the frontend and backend. |
 | A 413 error on upload | A request body limit is too low (backend JSON limit is 16 MB). |
 | Sign-in fails with a MongoDB server-selection or DNS error | Wrong or unreachable `BETTER_AUTH_DB_URL`. Check the Atlas cluster and your network. |
-| No password reset or verification email | `RESEND_API_KEY` or `EMAIL_FROM` is missing, or the sender is not verified in Resend. |
+| No password reset or verification email | SMTP settings or `EMAIL_FROM` are missing/incorrect, or Gmail rejected the App Password. |
 | `next build` reports blocking prerender errors | A dashboard route reads session data but its server page does not export `instant = false`. |
 
 ## Contributing checklist
