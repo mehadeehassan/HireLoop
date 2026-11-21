@@ -181,8 +181,8 @@ export default function HomeDynamicSections() {
   return (
     <>
       <HeroSection
-        query={submittedQuery}
-        location={submittedLocation}
+        query={query}
+        location={location}
         popularSearches={popularSearches}
         totalJobsPosted={totalJobsPosted}
         onQueryChange={setQuery}

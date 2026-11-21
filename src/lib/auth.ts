@@ -55,6 +55,13 @@ export const auth = betterAuth({
     autoSignInAfterVerification: false,
     expiresIn: verificationTokenLifetimeSeconds,
   },
+  account: {
+    accountLinking: {
+      // A verified Google email can link to an existing local account even if
+      // that account's optional email-verification step has not been completed.
+      requireLocalEmailVerified: false,
+    },
+  },
   rateLimit: {
     customRules: {
       '/send-verification-email': { window: 60, max: 3 },

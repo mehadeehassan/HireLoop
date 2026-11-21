@@ -68,11 +68,13 @@ function nullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
 }
 
-function isAdminDashboardData(value: unknown): value is AdminDashboardData {
+function normalizeAdminDashboardData(
+  value: unknown,
+  requestedPeriod: AdminDashboardPeriod,
+): AdminDashboardData | null {
   if (!isRecord(value) || !isRecord(value.summary) || !Array.isArray(value.transactions)) {
-    return false;
+    return null;
   }
-  if (!['30d', '90d', 'all'].includes(String(value.period))) return false;
 
   const summary = value.summary;
   const summaryKeys = metrics.map(({ key }) => key);
@@ -81,24 +83,43 @@ function isAdminDashboardData(value: unknown): value is AdminDashboardData {
     Number.isSafeInteger(summary[key]) &&
     summary[key] >= 0
   ))) {
-    return false;
+    return null;
   }
 
-  return value.transactions.every((transaction) => (
-    isRecord(transaction) &&
-    typeof transaction.id === 'string' &&
-    typeof transaction.reference === 'string' &&
-    nullableString(transaction.ownerName) &&
-    nullableString(transaction.ownerEmail) &&
-    nullableString(transaction.plan) &&
-    nullableString(transaction.role) &&
-    (transaction.amount === null ||
-      (typeof transaction.amount === 'number' && Number.isFinite(transaction.amount))) &&
-    nullableString(transaction.currency) &&
-    nullableString(transaction.status) &&
-    nullableString(transaction.paymentDate) &&
-    nullableString(transaction.createdAt)
-  ));
+  const transactions: AdminTransaction[] = [];
+  for (const item of value.transactions) {
+    if (!isRecord(item) || typeof item.id !== 'string' || !item.id) return null;
+    const optionalString = (field: string) =>
+      nullableString(item[field]) ? item[field] as string | null : null;
+    const amount = item.amount;
+    const numericAmount = typeof amount === 'number'
+      ? amount
+      : typeof amount === 'string' && amount.trim() !== ''
+        ? Number(amount)
+        : null;
+
+    transactions.push({
+      id: item.id,
+      ownerName: optionalString('ownerName'),
+      ownerEmail: optionalString('ownerEmail'),
+      plan: optionalString('plan'),
+      role: optionalString('role'),
+      reference: typeof item.reference === 'string' && item.reference
+        ? item.reference
+        : item.id,
+      amount: numericAmount !== null && Number.isFinite(numericAmount) ? numericAmount : null,
+      currency: optionalString('currency'),
+      status: optionalString('status'),
+      paymentDate: optionalString('paymentDate'),
+      createdAt: optionalString('createdAt'),
+    });
+  }
+
+  return {
+    period: requestedPeriod,
+    summary: summary as DashboardSummary,
+    transactions,
+  };
 }
 
 function formatAmount(amount: number | null, currency: string | null) {
@@ -213,10 +234,11 @@ export default function AdminDashboardOverview() {
             : 'Could not load dashboard statistics.';
           throw new Error(message);
         }
-        if (!isAdminDashboardData(payload)) {
+        const dashboardData = normalizeAdminDashboardData(payload, period);
+        if (!dashboardData) {
           throw new Error('The dashboard service returned invalid data.');
         }
-        setData(payload);
+        setData(dashboardData);
       } catch (loadError) {
         if (controller.signal.aborted) return;
         const message = loadError instanceof Error ? loadError.message : 'Could not load dashboard statistics.';
